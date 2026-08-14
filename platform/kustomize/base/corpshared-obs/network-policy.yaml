@@ -1,0 +1,52 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny-and-obs-rules
+  namespace: drr-corpshared-obs
+spec:
+  endpointSelector:
+    matchLabels:
+      darueira.io/tier: enterprise-shared
+  ingress:
+    # 1. Allow OTLP ingestion from all internal platform and tenant workloads
+    - fromEndpoints:
+        - matchLabels:
+            darueira.io/tier: enterprise-shared
+        - matchLabels:
+            darueira.io/tier: tenant-workload
+      toPorts:
+        - ports:
+            - port: "4317"
+              protocol: TCP
+            - port: "4318"
+              protocol: TCP
+            - port: "8889"
+              protocol: TCP
+            - port: "9090"
+              protocol: TCP
+            - port: "3000"
+              protocol: TCP
+            - port: "16686"
+              protocol: TCP
+            - port: "9200"
+              protocol: TCP
+    # 2. Allow intra-observability traffic
+    - fromEndpoints:
+        - matchLabels:
+            darueira.io/subsystem: observability
+  egress:
+    # 1. CoreDNS
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+    # 2. Allow intra-observability and scrape platform services
+    - toEndpoints:
+        - matchLabels:
+            darueira.io/tier: enterprise-shared
+        - matchLabels:
+            darueira.io/tier: tenant-workload

@@ -68,8 +68,13 @@ As the project root folder and for this workspace, consider the content root of 
        - For K8s Operators, CLI `darctl`, Authz Gateway:
          - Go Lang or
          - Java 25
-   - Strict separation of concerns:
-     - Follow the Hexagonal Architecture approach (Domain, Application, Infrastructure).
+    - Strict separation of concerns:
+      - Follow the Hexagonal Architecture approach (Domain, Application, Infrastructure).
+8. **Enterprise Observability, PKI, and Event Streaming**:
+   - **Observability Tier (`drr-corpshared-obs`)**: Prometheus, Grafana, OpenSearch, Jaeger, and OpenTelemetry Collector.
+   - **In-Pod OTEL Auto-Instrumentation**: Standardized OTLP exporting across all platform and tenant pods.
+   - **PKI & Certificate Automation**: `cert-manager` integrated with OpenBao and internal CA issuers in `drr-corpshared-secr-internal`.
+   - **Event Streaming**: Kafka / Redpanda in `drr-corpshared-plat` for event-driven tuple synchronization and audit streams.
 
 ---
 

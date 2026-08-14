@@ -52,6 +52,8 @@ cluster-status: ## Display cluster nodes, namespaces, and pod statuses across al
 	$(KUBECTL) get pods -n drr-corpshared-secr-internal || true
 	@echo -e "\n${CYAN}==> Pods in drr-corpshared-plat:${NC}"
 	$(KUBECTL) get pods -n drr-corpshared-plat || true
+	@echo -e "\n${CYAN}==> Pods in drr-corpshared-obs:${NC}"
+	$(KUBECTL) get pods -n drr-corpshared-obs || true
 	@echo -e "\n${CYAN}==> Pods in drr-corpshared-mgmt:${NC}"
 	$(KUBECTL) get pods -n drr-corpshared-mgmt || true
 	@echo -e "\n${CYAN}==> Platform Custom Resource Definitions (CRDs):${NC}"
@@ -84,6 +86,7 @@ validate-manifests: ## Validate all Kustomize base manifests
 	@echo -e "${GREEN}==> Validating Kustomize base manifests...${NC}"
 	$(KUBECTL) kustomize platform/kustomize/base/corpshared-secr-internal > /dev/null
 	$(KUBECTL) kustomize platform/kustomize/base/corpshared-plat > /dev/null
+	$(KUBECTL) kustomize platform/kustomize/base/corpshared-obs > /dev/null
 	$(KUBECTL) kustomize platform/kustomize/base/corpshared-mgmt > /dev/null
 	$(KUBECTL) kustomize platform/kustomize/base/tnt-tenant-base > /dev/null
 	@echo -e "${GREEN}==> All Kustomize manifests are valid!${NC}"

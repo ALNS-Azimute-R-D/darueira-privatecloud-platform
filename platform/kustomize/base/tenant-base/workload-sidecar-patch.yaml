@@ -83,6 +83,38 @@ spec:
             - name: tmp
               mountPath: /tmp
 
+        # OpenTelemetry Agent Sidecar
+        - name: otel-agent
+          image: otel/opentelemetry-collector-contrib:0.106.1
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.drr-corpshared-obs.svc.cluster.local:4317"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "grpc"
+          ports:
+            - name: otlp-local
+              containerPort: 4317
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+
       volumes:
         - name: envoy-config-vol
           configMap:

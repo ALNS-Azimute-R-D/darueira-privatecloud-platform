@@ -8,3 +8,4 @@ resources:
   - network-policy.yaml
   - openbao-master.yaml
   - spire-server.yaml
+  - cert-manager.yaml

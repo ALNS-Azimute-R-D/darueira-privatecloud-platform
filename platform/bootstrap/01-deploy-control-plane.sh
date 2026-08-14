@@ -62,6 +62,7 @@ log_info "Platform repository root: ${REPO_ROOT}"
 NAMESPACES=(
     "drr-corpshared-secr-internal"
     "drr-corpshared-plat"
+    "drr-corpshared-obs"
     "drr-corpshared-mgmt"
 )
 
@@ -81,15 +82,19 @@ for ns in "${NAMESPACES[@]}"; do
     fi
 done
 
-# 2. Deploy Security & Secrets Internal Base (OpenBao / SPIRE)
+# 2. Deploy Security & Secrets Internal Base (OpenBao / SPIRE / cert-manager)
 log_info "Applying Base Kustomize: corpshared-secr-internal..."
 ${KUBECTL} apply -k "${REPO_ROOT}/platform/kustomize/base/corpshared-secr-internal"
 
-# 3. Deploy Platform Persistence & Master IdP (Central Postgres, MinIO, Nexus, Stalwart, Authentik)
+# 3. Deploy Platform Persistence, Identity & Messaging (Postgres 17, MinIO, Nexus, Stalwart, Keycloak, Kafka)
 log_info "Applying Base Kustomize: corpshared-plat..."
 ${KUBECTL} apply -k "${REPO_ROOT}/platform/kustomize/base/corpshared-plat"
 
-# 4. Deploy Management & Developer Portal (Backstage, Tekton Engine, ArgoCD Server)
+# 4. Deploy Observability Tier (Prometheus, Grafana, OpenSearch, Jaeger, OpenTelemetry Collector)
+log_info "Applying Base Kustomize: corpshared-obs..."
+${KUBECTL} apply -k "${REPO_ROOT}/platform/kustomize/base/corpshared-obs"
+
+# 5. Deploy Management & Developer Portal (Backstage, Tekton Engine, ArgoCD Server)
 log_info "Applying Base Kustomize: corpshared-mgmt..."
 ${KUBECTL} apply -k "${REPO_ROOT}/platform/kustomize/base/corpshared-mgmt"
 
@@ -97,4 +102,5 @@ log_success "Control plane base manifests successfully applied!"
 log_info "Check pod status across enterprise namespaces using:"
 log_info "  ${KUBECTL} get pods -n drr-corpshared-secr-internal"
 log_info "  ${KUBECTL} get pods -n drr-corpshared-plat"
+log_info "  ${KUBECTL} get pods -n drr-corpshared-obs"
 log_info "  ${KUBECTL} get pods -n drr-corpshared-mgmt"

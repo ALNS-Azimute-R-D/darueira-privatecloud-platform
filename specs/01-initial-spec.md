@@ -263,3 +263,67 @@ The platform applies differentiated authorization enforcement across service typ
 ### 8.5. OpenFGA Tuple Synchronization & Revocation
 - **Event-Driven Mutations**: Tenant/Project/Environment lifecycle events publish tuple mutation messages to Kafka topic `drr.authz.tuple-events`.
 - **Reconciliation Engine**: `drr-iam-authz-svc` consumes events, writes/deletes tuples in OpenFGA PostgreSQL backend, and invalidates local evaluation caches.
+
+---
+
+## 9. Enterprise Observability Stack (`drr-corpshared-obs`)
+
+The observability tier provides 360-degree Zero Trust observability across metrics, logs, distributed traces, and security audits:
+
+```mermaid
+graph TD
+    WorkloadPod["Tenant / Platform Pod\n(App + Envoy PEP + OPA PDP + OTEL Agent)"] -->|OTLP gRPC :4317 / HTTP :4318| OTEL["OpenTelemetry Collector\n(drr-corpshared-obs)"]
+    
+    OTEL -->|Metrics| Prometheus["Prometheus Server\n(drr-corpshared-obs)"]
+    OTEL -->|Traces| Jaeger["Jaeger Tracing Backend\n(drr-corpshared-obs)"]
+    OTEL -->|Logs & Audits| OpenSearch["OpenSearch Cluster\n(drr-corpshared-obs)"]
+    
+    Prometheus --> Grafana["Grafana Dashboards\n(drr-corpshared-obs)"]
+    Jaeger --> Grafana
+    OpenSearch --> Grafana
+    
+    Backstage["Backstage IDP\n(drr-corpshared-mgmt)"] -->|Plugin Views| Grafana
+```
+
+### 9.1. Core Observability Components:
+1. **OpenTelemetry Collector (`otel-collector`)**:
+   - Central ingestion gateway for OpenTelemetry Protocol (OTLP).
+   - Ingests OTLP traces (`grpc:4317`, `http:4318`), metrics, and structured logs.
+   - Dispatches signals to Prometheus, Jaeger, and OpenSearch with batching and memory limiting.
+2. **Prometheus Engine (`prometheus`)**:
+   - Time-series metrics engine scraping Kubernetes nodes, control plane components, and tenant pods.
+   - Alertmanager integration for infrastructure threshold breaches.
+3. **Jaeger Tracing (`jaeger`)**:
+   - Distributed tracing backend recording spans across Envoy PEP, OPA PDP, `drr-iam-authz-svc`, and backend business APIs.
+4. **OpenSearch Cluster (`opensearch`)**:
+   - Centralized distributed log search, indexing, and SIEM security analytics.
+5. **Grafana Visualization (`grafana`)**:
+   - Centralized visualization platform providing unified dashboards for infrastructure, security policies, and tenant applications.
+
+### 9.2. In-Pod OTEL Auto-Instrumentation
+All platform and tenant pods export telemetry via standard OTLP environment variables:
+- `OTEL_EXPORTER_OTLP_ENDPOINT`: `http://otel-collector.drr-corpshared-obs.svc.cluster.local:4317`
+- `OTEL_EXPORTER_OTLP_PROTOCOL`: `grpc`
+- `OTEL_SERVICE_NAME`: `{service-name}`
+- `OTEL_RESOURCE_ATTRIBUTES`: `k8s.namespace.name={namespace},k8s.pod.name={pod_name},darueira.io/tenant={tenant_id}`
+
+---
+
+## 10. Enterprise PKI, Identity & Messaging Infrastructure
+
+### 10.1. Certificate Management & PKI (`cert-manager`)
+- Namespace: `drr-corpshared-secr-internal`.
+- Automates X.509 certificate issuance and rotation across Ingress routes and internal service endpoints.
+- Provides `ClusterIssuer` definitions backed by OpenBao (Vault PKI engine) and internal Root CA.
+
+### 10.2. Enterprise Identity Provider (Keycloak / Authentik)
+- Namespace: `drr-corpshared-plat`.
+- Centralized OIDC / OAuth2 authentication, SAML federation, and multi-tenant realm isolation.
+- Backed by Central PostgreSQL 17 for realm configurations and user directories.
+
+### 10.3. Cloud-Native Message Broker (Kafka / Redpanda)
+- Namespace: `drr-corpshared-plat`.
+- High-throughput, distributed event streaming platform for:
+  - `drr.authz.tuple-events`: Event-driven ReBAC tuple mutations;
+  - `drr.tenant.lifecycle-events`: Tenant, Project, and Environment provisioning events;
+  - `drr.audit.security-events`: Zero Trust security and policy enforcement audit trails.

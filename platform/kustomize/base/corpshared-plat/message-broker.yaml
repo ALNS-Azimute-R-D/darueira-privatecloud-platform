@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: message-broker
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: message-broker
+    app.kubernetes.io/component: kafka
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: message-broker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: message-broker
+        darueira.io/tier: enterprise-shared
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: redpanda
+          image: docker.redpanda.com/redpandadata/redpanda:v24.1.8
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          command:
+            - rpk
+            - redpanda
+            - start
+            - --mode=dev-container
+            - --check=false
+            - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+            - --advertise-kafka-addr=PLAINTEXT://message-broker.drr-corpshared-plat.svc.cluster.local:9092
+            - --smp=1
+            - --memory=768M
+            - --reserve-memory=0M
+          ports:
+            - containerPort: 9092
+              name: kafka
+            - containerPort: 9644
+              name: admin
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
+          volumeMounts:
+            - name: kafka-data
+              mountPath: /var/lib/redpanda/data
+      volumes:
+        - name: kafka-data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: message-broker
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: message-broker
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: message-broker
+  ports:
+    - port: 9092
+      targetPort: 9092
+      name: kafka
+    - port: 9644
+      targetPort: 9644
+      name: admin

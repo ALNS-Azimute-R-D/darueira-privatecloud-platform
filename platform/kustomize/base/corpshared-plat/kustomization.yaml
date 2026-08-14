@@ -11,3 +11,5 @@ resources:
   - nexus-oss.yaml
   - stalwart-mail.yaml
   - authentik-server.yaml
+  - keycloak.yaml
+  - message-broker.yaml

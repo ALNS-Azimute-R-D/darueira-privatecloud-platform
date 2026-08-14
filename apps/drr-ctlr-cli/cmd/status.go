@@ -31,9 +31,11 @@ var statusCmd = &cobra.Command{
 		fmt.Printf("%-32s %-22s %s\n", "Grafana Dashboards", "drr-corpshared-obs", "🟢 Ready (:3000)")
 		fmt.Printf("%-32s %-22s %s\n", "OpenSearch Log Cluster", "drr-corpshared-obs", "🟢 Ready (:9200)")
 		fmt.Printf("%-32s %-22s %s\n", "Jaeger Tracing Backend", "drr-corpshared-obs", "🟢 Ready (:16686)")
+		fmt.Printf("%-32s %-22s %s\n", "drr-env-orchestrator-svc", "drr-corpshared-mgmt", "🟢 Ready (Engine :8082)")
 		fmt.Printf("%-32s %-22s %s\n", "Spotify Backstage (IDP)", "drr-corpshared-mgmt", "🟢 Ready")
 		fmt.Printf("%-32s %-22s %s\n", "Tekton Pipeline Engine", "drr-corpshared-mgmt", "🟢 Ready")
 		fmt.Printf("%-32s %-22s %s\n", "ArgoCD GitOps Server", "drr-corpshared-mgmt", "🟢 Ready")
+		fmt.Printf("%-32s %-22s %s\n", "darueira-operator", "drr-corpshared-mgmt", "🟢 Ready (CRD Controller)")
 		fmt.Printf("%-32s %-22s %s\n", "Cilium CNI (eBPF)", "kube-system", "🟢 Active (L3-L7 Mesh)")
 		fmt.Println("============================================================================")
 	},

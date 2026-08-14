@@ -9,3 +9,4 @@ resources:
   - backstage.yaml
   - argocd-server.yaml
   - tekton-pipeline-engine.yaml
+  - env-orchestrator-svc.yaml

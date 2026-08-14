@@ -97,17 +97,21 @@ test-unit: ## Run Go unit test suites across all platform apps and operators
 	@(cd apps/drr-iam-authz-svc && go test -v ./...)
 	@echo -e "${GREEN}==> Running unit tests for apps/drr-tenant-svc...${NC}"
 	@(cd apps/drr-tenant-svc && go test -v ./...)
+	@echo -e "${GREEN}==> Running unit tests for apps/drr-env-orchestrator-svc...${NC}"
+	@(cd apps/drr-env-orchestrator-svc && go test -v ./...)
 	@echo -e "${GREEN}==> Running unit tests for operators/darueira-operator...${NC}"
 	@(cd operators/darueira-operator && go test -v ./... 2>/dev/null || echo "Operator compiled successfully")
 	@echo -e "${GREEN}==> All unit tests passed!${NC}"
 
 .PHONY: build-services
-build-services: ## Compile local Go binaries (drr-iam-authz-svc, drr-tenant-svc, darueira-operator, darctl)
+build-services: ## Compile local Go binaries (drr-iam-authz-svc, drr-tenant-svc, drr-env-orchestrator-svc, darueira-operator, darctl)
 	@echo -e "${GREEN}==> Compiling drr-iam-authz-svc...${NC}"
 	@mkdir -p bin
 	@(cd apps/drr-iam-authz-svc && go build -o ../../bin/drr-iam-authz-svc ./cmd/server/main.go)
 	@echo -e "${GREEN}==> Compiling drr-tenant-svc...${NC}"
 	@(cd apps/drr-tenant-svc && go build -o ../../bin/drr-tenant-svc ./cmd/main.go)
+	@echo -e "${GREEN}==> Compiling drr-env-orchestrator-svc...${NC}"
+	@(cd apps/drr-env-orchestrator-svc && go build -o ../../bin/drr-env-orchestrator-svc ./cmd/main.go)
 	@echo -e "${GREEN}==> Compiling darueira-operator...${NC}"
 	@(cd operators/darueira-operator && go build -o ../../bin/darueira-operator ./main.go)
 	@echo -e "${GREEN}==> Compiling darctl CLI...${NC}"

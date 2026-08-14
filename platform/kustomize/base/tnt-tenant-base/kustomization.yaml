@@ -6,3 +6,4 @@ resources:
   - network-policy-template.yaml
   - resource-quota.yaml
   - envoy-sidecar-configmap.yaml
+  - opa-policy-configmap.yaml

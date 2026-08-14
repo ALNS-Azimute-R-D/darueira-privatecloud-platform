@@ -10,10 +10,14 @@ spec:
     - fromEndpoints:
         - matchLabels:
             darueira.io/tier: tenant-workload
-    # Allow traffic from API Gateway DataPlane
+    # Allow traffic from API Gateway DataPlane strictly to Envoy PEP (Port 8000)
     - fromEndpoints:
         - matchLabels:
             app.kubernetes.io/name: apisix-gateway
+      toPorts:
+        - ports:
+            - port: "8000"
+              protocol: TCP
     # Allow SPIFFE / SPIRE attestation agent
     - fromEntities:
         - host

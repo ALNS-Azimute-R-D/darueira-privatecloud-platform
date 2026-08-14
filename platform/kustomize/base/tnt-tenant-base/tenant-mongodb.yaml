@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: tenant-mongodb
+  namespace: drr-tnt-base-template
+  labels:
+    app.kubernetes.io/name: tenant-mongodb
+    app.kubernetes.io/component: nosql-database
+    darueira.io/tier: tenant-workload
+spec:
+  serviceName: tenant-mongodb
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tenant-mongodb
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tenant-mongodb
+        darueira.io/tier: tenant-workload
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mongodb
+          image: mongo:7.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              value: "tenant_mongo_admin"
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              value: "tenant_mongo_secure_pass_2026"
+            - name: MONGO_INITDB_DATABASE
+              value: "tenant_doc_db"
+          ports:
+            - containerPort: 27017
+              name: mongodb
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: mongo-storage
+              mountPath: /data/db
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - mongosh --eval "db.adminCommand('ping')" --quiet
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - mongosh --eval "db.adminCommand('ping')" --quiet
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: mongo-storage
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tenant-mongodb
+  namespace: drr-tnt-base-template
+  labels:
+    app.kubernetes.io/name: tenant-mongodb
+    darueira.io/tier: tenant-workload
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tenant-mongodb
+  ports:
+    - port: 27017
+      targetPort: 27017
+      name: mongodb

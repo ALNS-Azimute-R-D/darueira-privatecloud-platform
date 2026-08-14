@@ -20,6 +20,8 @@ var statusCmd = &cobra.Command{
 		fmt.Printf("%-32s %-22s %s\n", "cert-manager (PKI / TLS)", "drr-corpshared-secr-int", "🟢 Ready (ClusterIssuer)")
 		fmt.Printf("%-32s %-22s %s\n", "Central PostgreSQL 17", "drr-corpshared-plat", "🟢 Ready")
 		fmt.Printf("%-32s %-22s %s\n", "Central MinIO S3", "drr-corpshared-plat", "🟢 Ready")
+		fmt.Printf("%-32s %-22s %s\n", "drr-iam-authz-svc (OpenFGA)", "drr-corpshared-plat", "🟢 Ready (ReBAC :8080)")
+		fmt.Printf("%-32s %-22s %s\n", "drr-tenant-svc (Lifecycle)", "drr-corpshared-plat", "🟢 Ready (REST API :8081)")
 		fmt.Printf("%-32s %-22s %s\n", "Kafka / Redpanda Broker", "drr-corpshared-plat", "🟢 Ready (drr.authz.*)")
 		fmt.Printf("%-32s %-22s %s\n", "Keycloak / Authentik IdP", "drr-corpshared-plat", "🟢 Ready (OIDC/SAML)")
 		fmt.Printf("%-32s %-22s %s\n", "Sonatype Nexus OSS", "drr-corpshared-plat", "🟢 Ready")

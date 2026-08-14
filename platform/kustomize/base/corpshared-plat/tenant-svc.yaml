@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drr-tenant-svc
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: drr-tenant-svc
+    app.kubernetes.io/component: tenant-management
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: drr-tenant-svc
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: drr-tenant-svc
+        darueira.io/tier: enterprise-shared
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: tenant-svc
+          image: ghcr.io/dexterity/darueira/drr-tenant-svc:v1alpha1
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 8081
+              name: http
+          env:
+            - name: PORT
+              value: "8081"
+            - name: DRR_AUTHZ_URL
+              value: "http://drr-iam-authz-svc.drr-corpshared-plat.svc.cluster.local:8080"
+            - name: KAFKA_TOPIC
+              value: "drr.tenant.events"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 3
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: drr-tenant-svc
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: drr-tenant-svc
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: drr-tenant-svc
+  ports:
+    - port: 8081
+      targetPort: 8081
+      name: http

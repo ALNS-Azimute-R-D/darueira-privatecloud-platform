@@ -13,4 +13,6 @@ resources:
   - authentik-server.yaml
   - keycloak.yaml
   - message-broker.yaml
+  - iam-authz-svc.yaml
   - tenant-svc.yaml
+  - apisix-gateway.yaml

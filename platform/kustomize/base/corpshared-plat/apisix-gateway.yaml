@@ -1,0 +1,176 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apisix-config
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: apisix-gateway
+    darueira.io/tier: enterprise-shared
+data:
+  config.yaml: |
+    apisix:
+      node_listen: 9080
+      enable_admin: false
+      enable_control: true
+      control:
+        ip: "0.0.0.0"
+        port: 9090
+      prometheus:
+        export_addr:
+          ip: "0.0.0.0"
+          port: 9091
+    deployment:
+      role: data_plane
+      role_data_plane:
+        config_provider: yaml
+    plugins:
+      - forward-auth
+      - prometheus
+      - cors
+      - proxy-rewrite
+      - response-rewrite
+      - limit-req
+      - limit-count
+      - ip-restriction
+  apisix.yaml: |
+    routes:
+      - id: route-iam-authz
+        uri: /api/v1/authz/*
+        upstream:
+          nodes:
+            "drr-iam-authz-svc.drr-corpshared-plat.svc.cluster.local:8080": 1
+          type: roundrobin
+      - id: route-tenants
+        uri: /api/v1/tenants*
+        upstream:
+          nodes:
+            "drr-tenant-svc.drr-corpshared-plat.svc.cluster.local:8081": 1
+          type: roundrobin
+      - id: route-environments
+        uri: /api/v1/environments*
+        upstream:
+          nodes:
+            "drr-env-orchestrator-svc.drr-corpshared-mgmt.svc.cluster.local:8082": 1
+          type: roundrobin
+      - id: route-keycloak
+        uri: /auth*
+        upstream:
+          nodes:
+            "keycloak.drr-corpshared-plat.svc.cluster.local:8080": 1
+          type: roundrobin
+      - id: route-minio
+        uri: /minio*
+        upstream:
+          nodes:
+            "central-minio.drr-corpshared-plat.svc.cluster.local:9000": 1
+          type: roundrobin
+      - id: route-nexus
+        uri: /nexus*
+        plugins:
+          forward-auth:
+            uri: "http://drr-iam-authz-svc.drr-corpshared-plat.svc.cluster.local:8080/api/v1/authz/forward-auth"
+            request_method: "GET"
+            request_headers: ["Authorization", "X-User-Id", "X-Tenant-Id"]
+        upstream:
+          nodes:
+            "nexus-oss.drr-corpshared-plat.svc.cluster.local:8081": 1
+          type: roundrobin
+    #END
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apisix-gateway
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: apisix-gateway
+    app.kubernetes.io/component: edge-gateway
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: apisix-gateway
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: apisix-gateway
+        darueira.io/tier: enterprise-shared
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: apisix
+          image: apache/apisix:3.9.1-debian
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 9080
+              name: http
+            - containerPort: 9090
+              name: control
+            - containerPort: 9091
+              name: prometheus
+          env:
+            - name: APISIX_STANDALONE
+              value: "true"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: config-volume
+              mountPath: /usr/local/apisix/conf/config.yaml
+              subPath: config.yaml
+            - name: config-volume
+              mountPath: /usr/local/apisix/conf/apisix.yaml
+              subPath: apisix.yaml
+          livenessProbe:
+            httpGet:
+              path: /apisix/prometheus/metrics
+              port: 9091
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /apisix/prometheus/metrics
+              port: 9091
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: config-volume
+          configMap:
+            name: apisix-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apisix-gateway
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: apisix-gateway
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: apisix-gateway
+  ports:
+    - port: 80
+      targetPort: 9080
+      name: http
+    - port: 9091
+      targetPort: 9091
+      name: prometheus

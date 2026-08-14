@@ -2,6 +2,9 @@
 target/
 **/target/
 
+bin/
+**/bin/
+
 # IDE files
 .idea/
 *.iml

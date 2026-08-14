@@ -90,7 +90,7 @@ darueira-privatecloud-platform/
 │           ├── corpshared-mgmt/     # Backstage, ArgoCD, Tekton Engine
 │           ├── corpshared-plat/     # Central Postgres, MinIO, Nexus, Stalwart, Authentik
 │           ├── corpshared-secr-internal/ # OpenBao Master, SPIRE Server
-│           └── tenant-base/         # Tenant baseline (Envoy PEP, OPA PDP patch, Quotas)
+│           └── tnt-tenant-base/     # Tenant baseline (Envoy PEP, OPA PDP patch, Quotas)
 ├── specs/
 │   ├── 01-initial-spec.md           # Master Platform Specification
 │   └── adr/                         # Architecture Decision Records (ADR 0001 - 0004)

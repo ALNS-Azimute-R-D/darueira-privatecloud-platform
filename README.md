@@ -69,7 +69,7 @@ An enterprise-grade, on-premise **Private Cloud and Internal Developer Platform 
 darueira-privatecloud-platform/
 ├── apps/
 │   ├── backstage/                   # Developer Portal (Spotify Backstage)
-│   ├── drr-ctlr-cli/                # Developer & Admin CLI ('darctl')
+│   ├── drr-ctlr-cli/                # Developer & Admin CLI (drr-ctlr-cli)
 │   ├── drr-env-orchestrator-svc/    # Environment Engine & CRD Translator
 │   ├── drr-iam-authz-svc/           # IAM & OpenFGA Authorization Gateway
 │   └── drr-tenant-svc/              # Tenant & Project Lifecycle Manager

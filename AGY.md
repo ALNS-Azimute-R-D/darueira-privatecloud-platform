@@ -65,7 +65,7 @@ As the project root folder and for this workspace, consider the content root of 
          - React or
          - React Native or
          - Kotlin KMM
-       - For K8s Operators, CLI `darctl`, Authz Gateway:
+       - For K8s Operators, CLI `drr-ctlr-cli`, Authz Gateway:
          - Go Lang or
          - Java 25
     - Strict separation of concerns:

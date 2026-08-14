@@ -131,7 +131,7 @@ var envDeployCmd = &cobra.Command{
 
 		envID := fmt.Sprintf("%s-%s-%s", tenant, project, envName)
 		payload := map[string]interface{}{
-			"triggeredBy": "darctl-developer",
+			"triggeredBy": "drr-ctlr-cli-developer",
 			"commitHash":  "main-8877387",
 		}
 		if envDeployImage != "" {

@@ -1,4 +1,4 @@
-# Multi-stage non-root build for darctl CLI
+# Multi-stage non-root build for drr-ctlr-cli CLI
 FROM golang:1.24-alpine AS builder
 
 WORKDIR /workspace

@@ -1,4 +1,4 @@
-# drr-ctlr-cli (`darctl`)
+# drr-ctlr-cli
 
 ## Overview
 Unified Platform Command-Line Interface for the Darueira Private Cloud Platform.

@@ -154,7 +154,7 @@ func (s *OrchestratorService) DeployEnvironment(ctx context.Context, input Deplo
 	}
 	triggeredBy := input.TriggeredBy
 	if triggeredBy == "" {
-		triggeredBy = "darctl-orchestrator"
+		triggeredBy = "drr-ctlr-cli-orchestrator"
 	}
 
 	pipelineRun := &domain.PipelineRun{

@@ -104,7 +104,7 @@ test-unit: ## Run Go unit test suites across all platform apps and operators
 	@echo -e "${GREEN}==> All unit tests passed!${NC}"
 
 .PHONY: build-services
-build-services: ## Compile local Go binaries (drr-iam-authz-svc, drr-tenant-svc, drr-env-orchestrator-svc, darueira-operator, darctl)
+build-services: ## Compile local Go binaries (drr-iam-authz-svc, drr-tenant-svc, drr-env-orchestrator-svc, darueira-operator, drr-ctlr-cli)
 	@echo -e "${GREEN}==> Compiling drr-iam-authz-svc...${NC}"
 	@mkdir -p bin
 	@(cd apps/drr-iam-authz-svc && go build -o ../../bin/drr-iam-authz-svc ./cmd/server/main.go)
@@ -114,8 +114,8 @@ build-services: ## Compile local Go binaries (drr-iam-authz-svc, drr-tenant-svc,
 	@(cd apps/drr-env-orchestrator-svc && go build -o ../../bin/drr-env-orchestrator-svc ./cmd/main.go)
 	@echo -e "${GREEN}==> Compiling darueira-operator...${NC}"
 	@(cd operators/darueira-operator && go build -o ../../bin/darueira-operator ./main.go)
-	@echo -e "${GREEN}==> Compiling darctl CLI...${NC}"
-	@(cd apps/drr-ctlr-cli && go build -o ../../bin/darctl ./main.go)
+	@echo -e "${GREEN}==> Compiling drr-ctlr-cli...${NC}"
+	@(cd apps/drr-ctlr-cli && go build -o ../../bin/drr-ctlr-cli ./main.go)
 	@echo -e "${GREEN}==> All services compiled to bin/!${NC}"
 
 .PHONY: build-all

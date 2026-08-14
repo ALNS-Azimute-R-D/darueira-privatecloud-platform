@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: drr-corpshared-secr-internal
+  labels:
+    darueira.io/tier: enterprise-shared
+    darueira.io/plane: control-plane-security-internal
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

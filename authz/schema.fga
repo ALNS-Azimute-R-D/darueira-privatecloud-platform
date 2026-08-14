@@ -1,0 +1,42 @@
+model
+  schema 1.1
+
+type user
+
+type tenant
+  relations
+    define admin: [user]
+    define member: [user] or admin
+
+type project
+  relations
+    define tenant: [tenant]
+    define owner: [user] or admin from tenant
+    define maintainer: [user] or owner
+    define viewer: [user] or maintainer or member from tenant
+
+    define can_create_environment: maintainer
+    define can_delete: owner
+
+type environment
+  relations
+    define project: [project]
+
+    define operator: [user] or maintainer from project
+    define deployer: [user] or operator
+    define viewer: [user] or deployer or viewer from project
+
+    define can_deploy: deployer
+    define can_view_logs: viewer
+    define can_manage_secrets: operator
+    define can_destroy_env: owner from project
+
+type component
+  relations
+    define environment: [environment]
+    define maintainer: [user] or operator from environment
+    define viewer: [user] or viewer from environment
+
+    define can_read: viewer
+    define can_write: maintainer
+    define can_restart: maintainer

@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: drr-corpshared-plat
+
+resources:
+  - namespace.yaml
+  - network-policy.yaml
+  - central-postgres.yaml
+  - central-minio.yaml
+  - nexus-oss.yaml
+  - stalwart-mail.yaml
+  - authentik-server.yaml

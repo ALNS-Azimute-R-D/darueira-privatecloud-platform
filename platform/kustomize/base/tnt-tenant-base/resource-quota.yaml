@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tenant-default-quota
+  namespace: drr-tnt-base-template
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    persistentvolumeclaims: "10"
+    services.loadbalancers: "2"
+    pods: "30"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: tenant-default-limits
+  namespace: drr-tnt-base-template
+spec:
+  limits:
+    - default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      type: Container

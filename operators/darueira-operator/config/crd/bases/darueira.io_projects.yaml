@@ -1,0 +1,51 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: projects.darueira.io
+spec:
+  group: darueira.io
+  names:
+    kind: Project
+    listKind: ProjectList
+    plural: projects
+    singular: project
+    shortNames:
+      - prj
+  scope: Cluster
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - tenantRef
+                - ownerEmail
+              properties:
+                tenantRef:
+                  type: string
+                ownerEmail:
+                  type: string
+                maintainers:
+                  type: array
+                  items:
+                    type: string
+                description:
+                  type: string
+                enabled:
+                  type: boolean
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                activeEnvironmentsCount:
+                  type: integer
+                openFGATuplesSynced:
+                  type: boolean
+      subresources:
+        status: {}

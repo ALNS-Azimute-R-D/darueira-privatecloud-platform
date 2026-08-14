@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backstage
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: backstage
+    app.kubernetes.io/part-of: darueira-platform
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backstage
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: backstage
+        darueira.io/tier: enterprise-shared
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: backstage
+          image: node:20-alpine
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          command:
+            - node
+            - -e
+            - "const http = require('http'); http.createServer((req, res) => { res.writeHead(200, {'Content-Type': 'application/json'}); res.end(JSON.stringify({service: 'backstage-idp', status: 'UP'})); }).listen(7007, '0.0.0.0', () => console.log('Backstage IDP placeholder listening on 7007'));"
+          ports:
+            - containerPort: 7007
+              name: http
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: POSTGRES_HOST
+              value: "central-postgres.drr-corpshared-plat.svc.cluster.local"
+            - name: POSTGRES_PORT
+              value: "5432"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backstage
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: backstage
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: backstage
+  ports:
+    - port: 7007
+      targetPort: 7007
+      name: http

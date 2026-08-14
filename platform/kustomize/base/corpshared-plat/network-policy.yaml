@@ -1,0 +1,37 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny-and-plat-rules
+  namespace: drr-corpshared-plat
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            darueira.io/tier: enterprise-shared
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+            - port: "9000"
+              protocol: TCP
+            - port: "9001"
+              protocol: TCP
+            - port: "8081"
+              protocol: TCP
+            - port: "9000"
+              protocol: TCP
+            - port: "25"
+              protocol: TCP
+            - port: "993"
+              protocol: TCP
+    - fromEntities:
+        - cluster
+        - host
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            darueira.io/tier: enterprise-shared
+    - toEntities:
+        - cluster
+        - world

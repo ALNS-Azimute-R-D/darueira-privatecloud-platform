@@ -1,0 +1,287 @@
+name: Darueira Private Cloud ReBAC Tests
+model_file: ./schema.fga
+tuples:
+  # Tenant Acme hierarchy
+  - user: user:alice
+    relation: admin
+    object: tenant:acme
+  - user: user:eve
+    relation: member
+    object: tenant:acme
+  - user: tenant:acme
+    relation: tenant
+    object: project:acme-core
+  - user: user:bob
+    relation: maintainer
+    object: project:acme-core
+  - user: project:acme-core
+    relation: project
+    object: environment:acme-core-dev
+  - user: project:acme-core
+    relation: project
+    object: environment:acme-core-staging
+  - user: user:charlie
+    relation: deployer
+    object: environment:acme-core-staging
+  - user: user:dave
+    relation: operator
+    object: environment:acme-core-staging
+  - user: environment:acme-core-dev
+    relation: environment
+    object: component:acme-core-dev-api
+  - user: environment:acme-core-staging
+    relation: environment
+    object: component:acme-core-staging-web
+
+  # Tenant EvilCorp hierarchy (Isolated Tenant)
+  - user: user:mallory
+    relation: admin
+    object: tenant:evilcorp
+  - user: user:oscar
+    relation: member
+    object: tenant:evilcorp
+  - user: tenant:evilcorp
+    relation: tenant
+    object: project:evil-bot
+  - user: project:evil-bot
+    relation: project
+    object: environment:evil-bot-prod
+  - user: environment:evil-bot-prod
+    relation: environment
+    object: component:evil-bot-prod-svc
+
+tests:
+  - name: Tenant Admin inheritance over child Projects and Environments
+    check:
+      - user: user:alice
+        object: tenant:acme
+        assertions:
+          admin: true
+          member: true
+      - user: user:alice
+        object: project:acme-core
+        assertions:
+          owner: true
+          maintainer: true
+          viewer: true
+          can_create_environment: true
+          can_delete: true
+      - user: user:alice
+        object: environment:acme-core-dev
+        assertions:
+          operator: true
+          deployer: true
+          viewer: true
+          can_deploy: true
+          can_view_logs: true
+          can_manage_secrets: true
+          can_destroy_env: true
+      - user: user:alice
+        object: component:acme-core-dev-api
+        assertions:
+          maintainer: true
+          viewer: true
+          can_read: true
+          can_write: true
+          can_restart: true
+
+  - name: Project Maintainer privilege boundaries
+    check:
+      - user: user:bob
+        object: project:acme-core
+        assertions:
+          maintainer: true
+          viewer: true
+          can_create_environment: true
+          owner: false
+          can_delete: false
+      - user: user:bob
+        object: environment:acme-core-dev
+        assertions:
+          operator: true
+          deployer: true
+          viewer: true
+          can_deploy: true
+          can_view_logs: true
+          can_manage_secrets: true
+          can_destroy_env: false
+      - user: user:bob
+        object: component:acme-core-dev-api
+        assertions:
+          maintainer: true
+          viewer: true
+          can_read: true
+          can_write: true
+          can_restart: true
+
+  - name: Environment Deployer and Operator privilege boundaries
+    check:
+      # Charlie is Deployer on staging
+      - user: user:charlie
+        object: environment:acme-core-staging
+        assertions:
+          deployer: true
+          viewer: true
+          can_deploy: true
+          can_view_logs: true
+          operator: false
+          can_manage_secrets: false
+          can_destroy_env: false
+      - user: user:charlie
+        object: component:acme-core-staging-web
+        assertions:
+          viewer: true
+          can_read: true
+          maintainer: false
+          can_write: false
+          can_restart: false
+      # Dave is Operator on staging
+      - user: user:dave
+        object: environment:acme-core-staging
+        assertions:
+          operator: true
+          deployer: true
+          viewer: true
+          can_deploy: true
+          can_view_logs: true
+          can_manage_secrets: true
+          can_destroy_env: false
+      - user: user:dave
+        object: component:acme-core-staging-web
+        assertions:
+          maintainer: true
+          viewer: true
+          can_read: true
+          can_write: true
+          can_restart: true
+      # Eve is Tenant Member
+      - user: user:eve
+        object: tenant:acme
+        assertions:
+          member: true
+          admin: false
+      - user: user:eve
+        object: project:acme-core
+        assertions:
+          viewer: true
+          maintainer: false
+          owner: false
+          can_create_environment: false
+          can_delete: false
+      - user: user:eve
+        object: environment:acme-core-dev
+        assertions:
+          viewer: true
+          can_view_logs: true
+          deployer: false
+          operator: false
+          can_deploy: false
+          can_manage_secrets: false
+          can_destroy_env: false
+      - user: user:eve
+        object: component:acme-core-dev-api
+        assertions:
+          viewer: true
+          can_read: true
+          maintainer: false
+          can_write: false
+          can_restart: false
+
+  - name: Strict multi-tenant isolation tests
+    check:
+      # Mallory (EvilCorp Admin) trying to access Acme resources
+      - user: user:mallory
+        object: tenant:acme
+        assertions:
+          admin: false
+          member: false
+      - user: user:mallory
+        object: project:acme-core
+        assertions:
+          owner: false
+          maintainer: false
+          viewer: false
+          can_create_environment: false
+          can_delete: false
+      - user: user:mallory
+        object: environment:acme-core-dev
+        assertions:
+          operator: false
+          deployer: false
+          viewer: false
+          can_deploy: false
+          can_view_logs: false
+          can_manage_secrets: false
+          can_destroy_env: false
+      - user: user:mallory
+        object: component:acme-core-dev-api
+        assertions:
+          maintainer: false
+          viewer: false
+          can_read: false
+          can_write: false
+          can_restart: false
+      # Alice (Acme Admin) trying to access EvilCorp resources
+      - user: user:alice
+        object: tenant:evilcorp
+        assertions:
+          admin: false
+          member: false
+      - user: user:alice
+        object: project:evil-bot
+        assertions:
+          owner: false
+          maintainer: false
+          viewer: false
+          can_create_environment: false
+          can_delete: false
+      - user: user:alice
+        object: environment:evil-bot-prod
+        assertions:
+          operator: false
+          deployer: false
+          viewer: false
+          can_deploy: false
+          can_view_logs: false
+          can_manage_secrets: false
+          can_destroy_env: false
+      - user: user:alice
+        object: component:evil-bot-prod-svc
+        assertions:
+          maintainer: false
+          viewer: false
+          can_read: false
+          can_write: false
+          can_restart: false
+      # Oscar (EvilCorp Member) trying to access Acme resources
+      - user: user:oscar
+        object: tenant:acme
+        assertions:
+          admin: false
+          member: false
+      - user: user:oscar
+        object: project:acme-core
+        assertions:
+          viewer: false
+          maintainer: false
+          owner: false
+          can_create_environment: false
+          can_delete: false
+      - user: user:oscar
+        object: environment:acme-core-dev
+        assertions:
+          viewer: false
+          can_view_logs: false
+          deployer: false
+          operator: false
+          can_deploy: false
+          can_manage_secrets: false
+          can_destroy_env: false
+      - user: user:oscar
+        object: component:acme-core-dev-api
+        assertions:
+          viewer: false
+          can_read: false
+          maintainer: false
+          can_write: false
+          can_restart: false

@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-pipelines-controller-placeholder
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: tekton-pipelines-controller
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tekton-pipelines-controller
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tekton-pipelines-controller
+        darueira.io/tier: enterprise-shared
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: controller
+          image: alpine:3.20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          command:
+            - /bin/sh
+            - -c
+            - "echo 'Tekton pipeline engine ready'; while true; do sleep 3600; done"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

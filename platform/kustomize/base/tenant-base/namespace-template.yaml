@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: drr-tnt-base-template
+  labels:
+    darueira.io/tier: tenant-workload
+    darueira.io/tenant: template
+    darueira.io/project: template
+    darueira.io/environment: template
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

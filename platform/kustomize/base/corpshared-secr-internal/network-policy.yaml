@@ -1,0 +1,21 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny-and-secr-rules
+  namespace: drr-corpshared-secr-internal
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities:
+        - cluster
+        - host
+      toPorts:
+        - ports:
+            - port: "8200"
+              protocol: TCP
+            - port: "8081"
+              protocol: TCP
+  egress:
+    - toEntities:
+        - cluster
+        - kube-apiserver

@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spire-server-placeholder
+  namespace: drr-corpshared-secr-internal
+  labels:
+    app.kubernetes.io/name: spire-server
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: spire-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: spire-server
+        darueira.io/tier: enterprise-shared
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: spire-server
+          image: ghcr.io/spiffe/spire-server:1.9.4
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          command: ["/opt/spire/bin/spire-server", "run", "-config", "/opt/spire/conf/server/server.conf"]
+          ports:
+            - containerPort: 8081
+              name: grpc
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: spire-config
+              mountPath: /opt/spire/conf/server
+            - name: spire-data
+              mountPath: /run/spire/data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: spire-config
+          configMap:
+            name: spire-server-config
+        - name: spire-data
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spire-server-config
+  namespace: drr-corpshared-secr-internal
+data:
+  server.conf: |
+    server {
+      bind_address = "0.0.0.0"
+      bind_port = "8081"
+      trust_domain = "darueira.local"
+      data_dir = "/run/spire/data"
+      log_level = "INFO"
+    }
+    plugins {
+      DataStore "sql" {
+        plugin_data {
+          database_type = "sqlite3"
+          connection_string = "/run/spire/data/datastore.sqlite3"
+        }
+      }
+      KeyManager "memory" {
+        plugin_data {}
+      }
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spire-server
+  namespace: drr-corpshared-secr-internal
+  labels:
+    app.kubernetes.io/name: spire-server
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: spire-server
+  ports:
+    - port: 8081
+      targetPort: 8081
+      name: grpc

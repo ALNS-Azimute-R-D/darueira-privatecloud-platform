@@ -11,3 +11,4 @@ resources:
   - tenant-postgres.yaml
   - tenant-mongodb.yaml
   - tenant-keycloak.yaml
+  - tenant-openbao.yaml

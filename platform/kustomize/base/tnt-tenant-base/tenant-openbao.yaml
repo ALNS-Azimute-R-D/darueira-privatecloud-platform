@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tenant-openbao
+  namespace: drr-tnt-base-template
+  labels:
+    app.kubernetes.io/name: tenant-openbao
+    app.kubernetes.io/component: secrets-vault
+    darueira.io/tier: tenant-workload
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tenant-openbao
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tenant-openbao
+        darueira.io/tier: tenant-workload
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: openbao
+          image: quay.io/openbao/openbao:2.0.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          command:
+            - "bao"
+            - "server"
+            - "-dev"
+            - "-dev-listen-address=0.0.0.0:8200"
+            - "-dev-root-token-id=tenant-vault-root-token-2026"
+            - "-dev-no-store-token"
+          env:
+            - name: HOME
+              value: /bao/data
+            - name: BAO_DEV_LISTEN_ADDRESS
+              value: 0.0.0.0:8200
+          ports:
+            - containerPort: 8200
+              name: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: bao-storage
+              mountPath: /bao/data
+          livenessProbe:
+            httpGet:
+              path: /v1/sys/health?uninitcode=200&sealedcode=200
+              port: 8200
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /v1/sys/health?uninitcode=200&sealedcode=200
+              port: 8200
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: bao-storage
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tenant-openbao
+  namespace: drr-tnt-base-template
+  labels:
+    app.kubernetes.io/name: tenant-openbao
+    darueira.io/tier: tenant-workload
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tenant-openbao
+  ports:
+    - port: 8200
+      targetPort: 8200
+      name: http

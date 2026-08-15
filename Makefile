@@ -130,6 +130,44 @@ build-all: build-services ## Compile binaries and build container images into th
 	done
 	@echo -e "${GREEN}==> build-all target completed!${NC}"
 
+.PHONY: port-forward-obs
+port-forward-obs: ## Port-forward Observability UIs (Grafana :3000, Prometheus :9090, Jaeger :16686)
+	@echo -e "${GREEN}==> Exposing Observability UIs on localhost...${NC}"
+	@echo -e "${CYAN}  - Grafana:    http://localhost:3000 (admin / admin-dev)${NC}"
+	@echo -e "${CYAN}  - Prometheus: http://localhost:9090${NC}"
+	@echo -e "${CYAN}  - Jaeger:     http://localhost:16686${NC}"
+	@trap 'kill 0' EXIT; \
+	$(KUBECTL) port-forward -n drr-corpshared-obs svc/grafana 3000:3000 & \
+	$(KUBECTL) port-forward -n drr-corpshared-obs svc/prometheus 9090:9090 & \
+	$(KUBECTL) port-forward -n drr-corpshared-obs svc/jaeger 16686:16686 & \
+	wait
+
+.PHONY: port-forward-plat
+port-forward-plat: ## Port-forward Platform & Security UIs (Nexus :8081, Keycloak :8080, MinIO :9001, OpenBao :8200)
+	@echo -e "${GREEN}==> Exposing Platform & Security UIs on localhost...${NC}"
+	@echo -e "${CYAN}  - Nexus OSS:  http://localhost:8081${NC}"
+	@echo -e "${CYAN}  - Keycloak:   http://localhost:8080/admin (admin / admin123)${NC}"
+	@echo -e "${CYAN}  - MinIO:      http://localhost:9001 (minioadmin / minioadmin123)${NC}"
+	@echo -e "${CYAN}  - OpenBao:    http://localhost:8200 (Token: darueira-root-token)${NC}"
+	@echo -e "${CYAN}  - OpenFGA:    http://localhost:3001 (Playground UI)${NC}"
+	@trap 'kill 0' EXIT; \
+	$(KUBECTL) port-forward -n drr-corpshared-plat svc/nexus-oss 8081:8081 & \
+	$(KUBECTL) port-forward -n drr-corpshared-plat svc/keycloak 8080:8080 & \
+	$(KUBECTL) port-forward -n drr-corpshared-plat svc/central-minio 9001:9001 & \
+	$(KUBECTL) port-forward -n drr-corpshared-secr-internal svc/openbao-master 8200:8200 & \
+	$(KUBECTL) port-forward -n drr-corpshared-plat svc/openfga 3001:3000 & \
+	wait
+
+.PHONY: port-forward-mgmt
+port-forward-mgmt: ## Port-forward Management UIs (Backstage :7007, ArgoCD :8088)
+	@echo -e "${GREEN}==> Exposing Management UIs on localhost...${NC}"
+	@echo -e "${CYAN}  - Backstage:  http://localhost:7007${NC}"
+	@echo -e "${CYAN}  - ArgoCD:     http://localhost:8088${NC}"
+	@trap 'kill 0' EXIT; \
+	$(KUBECTL) port-forward -n drr-corpshared-mgmt svc/backstage 7007:7007 & \
+	$(KUBECTL) port-forward -n drr-corpshared-mgmt svc/argocd-server 8088:8080 & \
+	wait
+
 .PHONY: clean
 clean: ## Clean build artifacts and temporary files
 	@echo -e "${YELLOW}==> Cleaning workspace artifacts...${NC}"

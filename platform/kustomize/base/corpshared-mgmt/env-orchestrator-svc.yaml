@@ -27,7 +27,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: env-orchestrator-svc
-          image: ghcr.io/dexterity/darueira/drr-env-orchestrator-svc:v1alpha1
+          image: localhost:8082/drr-env-orchestrator-svc:v1alpha1
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

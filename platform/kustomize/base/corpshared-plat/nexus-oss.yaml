@@ -33,6 +33,8 @@ spec:
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - containerPort: 8081
               name: http
@@ -61,13 +63,15 @@ metadata:
     app.kubernetes.io/name: nexus-oss
     darueira.io/tier: enterprise-shared
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app.kubernetes.io/name: nexus-oss
   ports:
     - port: 8081
       targetPort: 8081
+      nodePort: 32081
       name: http
     - port: 8082
       targetPort: 8082
+      nodePort: 32082
       name: docker-registry

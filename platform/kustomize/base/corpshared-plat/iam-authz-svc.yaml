@@ -27,7 +27,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: iam-authz-svc
-          image: ghcr.io/dexterity/darueira/drr-iam-authz-svc:v1alpha1
+          image: localhost:8082/drr-iam-authz-svc:v1alpha1
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

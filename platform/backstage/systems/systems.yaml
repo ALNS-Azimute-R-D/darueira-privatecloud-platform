@@ -1,0 +1,39 @@
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: darueira-control-plane
+  title: "Darueira Control Plane System"
+  description: "Core administrative and orchestration services managing tenants, environments, projects, and permissions"
+spec:
+  owner: group:platform-core-team
+  domain: darueira-platform-domain
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: darueira-data-plane
+  title: "Darueira Data Plane System"
+  description: "Ingress routing, traffic shaping, API gateway (APISIX), and Cilium eBPF mesh infrastructure"
+spec:
+  owner: group:platform-core-team
+  domain: darueira-platform-domain
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: darueira-security-plane
+  title: "Darueira Security & Identity System"
+  description: "Identity management (Keycloak/Authentik), Secrets management (OpenBao), PKI (cert-manager), and Workload ID (SPIRE)"
+spec:
+  owner: group:platform-secops-team
+  domain: darueira-platform-domain
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: darueira-observability-plane
+  title: "Darueira Observability System"
+  description: "Unified telemetry platform integrating OpenTelemetry Collector, Prometheus, Grafana, OpenSearch, and Jaeger"
+spec:
+  owner: group:platform-sre-team
+  domain: darueira-platform-domain

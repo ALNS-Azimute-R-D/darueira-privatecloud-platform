@@ -1,0 +1,82 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: drr-iam-authz-svc
+  title: "IAM Authorization Service (ReBAC)"
+  description: "Relationship-Based Access Control authorization engine powered by OpenFGA and OIDC JWT validation"
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+    prometheus.io/rule: "sum(rate(http_requests_total{service='drr-iam-authz-svc'}[5m]))"
+    grafana/dashboard-selector: "drr-iam-authz"
+spec:
+  type: service
+  lifecycle: production
+  owner: group:platform-secops-team
+  system: darueira-control-plane
+  providesApis:
+    - openapi-iam-authz
+  consumesApis:
+    - openapi-keycloak
+    - openapi-openfga
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: drr-tenant-svc
+  title: "Tenant & Project Lifecycle Service"
+  description: "Tenant registration, project provisioning, member management, and resource quota enforcement"
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+spec:
+  type: service
+  lifecycle: production
+  owner: group:platform-core-team
+  system: darueira-control-plane
+  providesApis:
+    - openapi-tenant-svc
+  consumesApis:
+    - openapi-iam-authz
+    - openapi-postgres
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: drr-env-orchestrator-svc
+  title: "Environment Orchestrator Service"
+  description: "Multi-tenant environment provisioning engine, namespace isolation lifecycle, and GitOps trigger"
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+spec:
+  type: service
+  lifecycle: production
+  owner: group:platform-core-team
+  system: darueira-control-plane
+  providesApis:
+    - openapi-env-orchestrator
+  consumesApis:
+    - openapi-iam-authz
+    - openapi-argocd
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: darueira-operator
+  title: "Darueira Kubernetes Operator"
+  description: "Kubernetes CRD Controller reconciling Tenant, Project, and Environment custom resources"
+spec:
+  type: service
+  lifecycle: production
+  owner: group:platform-core-team
+  system: darueira-control-plane
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: drr-ctlr-cli
+  title: "Darueira Platform Control CLI"
+  description: "Unified command line interface for developers, platform engineers, and CI/CD automation"
+spec:
+  type: tool
+  lifecycle: production
+  owner: group:platform-core-team
+  system: darueira-control-plane

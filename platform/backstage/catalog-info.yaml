@@ -1,0 +1,32 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: darueira-platform-catalog
+  description: "Root Catalog Registration for Darueira Private Cloud Platform"
+spec:
+  type: url
+  targets:
+    - ./systems/system-control-plane.yaml
+    - ./systems/system-data-plane.yaml
+    - ./systems/system-security-plane.yaml
+    - ./systems/system-observability-plane.yaml
+    - ./components/component-iam-authz.yaml
+    - ./components/component-tenant-svc.yaml
+    - ./components/component-env-orchestrator.yaml
+    - ./components/component-operator.yaml
+    - ./components/component-cli.yaml
+    - ./apis/openapi-iam-authz.yaml
+    - ./apis/openapi-tenant-svc.yaml
+    - ./apis/openapi-env-orchestrator.yaml
+    - ./templates/template-go-microservice.yaml
+    - ./templates/template-kotlin-service.yaml
+    - ./templates/template-react-mfe.yaml
+---
+apiVersion: backstage.io/v1alpha1
+kind: Domain
+metadata:
+  name: darueira-platform-domain
+  title: "Darueira Private Cloud Domain"
+  description: "Enterprise multi-tenant private cloud domain providing sovereign cloud capabilities"
+spec:
+  owner: group:platform-core-team

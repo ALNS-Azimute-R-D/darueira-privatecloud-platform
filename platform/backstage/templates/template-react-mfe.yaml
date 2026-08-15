@@ -1,0 +1,64 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: template-react-mfe
+  title: "React Vite Microfrontend (MFE)"
+  description: "Scaffolds a high-performance React 19 + TypeScript + Vite microfrontend with Material-UI, Leaflet mapping support, and Keycloak OIDC authentication"
+  tags:
+    - react
+    - typescript
+    - vite
+    - microfrontend
+    - leaflet
+spec:
+  owner: group:platform-core-team
+  type: website
+  parameters:
+    - title: "Microfrontend Metadata"
+      required:
+        - appName
+        - tenantId
+        - projectId
+      properties:
+        appName:
+          title: "App Name"
+          type: string
+          description: "Unique name of the frontend app (e.g. customer-portal-ui)"
+        tenantId:
+          title: "Tenant ID"
+          type: string
+        projectId:
+          title: "Project ID"
+          type: string
+        enableMaps:
+          title: "Include Leaflet GIS Mapping Support"
+          type: boolean
+          default: true
+  steps:
+    - id: fetch-base
+      name: Fetch Template Skeleton
+      action: fetch:template
+      input:
+        url: ./skeletons/react-mfe
+        values:
+          appName: ${{ parameters.appName }}
+          tenantId: ${{ parameters.tenantId }}
+          projectId: ${{ parameters.projectId }}
+          enableMaps: ${{ parameters.enableMaps }}
+    - id: publish-git
+      name: Publish to Git Repository
+      action: publish:github
+      input:
+        repoUrl: github.com?owner=dexterity&repo=${{ parameters.appName }}
+    - id: register-catalog
+      name: Register Component in Backstage Catalog
+      action: catalog:register
+      input:
+        catalogInfoUrl: ${{ steps['publish-git'].output.remoteUrl }}/catalog-info.yaml
+  output:
+    links:
+      - title: "Repository URL"
+        url: ${{ steps['publish-git'].output.remoteUrl }}
+      - title: "Open in Backstage Catalog"
+        icon: catalog
+        entityRef: ${{ steps['register-catalog'].output.entityRef }}

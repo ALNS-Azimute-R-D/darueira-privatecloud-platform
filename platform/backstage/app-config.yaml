@@ -1,0 +1,64 @@
+app:
+  title: Darueira Developer Portal
+  baseUrl: http://localhost:7007
+
+organization:
+  name: Darueira Private Cloud Platform
+
+backend:
+  baseUrl: http://localhost:7007
+  listen:
+    port: 7007
+    host: 0.0.0.0
+  database:
+    client: pg
+    connection:
+      host: central-postgres.drr-corpshared-plat.svc.cluster.local
+      port: 5432
+      user: darueira_admin
+      password: ${POSTGRES_PASSWORD}
+      database: backstage_plugin_app
+  cors:
+    origin: http://localhost:7007
+    methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
+    credentials: true
+
+proxy:
+  '/prometheus/api':
+    target: http://prometheus.drr-corpshared-obs.svc.cluster.local:9090/api/v1
+    changeOrigin: true
+  '/grafana/api':
+    target: http://grafana.drr-corpshared-obs.svc.cluster.local:3000/api
+    headers:
+      Authorization: Bearer ${GRAFANA_API_TOKEN}
+  '/jaeger/api':
+    target: http://jaeger.drr-corpshared-obs.svc.cluster.local:16686/api
+  '/opensearch':
+    target: http://opensearch.drr-corpshared-obs.svc.cluster.local:9200
+  '/argocd/api':
+    target: http://argocd-server.drr-corpshared-mgmt.svc.cluster.local:80/api/v1
+
+auth:
+  environment: production
+  providers:
+    oidc:
+      production:
+        metadataUrl: http://authentik-server.drr-corpshared-plat.svc.cluster.local:9000/application/o/darueira/.well-known/openid-configuration
+        clientId: ${AUTH_OIDC_CLIENT_ID}
+        clientSecret: ${AUTH_OIDC_CLIENT_SECRET}
+        prompt: auto
+
+catalog:
+  rules:
+    - allow: [Component, System, API, Resource, Location, Template, Domain]
+  locations:
+    - type: url
+      target: https://github.com/dexterity/darueira-privatecloud-platform/blob/master/platform/backstage/catalog-info.yaml
+      rules:
+        - allow: [Component, System, API, Resource, Location, Template, Domain]
+
+scaffolder:
+  defaultAuthor:
+    name: Darueira Scaffolder Bot
+    email: platform-bot@darueira.local
+  defaultCommitMessage: 'feat(scaffold): initialize service from golden path template'

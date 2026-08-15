@@ -1,0 +1,97 @@
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: openapi-env-orchestrator
+  title: "Environment Orchestrator Service API"
+  description: "REST API for multi-tenant environment provisioning, isolated namespace management, and deployment triggers"
+spec:
+  type: openapi
+  lifecycle: production
+  owner: group:platform-core-team
+  system: darueira-control-plane
+  definition: |
+    openapi: 3.0.3
+    info:
+      title: Darueira Environment Orchestrator Service
+      version: 1.0.0
+      description: Orchestration REST API for Environments, Namespaces, and Workload Deployments.
+    paths:
+      /healthz:
+        get:
+          summary: Health Check
+          responses:
+            '200':
+              description: UP
+      /api/v1/environments:
+        get:
+          summary: List Environments
+          responses:
+            '200':
+              description: List of environments
+        post:
+          summary: Provision Environment (Creates isolated namespace, ResourceQuotas, NetworkPolicies)
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  type: object
+                  required: [name, tenantId, projectId, type]
+                  properties:
+                    name:
+                      type: string
+                    tenantId:
+                      type: string
+                    projectId:
+                      type: string
+                    type:
+                      type: string
+                      enum: [dev, staging, prod]
+          responses:
+            '201':
+              description: Environment provisioned
+      /api/v1/environments/{id}:
+        get:
+          summary: Get Environment Details
+          parameters:
+            - name: id
+              in: path
+              required: true
+              schema:
+                type: string
+          responses:
+            '200':
+              description: Environment details
+        delete:
+          summary: Teardown Environment
+          parameters:
+            - name: id
+              in: path
+              required: true
+              schema:
+                type: string
+          responses:
+            '200':
+              description: Environment deleted
+      /api/v1/environments/{id}/deploy:
+        post:
+          summary: Trigger Workload Deployment
+          parameters:
+            - name: id
+              in: path
+              required: true
+              schema:
+                type: string
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  type: object
+                  required: [gitCommit]
+                  properties:
+                    gitCommit:
+                      type: string
+          responses:
+            '200':
+              description: Deployment triggered

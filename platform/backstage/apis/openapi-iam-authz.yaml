@@ -1,0 +1,129 @@
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: openapi-iam-authz
+  title: "IAM Authorization Service API (ReBAC)"
+  description: "OpenFGA-backed fine-grained permission checks, tuple mutations, and forward-auth gateway hooks"
+spec:
+  type: openapi
+  lifecycle: production
+  owner: group:platform-secops-team
+  system: darueira-control-plane
+  definition: |
+    openapi: 3.0.3
+    info:
+      title: Darueira IAM Authorization Service
+      version: 1.0.0
+      description: Fine-grained authorization API evaluating OpenFGA relationship tuples and JWT identity tokens.
+    paths:
+      /healthz:
+        get:
+          summary: Liveness Probe
+          responses:
+            '200':
+              description: Service healthy
+      /readyz:
+        get:
+          summary: Readiness Probe
+          responses:
+            '200':
+              description: Service ready to handle traffic
+      /api/v1/authz/check:
+        post:
+          summary: Evaluate Single Permission
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  type: object
+                  required: [user, relation, object]
+                  properties:
+                    user:
+                      type: string
+                      example: "user:alice"
+                    relation:
+                      type: string
+                      example: "maintainer"
+                    object:
+                      type: string
+                      example: "project:storefront"
+          responses:
+            '200':
+              description: Decision result
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      allowed:
+                        type: boolean
+                      resolution:
+                        type: string
+      /api/v1/authz/batch-check:
+        post:
+          summary: Evaluate Batch Permissions
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    checks:
+                      type: array
+                      items:
+                        type: object
+                        required: [user, relation, object]
+                        properties:
+                          user:
+                            type: string
+                          relation:
+                            type: string
+                          object:
+                            type: string
+          responses:
+            '200':
+              description: Batch decision results
+      /api/v1/authz/tuples:
+        post:
+          summary: Mutate Relationship Tuple (Insert/Delete)
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  type: object
+                  required: [user, relation, object]
+                  properties:
+                    user:
+                      type: string
+                    relation:
+                      type: string
+                    object:
+                      type: string
+                    action:
+                      type: string
+                      enum: [INSERT, DELETE]
+          responses:
+            '202':
+              description: Tuple mutation applied
+      /api/v1/authz/forward-auth:
+        get:
+          summary: Forward-Auth Endpoint for APISIX Ingress Gateway
+          parameters:
+            - name: relation
+              in: query
+              schema:
+                type: string
+            - name: object
+              in: query
+              schema:
+                type: string
+          responses:
+            '200':
+              description: Authorized (Identity headers injected)
+            '401':
+              description: Unauthorized (Invalid or missing JWT)
+            '403':
+              description: Forbidden (ReBAC check denied)

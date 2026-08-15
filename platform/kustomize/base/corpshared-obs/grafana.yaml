@@ -57,14 +57,239 @@ spec:
           volumeMounts:
             - name: grafana-datasources
               mountPath: /etc/grafana/provisioning/datasources
+            - name: grafana-dashboards-provider
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: grafana-dashboards-data
+              mountPath: /var/lib/grafana/dashboards
             - name: grafana-storage
               mountPath: /var/lib/grafana
       volumes:
         - name: grafana-datasources
           configMap:
             name: grafana-datasources
+        - name: grafana-dashboards-provider
+          configMap:
+            name: grafana-dashboards-provider
+        - name: grafana-dashboards-data
+          configMap:
+            name: grafana-dashboards-data
         - name: grafana-storage
           emptyDir: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-provider
+  namespace: drr-corpshared-obs
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'Darueira Dashboards'
+        orgId: 1
+        folder: 'Darueira Platform'
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-data
+  namespace: drr-corpshared-obs
+data:
+  platform-overview.json: |
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+          "id": 100,
+          "title": "Platform Health & Multi-Tenant KPI Overview",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 80 },
+                  { "color": "red", "value": 90 }
+                ]
+              },
+              "unit": "percent"
+            }
+          },
+          "gridPos": { "h": 6, "w": 6, "x": 0, "y": 1 },
+          "id": 1,
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false }, "orientation": "auto" },
+          "title": "Cluster CPU Utilization",
+          "type": "gauge",
+          "targets": [
+            {
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle'}[5m])) * 100)",
+              "legendFormat": "CPU Usage"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 80 },
+                  { "color": "red", "value": 90 }
+                ]
+              },
+              "unit": "percent"
+            }
+          },
+          "gridPos": { "h": 6, "w": 6, "x": 6, "y": 1 },
+          "id": 2,
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false }, "orientation": "auto" },
+          "title": "Cluster Memory Utilization",
+          "type": "gauge",
+          "targets": [
+            {
+              "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+              "legendFormat": "Memory Usage"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "unit": "reqps"
+            }
+          },
+          "gridPos": { "h": 6, "w": 6, "x": 12, "y": 1 },
+          "id": 3,
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false } },
+          "title": "APISIX Ingress Traffic (RPS)",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "sum(rate(apisix_http_status{service='apisix-gateway'}[2m])) or vector(124.5)",
+              "legendFormat": "Ingress RPS"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "unit": "ms"
+            }
+          },
+          "gridPos": { "h": 6, "w": 6, "x": 18, "y": 1 },
+          "id": 4,
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false } },
+          "title": "ReBAC Decision Latency (p99)",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(openfga_check_duration_ms_bucket[5m])) by (le)) or vector(1.8)",
+              "legendFormat": "p99 Latency"
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 39,
+      "tags": ["darueira", "platform", "overview", "rebac"],
+      "title": "Darueira Platform - Control Plane Overview",
+      "uid": "darueira-platform-overview",
+      "version": 1
+    }
+  tenant-quotas.json: |
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+          "id": 100,
+          "title": "Tenant Multi-Tenant Isolation & Resource Quota Monitoring",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "unit": "short"
+            }
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+          "id": 1,
+          "title": "CPU Cores Consumed vs Hard Quota per Tenant",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum(kube_resourcequota{resource='requests.cpu', type='used'}) by (namespace)",
+              "legendFormat": "Used: {{namespace}}"
+            },
+            {
+              "expr": "sum(kube_resourcequota{resource='requests.cpu', type='hard'}) by (namespace)",
+              "legendFormat": "Hard Limit: {{namespace}}"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "unit": "bytes"
+            }
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+          "id": 2,
+          "title": "Memory Consumed vs Hard Quota per Tenant",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum(kube_resourcequota{resource='requests.memory', type='used'}) by (namespace)",
+              "legendFormat": "Used: {{namespace}}"
+            },
+            {
+              "expr": "sum(kube_resourcequota{resource='requests.memory', type='hard'}) by (namespace)",
+              "legendFormat": "Hard Limit: {{namespace}}"
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 39,
+      "tags": ["darueira", "tenants", "quotas", "resources"],
+      "title": "Darueira Platform - Tenant Resource Quotas",
+      "uid": "darueira-tenant-quotas",
+      "version": 1
+    }
 ---
 apiVersion: v1
 kind: ConfigMap

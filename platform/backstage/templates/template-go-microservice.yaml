@@ -1,0 +1,65 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: template-go-microservice
+  title: "Go Hexagonal Microservice"
+  description: "Scaffolds a cloud-native Go microservice with Clean Hexagonal Architecture, OpenTelemetry tracing, and distroless Dockerfile"
+  tags:
+    - golang
+    - hexagonal
+    - opentelemetry
+    - sovereign-cloud
+spec:
+  owner: group:platform-core-team
+  type: service
+  parameters:
+    - title: "Service Metadata"
+      required:
+        - serviceName
+        - tenantId
+        - projectId
+      properties:
+        serviceName:
+          title: "Service Name"
+          type: string
+          description: "Unique name of the microservice (e.g. order-processor)"
+        tenantId:
+          title: "Tenant ID"
+          type: string
+          description: "Target Tenant ID (e.g. acme)"
+        projectId:
+          title: "Project ID"
+          type: string
+          description: "Target Project ID (e.g. storefront)"
+        description:
+          title: "Description"
+          type: string
+          default: "Hexagonal Go microservice running on Darueira Private Cloud"
+  steps:
+    - id: fetch-base
+      name: Fetch Template Skeleton
+      action: fetch:template
+      input:
+        url: ./skeletons/go-hexagonal
+        values:
+          serviceName: ${{ parameters.serviceName }}
+          tenantId: ${{ parameters.tenantId }}
+          projectId: ${{ parameters.projectId }}
+          description: ${{ parameters.description }}
+    - id: publish-git
+      name: Publish to Git Repository
+      action: publish:github
+      input:
+        repoUrl: github.com?owner=dexterity&repo=${{ parameters.serviceName }}
+    - id: register-catalog
+      name: Register Component in Backstage Catalog
+      action: catalog:register
+      input:
+        catalogInfoUrl: ${{ steps['publish-git'].output.remoteUrl }}/catalog-info.yaml
+  output:
+    links:
+      - title: "Repository URL"
+        url: ${{ steps['publish-git'].output.remoteUrl }}
+      - title: "Open in Backstage Catalog"
+        icon: catalog
+        entityRef: ${{ steps['register-catalog'].output.entityRef }}

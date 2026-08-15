@@ -1,0 +1,131 @@
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: openapi-tenant-svc
+  title: "Tenant & Project Management Service API"
+  description: "REST API for multi-tenant onboarding, project lifecycle, member assignment, and resource quotas"
+spec:
+  type: openapi
+  lifecycle: production
+  owner: group:platform-core-team
+  system: darueira-control-plane
+  definition: |
+    openapi: 3.0.3
+    info:
+      title: Darueira Tenant & Project Service
+      version: 1.0.0
+      description: Management REST API for Tenants, Projects, and Members.
+    paths:
+      /healthz:
+        get:
+          summary: Health Check
+          responses:
+            '200':
+              description: UP
+      /api/v1/tenants:
+        get:
+          summary: List Tenants
+          responses:
+            '200':
+              description: List of registered tenants
+        post:
+          summary: Create Tenant
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  type: object
+                  required: [name]
+                  properties:
+                    name:
+                      type: string
+                    displayName:
+                      type: string
+                    description:
+                      type: string
+          responses:
+            '201':
+              description: Tenant created successfully
+      /api/v1/tenants/{id}:
+        get:
+          summary: Get Tenant Details
+          parameters:
+            - name: id
+              in: path
+              required: true
+              schema:
+                type: string
+          responses:
+            '200':
+              description: Tenant details
+        delete:
+          summary: Delete Tenant
+          parameters:
+            - name: id
+              in: path
+              required: true
+              schema:
+                type: string
+          responses:
+            '200':
+              description: Tenant deleted
+      /api/v1/tenants/{id}/projects:
+        get:
+          summary: List Tenant Projects
+          parameters:
+            - name: id
+              in: path
+              required: true
+              schema:
+                type: string
+          responses:
+            '200':
+              description: List of projects
+        post:
+          summary: Create Project
+          parameters:
+            - name: id
+              in: path
+              required: true
+              schema:
+                type: string
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  type: object
+                  required: [name]
+                  properties:
+                    name:
+                      type: string
+                    description:
+                      type: string
+          responses:
+            '201':
+              description: Project created
+      /api/v1/tenants/{id}/members:
+        post:
+          summary: Add Member to Tenant
+          parameters:
+            - name: id
+              in: path
+              required: true
+              schema:
+                type: string
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  type: object
+                  required: [userId, role]
+                  properties:
+                    userId:
+                      type: string
+                    role:
+                      type: string
+          responses:
+            '200':
+              description: Member added

@@ -1,0 +1,63 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: template-kotlin-service
+  title: "Kotlin / Java 25 Multiplatform Microservice"
+  description: "Scaffolds a high-throughput Kotlin/Java 25 Spring Boot or KMM service with Gradle Kotlin DSL, Micrometer metrics, and OpenBao vault integration"
+  tags:
+    - kotlin
+    - java25
+    - gradle
+    - spring-boot
+spec:
+  owner: group:platform-core-team
+  type: service
+  parameters:
+    - title: "Service Metadata"
+      required:
+        - serviceName
+        - tenantId
+        - projectId
+      properties:
+        serviceName:
+          title: "Service Name"
+          type: string
+          description: "Unique name of the Kotlin microservice (e.g. billing-service)"
+        tenantId:
+          title: "Tenant ID"
+          type: string
+        projectId:
+          title: "Project ID"
+          type: string
+        packageName:
+          title: "Package Name"
+          type: string
+          default: "io.darueira.services"
+  steps:
+    - id: fetch-base
+      name: Fetch Template Skeleton
+      action: fetch:template
+      input:
+        url: ./skeletons/kotlin-service
+        values:
+          serviceName: ${{ parameters.serviceName }}
+          tenantId: ${{ parameters.tenantId }}
+          projectId: ${{ parameters.projectId }}
+          packageName: ${{ parameters.packageName }}
+    - id: publish-git
+      name: Publish to Git Repository
+      action: publish:github
+      input:
+        repoUrl: github.com?owner=dexterity&repo=${{ parameters.serviceName }}
+    - id: register-catalog
+      name: Register Component in Backstage Catalog
+      action: catalog:register
+      input:
+        catalogInfoUrl: ${{ steps['publish-git'].output.remoteUrl }}/catalog-info.yaml
+  output:
+    links:
+      - title: "Repository URL"
+        url: ${{ steps['publish-git'].output.remoteUrl }}
+      - title: "Open in Backstage Catalog"
+        icon: catalog
+        entityRef: ${{ steps['register-catalog'].output.entityRef }}

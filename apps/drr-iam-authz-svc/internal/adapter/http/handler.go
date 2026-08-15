@@ -24,6 +24,7 @@ func (h *AuthzHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/authz/check", h.HandleCheck)
 	mux.HandleFunc("POST /api/v1/authz/batch-check", h.HandleBatchCheck)
 	mux.HandleFunc("POST /api/v1/authz/tuples", h.HandleTupleMutation)
+	mux.HandleFunc("DELETE /api/v1/authz/tuples", h.HandleTupleMutation)
 	mux.HandleFunc("GET /api/v1/authz/forward-auth", h.HandleForwardAuth)
 }
 
@@ -80,10 +81,43 @@ func (h *AuthzHandler) HandleBatchCheck(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *AuthzHandler) HandleTupleMutation(w http.ResponseWriter, r *http.Request) {
-	var event domain.TupleMutationEvent
-	if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
+	var raw map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
 		http.Error(w, `{"error":"invalid JSON request body"}`, http.StatusBadRequest)
 		return
+	}
+
+	var event domain.TupleMutationEvent
+	if action, ok := raw["action"].(string); ok {
+		event.Action = domain.MutationAction(action)
+	} else {
+		if r.Method == http.MethodDelete {
+			event.Action = domain.ActionDelete
+		} else {
+			event.Action = domain.ActionInsert
+		}
+	}
+
+	if tupleMap, ok := raw["tuple"].(map[string]interface{}); ok {
+		if u, ok := tupleMap["user"].(string); ok {
+			event.Tuple.User = u
+		}
+		if rel, ok := tupleMap["relation"].(string); ok {
+			event.Tuple.Relation = rel
+		}
+		if obj, ok := tupleMap["object"].(string); ok {
+			event.Tuple.Object = obj
+		}
+	} else {
+		if u, ok := raw["user"].(string); ok {
+			event.Tuple.User = u
+		}
+		if rel, ok := raw["relation"].(string); ok {
+			event.Tuple.Relation = rel
+		}
+		if obj, ok := raw["object"].(string); ok {
+			event.Tuple.Object = obj
+		}
 	}
 
 	if err := h.authzService.HandleTupleMutation(r.Context(), event); err != nil {

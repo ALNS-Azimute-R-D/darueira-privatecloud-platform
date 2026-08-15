@@ -13,6 +13,7 @@ resources:
   - authentik-server.yaml
   - keycloak.yaml
   - message-broker.yaml
+  - openfga.yaml
   - iam-authz-svc.yaml
   - tenant-svc.yaml
   - apisix-gateway.yaml

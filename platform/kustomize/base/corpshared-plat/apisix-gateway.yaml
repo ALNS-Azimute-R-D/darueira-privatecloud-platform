@@ -104,16 +104,44 @@ spec:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        - name: init-conf
+          image: apache/apisix:3.9.1-debian
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          command:
+            - /bin/sh
+            - -c
+            - cp -r /usr/local/apisix/conf/* /conf-dest/ && cp -f /config-source/* /conf-dest/
+          volumeMounts:
+            - name: config-source
+              mountPath: /config-source
+            - name: conf-dir
+              mountPath: /conf-dest
       containers:
         - name: apisix
           image: apache/apisix:3.9.1-debian
           imagePullPolicy: IfNotPresent
+          args:
+            - docker-start
           securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: false
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - containerPort: 9080
               name: http
@@ -122,38 +150,50 @@ spec:
             - containerPort: 9091
               name: prometheus
           env:
-            - name: APISIX_STANDALONE
+            - name: APISIX_STAND_ALONE
               value: "true"
           resources:
             requests:
               cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: 500m
               memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
           volumeMounts:
-            - name: config-volume
-              mountPath: /usr/local/apisix/conf/config.yaml
-              subPath: config.yaml
-            - name: config-volume
-              mountPath: /usr/local/apisix/conf/apisix.yaml
-              subPath: apisix.yaml
+            - name: conf-dir
+              mountPath: /usr/local/apisix/conf
+            - name: logs-dir
+              mountPath: /usr/local/apisix/logs
+            - name: temp-dir
+              mountPath: /usr/local/apisix/client_body_temp
+            - name: temp-dir
+              mountPath: /usr/local/apisix/proxy_temp
+            - name: temp-dir
+              mountPath: /usr/local/apisix/fastcgi_temp
+            - name: temp-dir
+              mountPath: /usr/local/apisix/uwsgi_temp
+            - name: temp-dir
+              mountPath: /usr/local/apisix/scgi_temp
           livenessProbe:
-            httpGet:
-              path: /apisix/prometheus/metrics
-              port: 9091
+            tcpSocket:
+              port: 9080
             initialDelaySeconds: 5
             periodSeconds: 10
           readinessProbe:
-            httpGet:
-              path: /apisix/prometheus/metrics
-              port: 9091
-            initialDelaySeconds: 5
+            tcpSocket:
+              port: 9080
+            initialDelaySeconds: 3
             periodSeconds: 5
       volumes:
-        - name: config-volume
+        - name: config-source
           configMap:
             name: apisix-config
+        - name: conf-dir
+          emptyDir: {}
+        - name: logs-dir
+          emptyDir: {}
+        - name: temp-dir
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

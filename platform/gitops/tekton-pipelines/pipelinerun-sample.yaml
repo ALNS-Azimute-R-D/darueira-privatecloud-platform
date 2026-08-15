@@ -1,0 +1,35 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: ci-pipeline-run-
+  namespace: drr-corpshared-mgmt
+  labels:
+    tekton.dev/pipeline: standard-ci-pipeline
+    darueira.io/tenant: acme
+    darueira.io/project: storefront
+    darueira.io/environment: prod
+spec:
+  pipelineRef:
+    name: standard-ci-pipeline
+  params:
+    - name: git-url
+      value: "https://github.com/dexterity/darueira-sample-workload.git"
+    - name: git-revision
+      value: "main"
+    - name: runtime
+      value: "golang"
+    - name: source-subpath
+      value: "."
+    - name: image-name
+      value: "localhost:8082/acme-storefront:v1.0.0"
+    - name: dockerfile-path
+      value: "Dockerfile"
+  workspaces:
+    - name: pipeline-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 2Gi

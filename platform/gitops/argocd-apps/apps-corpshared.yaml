@@ -1,0 +1,91 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: corpshared-secr-internal
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tier: enterprise-shared
+spec:
+  project: darueira-enterprise-shared
+  source:
+    repoURL: "https://github.com/dexterity/darueira-privatecloud-platform.git"
+    targetRevision: HEAD
+    path: "platform/kustomize/base/corpshared-secr-internal"
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: "drr-corpshared-secr-internal"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: corpshared-plat
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tier: enterprise-shared
+spec:
+  project: darueira-enterprise-shared
+  source:
+    repoURL: "https://github.com/dexterity/darueira-privatecloud-platform.git"
+    targetRevision: HEAD
+    path: "platform/kustomize/base/corpshared-plat"
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: "drr-corpshared-plat"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: corpshared-obs
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tier: enterprise-shared
+spec:
+  project: darueira-enterprise-shared
+  source:
+    repoURL: "https://github.com/dexterity/darueira-privatecloud-platform.git"
+    targetRevision: HEAD
+    path: "platform/kustomize/base/corpshared-obs"
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: "drr-corpshared-obs"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: corpshared-mgmt
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tier: enterprise-shared
+spec:
+  project: darueira-enterprise-shared
+  source:
+    repoURL: "https://github.com/dexterity/darueira-privatecloud-platform.git"
+    targetRevision: HEAD
+    path: "platform/kustomize/base/corpshared-mgmt"
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: "drr-corpshared-mgmt"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

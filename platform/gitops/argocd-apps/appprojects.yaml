@@ -1,0 +1,63 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: darueira-enterprise-shared
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tier: enterprise-shared
+spec:
+  description: "ArgoCD Project for Corporate Shared Services (Security, Platform, Observability, Management)"
+  sourceRepos:
+    - "*"
+  destinations:
+    - namespace: "drr-corpshared-secr-internal"
+      server: "https://kubernetes.default.svc"
+    - namespace: "drr-corpshared-plat"
+      server: "https://kubernetes.default.svc"
+    - namespace: "drr-corpshared-obs"
+      server: "https://kubernetes.default.svc"
+    - namespace: "drr-corpshared-mgmt"
+      server: "https://kubernetes.default.svc"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: darueira-tenants
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tier: tenant-workload
+spec:
+  description: "ArgoCD Project for Isolated Multi-Tenant Application Workloads and Dedicated Infrastructure"
+  sourceRepos:
+    - "*"
+  destinations:
+    - namespace: "drr-tnt-*"
+      server: "https://kubernetes.default.svc"
+  clusterResourceBlacklist:
+    - group: ""
+      kind: "Node"
+    - group: "apiextensions.k8s.io"
+      kind: "CustomResourceDefinition"
+    - group: "rbac.authorization.k8s.io"
+      kind: "ClusterRole"
+    - group: "rbac.authorization.k8s.io"
+      kind: "ClusterRoleBinding"
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: "*"
+    - group: "apps"
+      kind: "*"
+    - group: "batch"
+      kind: "*"
+    - group: "networking.k8s.io"
+      kind: "*"
+    - group: "cilium.io"
+      kind: "*"
+    - group: "darueira.io"
+      kind: "*"

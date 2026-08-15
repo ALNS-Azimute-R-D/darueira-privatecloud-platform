@@ -1,0 +1,90 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: standard-ci-pipeline
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/component: ci-pipeline
+    darueira.io/tier: enterprise-shared
+spec:
+  description: "Standard end-to-end continuous integration pipeline: Clone -> Build/Test -> Security Scan -> Kaniko Image Build & Push -> Artifact Notification"
+  params:
+    - name: git-url
+      type: string
+      description: "Git repository repository URL"
+    - name: git-revision
+      type: string
+      default: "main"
+      description: "Git revision or branch"
+    - name: runtime
+      type: string
+      default: "golang"
+      description: "Polyglot runtime type (golang, gradle, maven, node)"
+    - name: source-subpath
+      type: string
+      default: "."
+      description: "Application directory within repository"
+    - name: image-name
+      type: string
+      description: "Target container image destination (e.g. localhost:8082/storefront:v1.0.0)"
+    - name: dockerfile-path
+      type: string
+      default: "Dockerfile"
+      description: "Relative path to Dockerfile"
+  workspaces:
+    - name: pipeline-workspace
+      description: "Shared workspace for cloned code and build artifacts"
+  tasks:
+    - name: clone-source
+      taskRef:
+        name: task-git-clone
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+      workspaces:
+        - name: output
+          workspace: pipeline-workspace
+
+    - name: test-and-build
+      taskRef:
+        name: task-polyglot-build
+      runAfter:
+        - clone-source
+      params:
+        - name: runtime
+          value: $(params.runtime)
+        - name: source-subpath
+          value: $(params.source-subpath)
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+
+    - name: security-audit
+      taskRef:
+        name: task-security-scan
+      runAfter:
+        - test-and-build
+      params:
+        - name: source-subpath
+          value: $(params.source-subpath)
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+
+    - name: build-and-publish-image
+      taskRef:
+        name: task-kaniko-build
+      runAfter:
+        - security-audit
+      params:
+        - name: image-name
+          value: $(params.image-name)
+        - name: dockerfile-path
+          value: $(params.dockerfile-path)
+        - name: context-subpath
+          value: $(params.source-subpath)
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace

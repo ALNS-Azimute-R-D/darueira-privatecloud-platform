@@ -1,0 +1,52 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: tenant-workloads-appset
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tier: tenant-workload
+spec:
+  generators:
+    - list:
+        elements:
+          - tenant: "darueira-corp"
+            project: "platform-core"
+            env: "prod"
+          - tenant: "acme"
+            project: "storefront"
+            env: "dev"
+          - tenant: "acme"
+            project: "storefront"
+            env: "staging"
+          - tenant: "acme"
+            project: "storefront"
+            env: "prod"
+          - tenant: "globex"
+            project: "logistics"
+            env: "dev"
+          - tenant: "globex"
+            project: "logistics"
+            env: "prod"
+  template:
+    metadata:
+      name: "tenant-{{tenant}}-{{project}}-{{env}}"
+      labels:
+        darueira.io/tenant: "{{tenant}}"
+        darueira.io/project: "{{project}}"
+        darueira.io/environment: "{{env}}"
+        darueira.io/tier: "tenant-workload"
+    spec:
+      project: darueira-tenants
+      source:
+        repoURL: "https://github.com/dexterity/darueira-privatecloud-platform.git"
+        targetRevision: HEAD
+        path: "platform/kustomize/base/tnt-tenant-base"
+      destination:
+        server: "https://kubernetes.default.svc"
+        namespace: "drr-tnt-{{tenant}}-{{project}}-{{env}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

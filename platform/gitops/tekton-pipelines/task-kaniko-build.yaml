@@ -1,0 +1,49 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: task-kaniko-build
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/component: ci-pipeline
+    darueira.io/tier: enterprise-shared
+spec:
+  description: "Builds a container image using unprivileged Kaniko executor and pushes to Nexus OCI Registry"
+  params:
+    - name: image-name
+      type: string
+      description: "Target image name with tag (e.g. localhost:8082/tenant-app:v1.0.0)"
+    - name: dockerfile-path
+      type: string
+      default: "Dockerfile"
+      description: "Relative path to Dockerfile within build context"
+    - name: context-subpath
+      type: string
+      default: "."
+      description: "Build context directory relative to source workspace"
+  workspaces:
+    - name: source
+      description: "Workspace containing source code and Dockerfile"
+  steps:
+    - name: build-and-push
+      image: gcr.io/kaniko-project/executor:v1.23.2-debug
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+      env:
+        - name: DOCKER_CONFIG
+          value: /kaniko/.docker
+      args:
+        - --dockerfile=$(workspaces.source.path)/source/$(params.context-subpath)/$(params.dockerfile-path)
+        - --context=$(workspaces.source.path)/source/$(params.context-subpath)
+        - --destination=$(params.image-name)
+        - --insecure=true
+        - --skip-tls-verify=true
+        - --cache=true
+        - --cache-dir=/tmp/kaniko-cache

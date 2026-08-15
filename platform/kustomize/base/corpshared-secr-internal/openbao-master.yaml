@@ -19,45 +19,62 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        runAsUser: 10001
-        runAsGroup: 10001
-        fsGroup: 10001
+        runAsUser: 100
+        runAsGroup: 1000
+        fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: openbao
-          image: quay.io/openbao/openbao:2.0.0
+          image: hashicorp/vault:1.17.6
+          imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           command:
-            - "bao"
+            - "vault"
             - "server"
             - "-dev"
             - "-dev-listen-address=0.0.0.0:8200"
-            - "-dev-root-token-id=root-token-for-dev-bootstrap"
+            - "-dev-root-token-id=darueira-root-token"
             - "-dev-no-store-token"
           env:
             - name: HOME
-              value: /bao/data
-            - name: BAO_DEV_LISTEN_ADDRESS
+              value: /vault/data
+            - name: VAULT_DEV_LISTEN_ADDRESS
               value: 0.0.0.0:8200
+            - name: VAULT_UI
+              value: "true"
           ports:
             - containerPort: 8200
               name: http
           resources:
             requests:
               cpu: 100m
-              memory: 256Mi
+              memory: 128Mi
             limits:
               cpu: 500m
               memory: 512Mi
           volumeMounts:
             - name: bao-data
-              mountPath: /bao/data
+              mountPath: /vault/data
+          livenessProbe:
+            httpGet:
+              path: /v1/sys/health?uninitcode=200&sealedcode=200
+              port: 8200
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /v1/sys/health?uninitcode=200&sealedcode=200
+              port: 8200
+            initialDelaySeconds: 5
+            periodSeconds: 10
       volumes:
         - name: bao-data
           emptyDir: {}

@@ -34,46 +34,290 @@ data:
       - ip-restriction
   apisix.yaml: |
     routes:
-      - id: route-iam-authz
+      # =========================================================================
+      # 1. Corporate Shared Services - Host-based Reverse Proxy Routes
+      # =========================================================================
+      # OpenBao (Vault Master)
+      - id: route-host-vault
+        uri: /*
+        hosts:
+          - "vault.darueira-corpshared.*"
+          - "vault.darueira-corpshared.127.0.0.1.nip.io"
+          - "vault.darueira-corpshared.local"
+        upstream:
+          nodes:
+            "openbao-master.drr-corpshared-secr-internal.svc.cluster.local:8200": 1
+          type: roundrobin
+
+      # Keycloak Master IdP
+      - id: route-host-keycloak
+        uri: /*
+        hosts:
+          - "keycloak.darueira-corpshared.*"
+          - "keycloak.darueira-corpshared.127.0.0.1.nip.io"
+          - "keycloak.darueira-corpshared.local"
+          - "idp.darueira-corpshared.*"
+          - "idp.darueira-corpshared.127.0.0.1.nip.io"
+        upstream:
+          nodes:
+            "keycloak.drr-corpshared-plat.svc.cluster.local:8080": 1
+          type: roundrobin
+
+      # Authentik IdP
+      - id: route-host-authentik
+        uri: /*
+        hosts:
+          - "authentik.darueira-corpshared.*"
+          - "authentik.darueira-corpshared.127.0.0.1.nip.io"
+          - "authentik.darueira-corpshared.local"
+        upstream:
+          nodes:
+            "authentik-server.drr-corpshared-plat.svc.cluster.local:9000": 1
+          type: roundrobin
+
+      # Sonatype Nexus OSS
+      - id: route-host-nexus
+        uri: /*
+        hosts:
+          - "nexus.darueira-corpshared.*"
+          - "nexus.darueira-corpshared.127.0.0.1.nip.io"
+          - "nexus.darueira-corpshared.local"
+        upstream:
+          nodes:
+            "nexus-oss.drr-corpshared-plat.svc.cluster.local:8081": 1
+          type: roundrobin
+
+      # Central MinIO S3 Console
+      - id: route-host-minio-console
+        uri: /*
+        hosts:
+          - "minio.darueira-corpshared.*"
+          - "minio.darueira-corpshared.127.0.0.1.nip.io"
+          - "minio.darueira-corpshared.local"
+        upstream:
+          nodes:
+            "central-minio.drr-corpshared-plat.svc.cluster.local:9001": 1
+          type: roundrobin
+
+      # Central MinIO S3 API
+      - id: route-host-s3-api
+        uri: /*
+        hosts:
+          - "s3.darueira-corpshared.*"
+          - "s3.darueira-corpshared.127.0.0.1.nip.io"
+          - "s3.darueira-corpshared.local"
+        upstream:
+          nodes:
+            "central-minio.drr-corpshared-plat.svc.cluster.local:9000": 1
+          type: roundrobin
+
+      # Grafana Dashboards
+      - id: route-host-grafana
+        uri: /*
+        hosts:
+          - "grafana.darueira-corpshared.*"
+          - "grafana.darueira-corpshared.127.0.0.1.nip.io"
+          - "grafana.darueira-corpshared.local"
+        upstream:
+          nodes:
+            "grafana.drr-corpshared-obs.svc.cluster.local:3000": 1
+          type: roundrobin
+
+      # OpenSearch Dashboards UI
+      - id: route-host-opensearch
+        uri: /*
+        hosts:
+          - "opensearch.darueira-corpshared.*"
+          - "opensearch.darueira-corpshared.127.0.0.1.nip.io"
+          - "opensearch.darueira-corpshared.local"
+          - "logs.darueira-corpshared.*"
+          - "logs.darueira-corpshared.127.0.0.1.nip.io"
+        upstream:
+          nodes:
+            "opensearch-dashboards.drr-corpshared-obs.svc.cluster.local:5601": 1
+          type: roundrobin
+
+      # Prometheus UI
+      - id: route-host-prometheus
+        uri: /*
+        hosts:
+          - "prometheus.darueira-corpshared.*"
+          - "prometheus.darueira-corpshared.127.0.0.1.nip.io"
+          - "prometheus.darueira-corpshared.local"
+          - "metrics.darueira-corpshared.*"
+          - "metrics.darueira-corpshared.127.0.0.1.nip.io"
+        upstream:
+          nodes:
+            "prometheus.drr-corpshared-obs.svc.cluster.local:9090": 1
+          type: roundrobin
+
+      # Jaeger Tracing UI
+      - id: route-host-jaeger
+        uri: /*
+        hosts:
+          - "jaeger.darueira-corpshared.*"
+          - "jaeger.darueira-corpshared.127.0.0.1.nip.io"
+          - "jaeger.darueira-corpshared.local"
+          - "tracing.darueira-corpshared.*"
+          - "tracing.darueira-corpshared.127.0.0.1.nip.io"
+        upstream:
+          nodes:
+            "jaeger.drr-corpshared-obs.svc.cluster.local:16686": 1
+          type: roundrobin
+
+      # OpenFGA Playground UI
+      - id: route-host-openfga
+        uri: /*
+        hosts:
+          - "openfga.darueira-corpshared.*"
+          - "openfga.darueira-corpshared.127.0.0.1.nip.io"
+          - "openfga.darueira-corpshared.local"
+          - "rebac.darueira-corpshared.*"
+          - "rebac.darueira-corpshared.127.0.0.1.nip.io"
+        upstream:
+          nodes:
+            "openfga.drr-corpshared-plat.svc.cluster.local:3000": 1
+          type: roundrobin
+
+      # Spotify Backstage (Developer Portal)
+      - id: route-host-backstage
+        uri: /*
+        hosts:
+          - "backstage.darueira-corpshared.*"
+          - "backstage.darueira-corpshared.127.0.0.1.nip.io"
+          - "backstage.darueira-corpshared.local"
+          - "portal.darueira-corpshared.*"
+          - "portal.darueira-corpshared.127.0.0.1.nip.io"
+        upstream:
+          nodes:
+            "backstage.drr-corpshared-mgmt.svc.cluster.local:7007": 1
+          type: roundrobin
+
+      # ArgoCD GitOps Console
+      - id: route-host-argocd
+        uri: /*
+        hosts:
+          - "argocd.darueira-corpshared.*"
+          - "argocd.darueira-corpshared.127.0.0.1.nip.io"
+          - "argocd.darueira-corpshared.local"
+          - "gitops.darueira-corpshared.*"
+          - "gitops.darueira-corpshared.127.0.0.1.nip.io"
+        upstream:
+          nodes:
+            "argocd-server.drr-corpshared-mgmt.svc.cluster.local:8080": 1
+          type: roundrobin
+
+      # IAM Authz Service (drr-iam-authz-svc)
+      - id: route-host-iam-authz
+        uri: /*
+        hosts:
+          - "authz.darueira-corpshared.*"
+          - "authz.darueira-corpshared.127.0.0.1.nip.io"
+          - "authz.darueira-corpshared.local"
+        upstream:
+          nodes:
+            "drr-iam-authz-svc.drr-corpshared-plat.svc.cluster.local:8080": 1
+          type: roundrobin
+
+      # Tenant Lifecycle Service (drr-tenant-svc)
+      - id: route-host-tenant-svc
+        uri: /*
+        hosts:
+          - "tenants.darueira-corpshared.*"
+          - "tenants.darueira-corpshared.127.0.0.1.nip.io"
+          - "tenants.darueira-corpshared.local"
+        upstream:
+          nodes:
+            "drr-tenant-svc.drr-corpshared-plat.svc.cluster.local:8081": 1
+          type: roundrobin
+
+      # Environment Orchestrator Service (drr-env-orchestrator-svc)
+      - id: route-host-env-orchestrator
+        uri: /*
+        hosts:
+          - "orchestrator.darueira-corpshared.*"
+          - "orchestrator.darueira-corpshared.127.0.0.1.nip.io"
+          - "orchestrator.darueira-corpshared.local"
+        upstream:
+          nodes:
+            "drr-env-orchestrator-svc.drr-corpshared-mgmt.svc.cluster.local:8082": 1
+          type: roundrobin
+
+      # =========================================================================
+      # 2. Tenant Isolated Services - Host-based Reverse Proxy Routes
+      # =========================================================================
+      # Pattern: http://<service>.darueira-tnt-<tenant>.127.0.0.1.nip.io
+
+      # Tenant Vault (OpenBao) - ACME
+      - id: route-tenant-vault-acme
+        uri: /*
+        hosts:
+          - "vault.darueira-tnt-acme.*"
+          - "vault.darueira-tnt-acme.127.0.0.1.nip.io"
+          - "vault.darueira-tnt-acme.local"
+        upstream:
+          nodes:
+            "tenant-openbao.drr-tnt-acme.svc.cluster.local:8200": 1
+          type: roundrobin
+
+      # Tenant Keycloak IdP - ACME
+      - id: route-tenant-keycloak-acme
+        uri: /*
+        hosts:
+          - "keycloak.darueira-tnt-acme.*"
+          - "keycloak.darueira-tnt-acme.127.0.0.1.nip.io"
+          - "keycloak.darueira-tnt-acme.local"
+        upstream:
+          nodes:
+            "tenant-keycloak.drr-tnt-acme.svc.cluster.local:8080": 1
+          type: roundrobin
+
+      # Tenant MinIO S3 Console - ACME
+      - id: route-tenant-minio-acme
+        uri: /*
+        hosts:
+          - "minio.darueira-tnt-acme.*"
+          - "minio.darueira-tnt-acme.127.0.0.1.nip.io"
+          - "minio.darueira-tnt-acme.local"
+        upstream:
+          nodes:
+            "tenant-minio.drr-tnt-acme.svc.cluster.local:9001": 1
+          type: roundrobin
+
+      # Tenant S3 API - ACME
+      - id: route-tenant-s3-acme
+        uri: /*
+        hosts:
+          - "s3.darueira-tnt-acme.*"
+          - "s3.darueira-tnt-acme.127.0.0.1.nip.io"
+          - "s3.darueira-tnt-acme.local"
+        upstream:
+          nodes:
+            "tenant-minio.drr-tnt-acme.svc.cluster.local:9000": 1
+          type: roundrobin
+
+      # =========================================================================
+      # 3. Direct API Path Fallbacks
+      # =========================================================================
+      - id: route-api-iam-authz
         uri: /api/v1/authz/*
         upstream:
           nodes:
             "drr-iam-authz-svc.drr-corpshared-plat.svc.cluster.local:8080": 1
           type: roundrobin
-      - id: route-tenants
+
+      - id: route-api-tenants
         uri: /api/v1/tenants*
         upstream:
           nodes:
             "drr-tenant-svc.drr-corpshared-plat.svc.cluster.local:8081": 1
           type: roundrobin
-      - id: route-environments
+
+      - id: route-api-environments
         uri: /api/v1/environments*
         upstream:
           nodes:
             "drr-env-orchestrator-svc.drr-corpshared-mgmt.svc.cluster.local:8082": 1
-          type: roundrobin
-      - id: route-keycloak
-        uri: /auth*
-        upstream:
-          nodes:
-            "keycloak.drr-corpshared-plat.svc.cluster.local:8080": 1
-          type: roundrobin
-      - id: route-minio
-        uri: /minio*
-        upstream:
-          nodes:
-            "central-minio.drr-corpshared-plat.svc.cluster.local:9000": 1
-          type: roundrobin
-      - id: route-nexus
-        uri: /nexus*
-        plugins:
-          forward-auth:
-            uri: "http://drr-iam-authz-svc.drr-corpshared-plat.svc.cluster.local:8080/api/v1/authz/forward-auth"
-            request_method: "GET"
-            request_headers: ["Authorization", "X-User-Id", "X-Tenant-Id"]
-        upstream:
-          nodes:
-            "nexus-oss.drr-corpshared-plat.svc.cluster.local:8081": 1
           type: roundrobin
     #END
 ---
@@ -108,10 +352,10 @@ spec:
         - name: init-conf
           image: apache/apisix:3.9.1-debian
           securityContext:
+            allowPrivilegeEscalation: false
             runAsNonRoot: true
             runAsUser: 1000
             runAsGroup: 1000
-            allowPrivilegeEscalation: false
             capabilities:
               drop:
                 - ALL
@@ -133,10 +377,10 @@ spec:
           args:
             - docker-start
           securityContext:
+            allowPrivilegeEscalation: false
             runAsNonRoot: true
             runAsUser: 1000
             runAsGroup: 1000
-            allowPrivilegeEscalation: false
             capabilities:
               drop:
                 - ALL
@@ -204,13 +448,18 @@ metadata:
     app.kubernetes.io/name: apisix-gateway
     darueira.io/tier: enterprise-shared
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app.kubernetes.io/name: apisix-gateway
   ports:
     - port: 80
       targetPort: 9080
+      nodePort: 30080
       name: http
+    - port: 9080
+      targetPort: 9080
+      nodePort: 30980
+      name: http-direct
     - port: 9091
       targetPort: 9091
       name: prometheus

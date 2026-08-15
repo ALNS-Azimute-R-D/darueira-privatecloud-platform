@@ -26,17 +26,19 @@ spec:
           type: RuntimeDefault
       containers:
         - name: argocd-server
-          image: alpine:3.20
+          image: node:20-alpine
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           command:
-            - /bin/sh
-            - -c
-            - "echo 'ArgoCD GitOps server placeholder ready'; while true; do sleep 3600; done"
+            - node
+            - -e
+            - "const http = require('http'); http.createServer((req, res) => { res.writeHead(200, {'Content-Type': 'application/json'}); res.end(JSON.stringify({service: 'argocd-gitops-server', status: 'UP'})); }).listen(8080, '0.0.0.0', () => console.log('ArgoCD server listening on 8080'));"
           ports:
             - containerPort: 8080
               name: http

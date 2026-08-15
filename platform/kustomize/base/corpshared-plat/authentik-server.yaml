@@ -44,6 +44,8 @@ spec:
               value: "central-postgres.drr-corpshared-plat.svc.cluster.local"
             - name: AUTHENTIK_POSTGRESQL__USER
               value: "drr_admin"
+            - name: AUTHENTIK_POSTGRESQL__PASSWORD
+              value: "change-me-in-openbao-drr-admin-pw"
             - name: AUTHENTIK_POSTGRESQL__NAME
               value: "authentik"
             - name: AUTHENTIK_SECRET_KEY

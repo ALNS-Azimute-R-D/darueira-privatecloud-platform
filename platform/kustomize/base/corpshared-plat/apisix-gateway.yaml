@@ -41,8 +41,9 @@ data:
       - id: route-host-vault
         uri: /*
         hosts:
-          - "vault.darueira-corpshared.*"
           - "vault.darueira-corpshared.127.0.0.1.nip.io"
+          - "vault.darueira-corpshared.192.168.178.84.nip.io"
+          - "vault.darueira-corpshared.127.0.0.1.sslip.io"
           - "vault.darueira-corpshared.local"
         upstream:
           nodes:
@@ -53,11 +54,12 @@ data:
       - id: route-host-keycloak
         uri: /*
         hosts:
-          - "keycloak.darueira-corpshared.*"
           - "keycloak.darueira-corpshared.127.0.0.1.nip.io"
+          - "keycloak.darueira-corpshared.192.168.178.84.nip.io"
+          - "keycloak.darueira-corpshared.127.0.0.1.sslip.io"
           - "keycloak.darueira-corpshared.local"
-          - "idp.darueira-corpshared.*"
           - "idp.darueira-corpshared.127.0.0.1.nip.io"
+          - "idp.darueira-corpshared.local"
         upstream:
           nodes:
             "keycloak.drr-corpshared-plat.svc.cluster.local:8080": 1
@@ -67,8 +69,9 @@ data:
       - id: route-host-authentik
         uri: /*
         hosts:
-          - "authentik.darueira-corpshared.*"
           - "authentik.darueira-corpshared.127.0.0.1.nip.io"
+          - "authentik.darueira-corpshared.192.168.178.84.nip.io"
+          - "authentik.darueira-corpshared.127.0.0.1.sslip.io"
           - "authentik.darueira-corpshared.local"
         upstream:
           nodes:
@@ -79,8 +82,9 @@ data:
       - id: route-host-nexus
         uri: /*
         hosts:
-          - "nexus.darueira-corpshared.*"
           - "nexus.darueira-corpshared.127.0.0.1.nip.io"
+          - "nexus.darueira-corpshared.192.168.178.84.nip.io"
+          - "nexus.darueira-corpshared.127.0.0.1.sslip.io"
           - "nexus.darueira-corpshared.local"
         upstream:
           nodes:
@@ -91,8 +95,9 @@ data:
       - id: route-host-minio-console
         uri: /*
         hosts:
-          - "minio.darueira-corpshared.*"
           - "minio.darueira-corpshared.127.0.0.1.nip.io"
+          - "minio.darueira-corpshared.192.168.178.84.nip.io"
+          - "minio.darueira-corpshared.127.0.0.1.sslip.io"
           - "minio.darueira-corpshared.local"
         upstream:
           nodes:
@@ -103,8 +108,9 @@ data:
       - id: route-host-s3-api
         uri: /*
         hosts:
-          - "s3.darueira-corpshared.*"
           - "s3.darueira-corpshared.127.0.0.1.nip.io"
+          - "s3.darueira-corpshared.192.168.178.84.nip.io"
+          - "s3.darueira-corpshared.127.0.0.1.sslip.io"
           - "s3.darueira-corpshared.local"
         upstream:
           nodes:
@@ -115,8 +121,9 @@ data:
       - id: route-host-grafana
         uri: /*
         hosts:
-          - "grafana.darueira-corpshared.*"
           - "grafana.darueira-corpshared.127.0.0.1.nip.io"
+          - "grafana.darueira-corpshared.192.168.178.84.nip.io"
+          - "grafana.darueira-corpshared.127.0.0.1.sslip.io"
           - "grafana.darueira-corpshared.local"
         upstream:
           nodes:
@@ -127,11 +134,12 @@ data:
       - id: route-host-opensearch
         uri: /*
         hosts:
-          - "opensearch.darueira-corpshared.*"
           - "opensearch.darueira-corpshared.127.0.0.1.nip.io"
+          - "opensearch.darueira-corpshared.192.168.178.84.nip.io"
+          - "opensearch.darueira-corpshared.127.0.0.1.sslip.io"
           - "opensearch.darueira-corpshared.local"
-          - "logs.darueira-corpshared.*"
           - "logs.darueira-corpshared.127.0.0.1.nip.io"
+          - "logs.darueira-corpshared.local"
         upstream:
           nodes:
             "opensearch-dashboards.drr-corpshared-obs.svc.cluster.local:5601": 1
@@ -141,11 +149,12 @@ data:
       - id: route-host-prometheus
         uri: /*
         hosts:
-          - "prometheus.darueira-corpshared.*"
           - "prometheus.darueira-corpshared.127.0.0.1.nip.io"
+          - "prometheus.darueira-corpshared.192.168.178.84.nip.io"
+          - "prometheus.darueira-corpshared.127.0.0.1.sslip.io"
           - "prometheus.darueira-corpshared.local"
-          - "metrics.darueira-corpshared.*"
           - "metrics.darueira-corpshared.127.0.0.1.nip.io"
+          - "metrics.darueira-corpshared.local"
         upstream:
           nodes:
             "prometheus.drr-corpshared-obs.svc.cluster.local:9090": 1
@@ -155,11 +164,12 @@ data:
       - id: route-host-jaeger
         uri: /*
         hosts:
-          - "jaeger.darueira-corpshared.*"
           - "jaeger.darueira-corpshared.127.0.0.1.nip.io"
+          - "jaeger.darueira-corpshared.192.168.178.84.nip.io"
+          - "jaeger.darueira-corpshared.127.0.0.1.sslip.io"
           - "jaeger.darueira-corpshared.local"
-          - "tracing.darueira-corpshared.*"
           - "tracing.darueira-corpshared.127.0.0.1.nip.io"
+          - "tracing.darueira-corpshared.local"
         upstream:
           nodes:
             "jaeger.drr-corpshared-obs.svc.cluster.local:16686": 1
@@ -169,25 +179,27 @@ data:
       - id: route-host-openfga
         uri: /*
         hosts:
-          - "openfga.darueira-corpshared.*"
           - "openfga.darueira-corpshared.127.0.0.1.nip.io"
+          - "openfga.darueira-corpshared.192.168.178.84.nip.io"
+          - "openfga.darueira-corpshared.127.0.0.1.sslip.io"
           - "openfga.darueira-corpshared.local"
-          - "rebac.darueira-corpshared.*"
           - "rebac.darueira-corpshared.127.0.0.1.nip.io"
+          - "rebac.darueira-corpshared.local"
         upstream:
           nodes:
-            "openfga.drr-corpshared-plat.svc.cluster.local:3000": 1
+            "openfga.drr-corpshared-plat.svc.cluster.local:8080": 1
           type: roundrobin
 
       # Spotify Backstage (Developer Portal)
       - id: route-host-backstage
         uri: /*
         hosts:
-          - "backstage.darueira-corpshared.*"
           - "backstage.darueira-corpshared.127.0.0.1.nip.io"
+          - "backstage.darueira-corpshared.192.168.178.84.nip.io"
+          - "backstage.darueira-corpshared.127.0.0.1.sslip.io"
           - "backstage.darueira-corpshared.local"
-          - "portal.darueira-corpshared.*"
           - "portal.darueira-corpshared.127.0.0.1.nip.io"
+          - "portal.darueira-corpshared.local"
         upstream:
           nodes:
             "backstage.drr-corpshared-mgmt.svc.cluster.local:7007": 1
@@ -197,11 +209,12 @@ data:
       - id: route-host-argocd
         uri: /*
         hosts:
-          - "argocd.darueira-corpshared.*"
           - "argocd.darueira-corpshared.127.0.0.1.nip.io"
+          - "argocd.darueira-corpshared.192.168.178.84.nip.io"
+          - "argocd.darueira-corpshared.127.0.0.1.sslip.io"
           - "argocd.darueira-corpshared.local"
-          - "gitops.darueira-corpshared.*"
           - "gitops.darueira-corpshared.127.0.0.1.nip.io"
+          - "gitops.darueira-corpshared.local"
         upstream:
           nodes:
             "argocd-server.drr-corpshared-mgmt.svc.cluster.local:8080": 1
@@ -211,8 +224,9 @@ data:
       - id: route-host-iam-authz
         uri: /*
         hosts:
-          - "authz.darueira-corpshared.*"
           - "authz.darueira-corpshared.127.0.0.1.nip.io"
+          - "authz.darueira-corpshared.192.168.178.84.nip.io"
+          - "authz.darueira-corpshared.127.0.0.1.sslip.io"
           - "authz.darueira-corpshared.local"
         upstream:
           nodes:
@@ -223,8 +237,9 @@ data:
       - id: route-host-tenant-svc
         uri: /*
         hosts:
-          - "tenants.darueira-corpshared.*"
           - "tenants.darueira-corpshared.127.0.0.1.nip.io"
+          - "tenants.darueira-corpshared.192.168.178.84.nip.io"
+          - "tenants.darueira-corpshared.127.0.0.1.sslip.io"
           - "tenants.darueira-corpshared.local"
         upstream:
           nodes:
@@ -235,8 +250,9 @@ data:
       - id: route-host-env-orchestrator
         uri: /*
         hosts:
-          - "orchestrator.darueira-corpshared.*"
           - "orchestrator.darueira-corpshared.127.0.0.1.nip.io"
+          - "orchestrator.darueira-corpshared.192.168.178.84.nip.io"
+          - "orchestrator.darueira-corpshared.127.0.0.1.sslip.io"
           - "orchestrator.darueira-corpshared.local"
         upstream:
           nodes:
@@ -246,14 +262,13 @@ data:
       # =========================================================================
       # 2. Tenant Isolated Services - Host-based Reverse Proxy Routes
       # =========================================================================
-      # Pattern: http://<service>.darueira-tnt-<tenant>.127.0.0.1.nip.io
-
       # Tenant Vault (OpenBao) - ACME
       - id: route-tenant-vault-acme
         uri: /*
         hosts:
-          - "vault.darueira-tnt-acme.*"
           - "vault.darueira-tnt-acme.127.0.0.1.nip.io"
+          - "vault.darueira-tnt-acme.192.168.178.84.nip.io"
+          - "vault.darueira-tnt-acme.127.0.0.1.sslip.io"
           - "vault.darueira-tnt-acme.local"
         upstream:
           nodes:
@@ -264,8 +279,9 @@ data:
       - id: route-tenant-keycloak-acme
         uri: /*
         hosts:
-          - "keycloak.darueira-tnt-acme.*"
           - "keycloak.darueira-tnt-acme.127.0.0.1.nip.io"
+          - "keycloak.darueira-tnt-acme.192.168.178.84.nip.io"
+          - "keycloak.darueira-tnt-acme.127.0.0.1.sslip.io"
           - "keycloak.darueira-tnt-acme.local"
         upstream:
           nodes:
@@ -276,8 +292,9 @@ data:
       - id: route-tenant-minio-acme
         uri: /*
         hosts:
-          - "minio.darueira-tnt-acme.*"
           - "minio.darueira-tnt-acme.127.0.0.1.nip.io"
+          - "minio.darueira-tnt-acme.192.168.178.84.nip.io"
+          - "minio.darueira-tnt-acme.127.0.0.1.sslip.io"
           - "minio.darueira-tnt-acme.local"
         upstream:
           nodes:
@@ -288,8 +305,9 @@ data:
       - id: route-tenant-s3-acme
         uri: /*
         hosts:
-          - "s3.darueira-tnt-acme.*"
           - "s3.darueira-tnt-acme.127.0.0.1.nip.io"
+          - "s3.darueira-tnt-acme.192.168.178.84.nip.io"
+          - "s3.darueira-tnt-acme.127.0.0.1.sslip.io"
           - "s3.darueira-tnt-acme.local"
         upstream:
           nodes:

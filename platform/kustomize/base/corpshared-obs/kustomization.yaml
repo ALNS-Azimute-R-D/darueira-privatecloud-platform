@@ -11,3 +11,4 @@ resources:
   - grafana.yaml
   - jaeger.yaml
   - opensearch.yaml
+  - opensearch-dashboards.yaml

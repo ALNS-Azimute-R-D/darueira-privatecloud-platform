@@ -131,13 +131,17 @@ build-all: build-services ## Compile binaries and build container images into th
 	@echo -e "${GREEN}==> build-all target completed!${NC}"
 
 .PHONY: port-forward-obs
-port-forward-obs: ## Port-forward Observability UIs (Grafana :3000, Prometheus :9090, Jaeger :16686)
+port-forward-obs: ## Port-forward Observability UIs (Grafana :3000, Prometheus :9090, Jaeger :16686, OpenSearch Dashboards :5601, OpenSearch API :9200)
 	@echo -e "${GREEN}==> Exposing Observability UIs on localhost...${NC}"
-	@echo -e "${CYAN}  - Grafana:    http://localhost:3000 (admin / admin-dev)${NC}"
-	@echo -e "${CYAN}  - Prometheus: http://localhost:9090${NC}"
-	@echo -e "${CYAN}  - Jaeger:     http://localhost:16686${NC}"
+	@echo -e "${CYAN}  - Grafana:               http://localhost:3000 (admin / admin-dev)${NC}"
+	@echo -e "${CYAN}  - OpenSearch Dashboards: http://localhost:5601${NC}"
+	@echo -e "${CYAN}  - OpenSearch API:        http://localhost:9200${NC}"
+	@echo -e "${CYAN}  - Prometheus:            http://localhost:9090${NC}"
+	@echo -e "${CYAN}  - Jaeger:                http://localhost:16686${NC}"
 	@trap 'kill 0' EXIT; \
 	$(KUBECTL) port-forward -n drr-corpshared-obs svc/grafana 3000:3000 & \
+	$(KUBECTL) port-forward -n drr-corpshared-obs svc/opensearch-dashboards 5601:5601 & \
+	$(KUBECTL) port-forward -n drr-corpshared-obs svc/opensearch 9200:9200 & \
 	$(KUBECTL) port-forward -n drr-corpshared-obs svc/prometheus 9090:9090 & \
 	$(KUBECTL) port-forward -n drr-corpshared-obs svc/jaeger 16686:16686 & \
 	wait

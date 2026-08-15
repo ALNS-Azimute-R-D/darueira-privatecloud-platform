@@ -56,20 +56,20 @@ spec:
           volumeMounts:
             - name: mongo-storage
               mountPath: /data/db
+          startupProbe:
+            tcpSocket:
+              port: 27017
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 30
           livenessProbe:
-            exec:
-              command:
-                - /bin/sh
-                - -c
-                - mongosh --eval "db.adminCommand('ping')" --quiet
-            initialDelaySeconds: 15
-            periodSeconds: 10
+            tcpSocket:
+              port: 27017
+            initialDelaySeconds: 10
+            periodSeconds: 15
           readinessProbe:
-            exec:
-              command:
-                - /bin/sh
-                - -c
-                - mongosh --eval "db.adminCommand('ping')" --quiet
+            tcpSocket:
+              port: 27017
             initialDelaySeconds: 5
             periodSeconds: 5
       volumes:

@@ -185,6 +185,12 @@ port-forward-db: ## Port-forward all Platform & Tenant Databases (Central PG :54
 	$(KUBECTL) port-forward -n drr-tnt-acme svc/tenant-mongodb 27017:27017 & \
 	wait
 
+.PHONY: port-forward-tenant-openbao
+port-forward-tenant-openbao: ## Port-forward Tenant OpenBao UI & API on localhost:8201 (Token: tenant-vault-root-token-2026)
+	@echo -e "${GREEN}==> Exposing Tenant OpenBao (Vault) on http://localhost:8201/ui/...${NC}"
+	@echo -e "${CYAN}  - Token: tenant-vault-root-token-2026${NC}"
+	$(KUBECTL) port-forward -n drr-tnt-acme svc/tenant-openbao 8201:8200
+
 .PHONY: proxy
 proxy: ## Start APISIX Ingress Reverse Proxy on localhost:9080 & 9443 (non-root)
 	@echo -e "${GREEN}==> Starting Darueira Reverse Proxy Gateway on localhost:9080 (HTTP) & :9443 (HTTPS)...${NC}"

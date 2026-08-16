@@ -1,3 +1,38 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tenant-openbao-sa
+  labels:
+    app.kubernetes.io/name: tenant-openbao
+    darueira.io/tier: tenant-workload
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tenant-secrets-manager
+  labels:
+    app.kubernetes.io/name: tenant-openbao
+    darueira.io/tier: tenant-workload
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tenant-openbao-secrets-binding
+  labels:
+    app.kubernetes.io/name: tenant-openbao
+    darueira.io/tier: tenant-workload
+subjects:
+  - kind: ServiceAccount
+    name: tenant-openbao-sa
+roleRef:
+  kind: Role
+  name: tenant-secrets-manager
+  apiGroup: rbac.authorization.k8s.io
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,6 +52,7 @@ spec:
         app.kubernetes.io/name: tenant-openbao
         darueira.io/tier: tenant-workload
     spec:
+      serviceAccountName: tenant-openbao-sa
       securityContext:
         runAsNonRoot: true
         runAsUser: 100
@@ -31,6 +67,9 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 100
+            runAsGroup: 1000
             capabilities:
               drop:
                 - ALL
@@ -75,6 +114,93 @@ spec:
               port: 8200
             initialDelaySeconds: 5
             periodSeconds: 10
+        - name: openbao-syncer
+          image: alpine/k8s:1.30.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              VAULT_ADDR="http://127.0.0.1:8200"
+              VAULT_TOKEN="tenant-vault-root-token-2026"
+
+              echo "==> [OpenBao Syncer] Waiting for OpenBao server to become healthy..."
+              until curl -s "$VAULT_ADDR/v1/sys/health" | grep -q 'initialized'; do
+                sleep 2
+              done
+
+              echo "==> [OpenBao Syncer] OpenBao is ready. Verifying / seeding KV secrets store..."
+
+              # 1. Seed tenant-db secret if not exists
+              if ! curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/secret/data/tenant-db" | grep -q 'tenant_app_db'; then
+                echo "--> Seeding secret/tenant-db in OpenBao..."
+                curl -s -X POST -H "X-Vault-Token: $VAULT_TOKEN" -d '{"data": {"database": "tenant_app_db", "username": "tenant_db_user", "password": "tenant_pg_secure_pass_2026"}}' "$VAULT_ADDR/v1/secret/data/tenant-db"
+              fi
+
+              # 2. Seed tenant-keycloak secret if not exists
+              if ! curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/secret/data/tenant-keycloak" | grep -q 'drr_tenant_admin'; then
+                echo "--> Seeding secret/tenant-keycloak in OpenBao..."
+                curl -s -X POST -H "X-Vault-Token: $VAULT_TOKEN" -d '{"data": {"admin-username": "drr_tenant_admin", "admin-password": "tenant_keycloak_pass_2026"}}' "$VAULT_ADDR/v1/secret/data/tenant-keycloak"
+              fi
+
+              # 3. Seed tenant-mongo secret if not exists
+              if ! curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/secret/data/tenant-mongo" | grep -q 'tenant_doc_db'; then
+                echo "--> Seeding secret/tenant-mongo in OpenBao..."
+                curl -s -X POST -H "X-Vault-Token: $VAULT_TOKEN" -d '{"data": {"database": "tenant_doc_db", "root-username": "tenant_mongo_admin", "root-password": "tenant_mongo_secure_pass_2026"}}' "$VAULT_ADDR/v1/secret/data/tenant-mongo"
+              fi
+
+              # 4. Seed tenant-minio secret if not exists
+              if ! curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/secret/data/tenant-minio" | grep -q 'drr_tenant_admin'; then
+                echo "--> Seeding secret/tenant-minio in OpenBao..."
+                curl -s -X POST -H "X-Vault-Token: $VAULT_TOKEN" -d '{"data": {"root-user": "drr_tenant_admin", "root-password": "drr_tenant_s3_pass_2026"}}' "$VAULT_ADDR/v1/secret/data/tenant-minio"
+              fi
+
+              sync_to_k8s() {
+                SECRET_NAME=$1
+                VAULT_PATH=$2
+
+                RES=$(curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/secret/data/$VAULT_PATH")
+                ARGS=""
+                for k in $(echo "$RES" | jq -r '.data.data | keys[]'); do
+                  v=$(echo "$RES" | jq -r --arg key "$k" '.data.data[$key]')
+                  ARGS="$ARGS --from-literal=$k=$v"
+                done
+                kubectl create secret generic "$SECRET_NAME" $ARGS --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+              }
+
+              echo "==> [OpenBao Syncer] Syncing OpenBao KV secrets to Kubernetes Secrets..."
+              sync_to_k8s "tenant-db-credentials" "tenant-db"
+              sync_to_k8s "tenant-keycloak-credentials" "tenant-keycloak"
+              sync_to_k8s "tenant-mongo-credentials" "tenant-mongo"
+              sync_to_k8s "tenant-minio-credentials" "tenant-minio"
+
+              echo "==> [OpenBao Syncer] Secrets successfully synced. Starting continuous sync loop..."
+              while true; do
+                sleep 20
+                sync_to_k8s "tenant-db-credentials" "tenant-db"
+                sync_to_k8s "tenant-keycloak-credentials" "tenant-keycloak"
+                sync_to_k8s "tenant-mongo-credentials" "tenant-mongo"
+                sync_to_k8s "tenant-minio-credentials" "tenant-minio"
+              done
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
       volumes:
         - name: bao-storage
           emptyDir: {}

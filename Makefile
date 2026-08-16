@@ -170,6 +170,19 @@ port-forward-mgmt: ## Port-forward Management UIs (Backstage :7007, ArgoCD :8088
 	@trap 'kill 0' EXIT; \
 	$(KUBECTL) port-forward -n drr-corpshared-mgmt svc/backstage 7007:7007 & \
 	$(KUBECTL) port-forward -n drr-corpshared-mgmt svc/argocd-server 8088:8080 & \
+.PHONY: port-forward-db
+port-forward-db: ## Port-forward all Platform & Tenant Databases (Central PG :5432, Tenant PG :5433, Tenant Mongo :27017)
+	@echo -e "${GREEN}==> Exposing Platform & Tenant Databases on localhost for IDE Database Tools...${NC}"
+	@echo -e "${CYAN}  1. Central PostgreSQL (Control Plane / Keycloak / Authentik / IAM):${NC}"
+	@echo -e "${YELLOW}     Host: localhost | Port: 5432 | User: drr_admin | Password: change-me-in-openbao | DB: drr_controlplane_db${NC}"
+	@echo -e "${CYAN}  2. Tenant PostgreSQL (Tenant Workloads - ACME Corp):${NC}"
+	@echo -e "${YELLOW}     Host: localhost | Port: 5433 | User: tenant_db_user | Password: tenant_pg_secure_pass_2026 | DB: tenant_app_db${NC}"
+	@echo -e "${CYAN}  3. Tenant MongoDB (Tenant Workloads - ACME Corp):${NC}"
+	@echo -e "${YELLOW}     Host: localhost | Port: 27017 | User: tenant_mongo_admin | Password: tenant_mongo_secure_pass_2026 | DB: tenant_doc_db (authSource: admin)${NC}"
+	@trap 'kill 0' EXIT; \
+	$(KUBECTL) port-forward -n drr-corpshared-plat svc/central-postgres 5432:5432 & \
+	$(KUBECTL) port-forward -n drr-tnt-acme svc/tenant-postgres 5433:5432 & \
+	$(KUBECTL) port-forward -n drr-tnt-acme svc/tenant-mongodb 27017:27017 & \
 	wait
 
 .PHONY: proxy

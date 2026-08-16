@@ -133,7 +133,7 @@ ROUTES = [
             "auth.darueira-corpshared.local"
         ],
         "upstream": {
-            "nodes": {"keycloak.drr-corpshared-plat.svc.cluster.local:9000": 1},
+            "nodes": {"keycloak.drr-corpshared-plat.svc.cluster.local:8080": 1},
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}
@@ -355,7 +355,7 @@ ROUTES = [
             "keycloak.darueira-tnt-acme.local"
         ],
         "upstream": {
-            "nodes": {"tenant-keycloak.drr-tnt-acme.svc.cluster.local:9000": 1},
+            "nodes": {"tenant-keycloak.drr-tnt-acme.svc.cluster.local:8080": 1},
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}

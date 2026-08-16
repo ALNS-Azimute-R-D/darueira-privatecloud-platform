@@ -10,6 +10,11 @@ data:
   config.yaml: |
     apisix:
       node_listen: 9080
+      ssl:
+        enable: true
+        listen:
+          - port: 9443
+        ssl_protocols: "TLSv1.2 TLSv1.3"
       enable_admin: false
       enable_control: true
       control:
@@ -33,6 +38,75 @@ data:
       - limit-count
       - ip-restriction
   apisix.yaml: |
+    ssls:
+      - id: darueira-wildcard-tls
+        snis:
+          - "*.darueira-corpshared.127.0.0.1.nip.io"
+          - "*.darueira-corpshared.192.168.178.84.nip.io"
+          - "*.darueira-corpshared.127.0.0.1.sslip.io"
+          - "*.darueira-corpshared.local"
+          - "*.darueira-tnt-acme.127.0.0.1.nip.io"
+          - "*.darueira-tnt-acme.local"
+          - "*.127.0.0.1.nip.io"
+          - "*.local"
+          - "localhost"
+        cert: |
+          -----BEGIN CERTIFICATE-----
+          MIIEgzCCA2ugAwIBAgIURz7jMc+zPuLjLxctFemHYxopO0QwDQYJKoZIhvcNAQEL
+          BQAweTEvMC0GA1UEAwwmKi5kYXJ1ZWlyYS1jb3Jwc2hhcmVkLjEyNy4wLjAuMS5u
+          aXAuaW8xKjAoBgNVBAoMIURhcnVlaXJhIEVudGVycHJpc2UgUHJpdmF0ZSBDbG91
+          ZDEaMBgGA1UECwwRU2VjdXJpdHkgUGxhdGZvcm0wHhcNMjYwODE2MDQ1ODQ0WhcN
+          MzYwODEzMDQ1ODQ0WjB5MS8wLQYDVQQDDCYqLmRhcnVlaXJhLWNvcnBzaGFyZWQu
+          MTI3LjAuMC4xLm5pcC5pbzEqMCgGA1UECgwhRGFydWVpcmEgRW50ZXJwcmlzZSBQ
+          cml2YXRlIENsb3VkMRowGAYDVQQLDBFTZWN1cml0eSBQbGF0Zm9ybTCCASIwDQYJ
+          KoZIhvcNAQEBBQADggEPADCCAQoCggEBANCMJmJH/sAnbHm7scCmUi42Lbw601zz
+          MxW7lv0VBmD8izoFZ1v/6RtCcic42CMPQkb6IFh/pgB7yPqZ2CzEnOLAyXeP2vtV
+          CetCvHqc8GcRgVpki33P6oOZvBmcf1vB3GdIjSdonr/jW/Xn0j41U3wpHaPAIKSI
+          SOIhswraEoxpTuVAIKtFgCdE9diHh570dHZLB1YyceR3jHYfRme0Ap3knQf2U+cD
+          z41APa4fSzRv1xyVPCDIrl1TiVSgXCJS+yUsmeeRRlus5rgR2DXzEQZ7OrYgdUn6
+          Pd11v/RdLC45ya1E05Z50BKXqbrcfQBQ5sRKOVSi85pv3SNxEk7/gJkCAwEAAaOC
+          AQEwgf4wHQYDVR0OBBYEFCTaCfFyKCzKMlsyOpkZ0nrNcIRwMB8GA1UdIwQYMBaA
+          FCTaCfFyKCzKMlsyOpkZ0nrNcIRwMA8GA1UdEwEB/wQFMAMBAf8wgaoGA1UdEQSB
+          ojCBn4ImKi5kYXJ1ZWlyYS1jb3Jwc2hhcmVkLjEyNy4wLjAuMS5uaXAuaW+CJCou
+          ZGFydWVpcmEtdG50LWFjbWUuMTI3LjAuMC4xLm5pcC5pb4ISKi4xMjcuMC4wLjEu
+          bmlwLmlvghsqLmRhcnVlaXJhLWNvcnBzaGFyZWQubG9jYWyCByoubG9jYWyCCWxv
+          Y2FsaG9zdIcEfwAAAYcEwKiyVDANBgkqhkiG9w0BAQsFAAOCAQEAc8YH1GZ8UBoN
+          hU1sFLn2zBeGQJqoVXD+D4Xh/T3nQRv+Ayrg0LkESxNMyIwHz2ybKVYK/V0wiA5N
+          QuHPWVZaFkmxLpOWBqr7AibKWOStZeOOFUsM+m5RMBvkUVg/52rGcdmUPVA7wUrG
+          a3XydoE/HZ1SJ3OTmvzkxMt5Fl83YmNemezmHqkHcSilWyH7c65sPslpvv/Mkrqw
+          kKcYbDDXLX7gmbiLSv26GzHD26QpLjwqT+aNWoVBbKLbcb/W19TZmD/NfE1uWvXr
+          VmWtgu9cs8r1rVmGjAQ85GnjJl39torXDXeyfbbRVSQl/91p/Ms82Sgf1T3RHLfR
+          DnKJSk5hlA==
+          -----END CERTIFICATE-----
+        key: |
+          -----BEGIN PRIVATE KEY-----
+          MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDQjCZiR/7AJ2x5
+          u7HAplIuNi28OtNc8zMVu5b9FQZg/Is6BWdb/+kbQnInONgjD0JG+iBYf6YAe8j6
+          mdgsxJziwMl3j9r7VQnrQrx6nPBnEYFaZIt9z+qDmbwZnH9bwdxnSI0naJ6/41v1
+          59I+NVN8KR2jwCCkiEjiIbMK2hKMaU7lQCCrRYAnRPXYh4ee9HR2SwdWMnHkd4x2
+          H0ZntAKd5J0H9lPnA8+NQD2uH0s0b9cclTwgyK5dU4lUoFwiUvslLJnnkUZbrOa4
+          Edg18xEGezq2IHVJ+j3ddb/0XSwuOcmtRNOWedASl6m63H0AUObESjlUovOab90j
+          cRJO/4CZAgMBAAECggEACvdnuFDVYFjiXydj0j/cv/HY51ZHkZJ3W/v0lWPi5Tw6
+          fQdWN1QGd8i/dHkMgpF1mIJkK4sw2UMpHyZyY+5F2rWtEnS13PQMlLq6aw8wJBdb
+          UDvLywahLCDsL4OXfeV8l9DMnWcmu+vyhMSXPW6z8GpAFQGQJd7FyGBhyB8ODSSP
+          ME9ln94GyWEAPQYf/mTWstTYciNUppwXC0dRPlH+XKAhuRbEISuHUo1N7QK9VKPf
+          hrhJz3R8X00hHoGZMA7o97Su5ERro8/SBUw4j2qOzpiAnHrX4YVz+Db9md1nwgQJ
+          dJe65J8rmq+PS+zq4T9H/ggCX67sJ5Wqiz+D+uhU4QKBgQDv/pOgGN2J4m9PGC84
+          VvQB61/j9I8OLmkUctDlWEDKQPTM2N6C3KoWz7b4Y/2jy8PCuQAVdBMaCiaoNrNF
+          uzbxl3ndA3Tq4GUtXKSWMcsjQNWbHDiwi/Ol5QEbAJIJg/GYPSUQXrIIXcvLcUAs
+          TvyQ73STOVWMxgrPo4Wkn13naQKBgQDedK3hn1a8PeejS5mMSQkc+Uz8fsFlryFY
+          D+hUkgqrxbufI+7G9g8ttmoEeOY4YeDwTH6CyW9gKA20aBnKtvUJVzMvg6+c7UC3
+          eQLIZ1pej3PgCyd1YVnF/s9SOsokXGktXH/ZehLmtjbRyljJijnHl5ZsBWdgN8fu
+          63WY/8dZsQKBgQCWiUToIzCzEIlpP24/FKuxmIZpYjlpV8spvGszsIvTUbM72ryX
+          sPovnNLUM0Qhvepo9coLqudgagWdddI1Zx0rpSwXadeojGBqd7X1T/5veneB983H
+          T8HgyShMW6s+tLiSGahqADwD63GthrgOEu1xrAGfZ1M2HfMiExv9CsnIIQKBgEhf
+          2bqQJp3z3gsIq5oyoN5mVZ/IdY9pnQWTl1j8crBUEqjB/guJPoL22CNAWlZ5sb88
+          g+R1OOEl5t+NBucnAy3YyvRoeZgqsGWA32DoD0S4k1CPEHVmCNkb/8OXEPEnh6iU
+          cZwF1WRuYAN9O8nGSOog7XWThICPZWLcBFSU0vzhAoGBAMu6yPHlw+s6Y8c4d/YL
+          Vep6/rm3stRfFxODQcbPgeahvtqADi6aMn3+wiBuXt/DUlJsIWleuDI0JHmp5N2I
+          2UCA5BizlcSmIaxyBp/OyHXDLGDaXFYNCDL8V/U5LMj4acbt7cwJsiNWcbBL+es/
+          dffdIfaBnTCwG3sZAOPh/NmM
+          -----END PRIVATE KEY-----
     routes:
       # =========================================================================
       # 1. Corporate Shared Services - Host-based Reverse Proxy Routes
@@ -407,6 +481,8 @@ spec:
           ports:
             - containerPort: 9080
               name: http
+            - containerPort: 9443
+              name: https
             - containerPort: 9090
               name: control
             - containerPort: 9091
@@ -474,10 +550,17 @@ spec:
       targetPort: 9080
       nodePort: 30080
       name: http
+    - port: 443
+      targetPort: 9443
+      nodePort: 30443
+      name: https
     - port: 9080
       targetPort: 9080
       nodePort: 30980
       name: http-direct
+    - port: 9443
+      targetPort: 9443
+      name: https-direct
     - port: 9091
       targetPort: 9091
       name: prometheus

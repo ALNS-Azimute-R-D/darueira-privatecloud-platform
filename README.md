@@ -157,9 +157,9 @@ make build-all
 
 ---
 
-## 7. Administrative Consoles & Reverse Proxy (Magic DNS)
+## 7. Administrative Consoles & Reverse Proxy (HTTP & HTTPS)
 
-The platform provides unified, friendly browser access to all corporate and tenant administrative consoles through the **Apache APISIX Reverse Proxy Gateway** using **Magic Wildcard DNS (`.127.0.0.1.nip.io`)**.
+The platform provides unified, friendly browser access to all corporate and tenant administrative consoles through the **Apache APISIX Reverse Proxy Gateway** using **Magic Wildcard DNS (`.127.0.0.1.nip.io`)** with native **SSL/TLS (HTTPS)** termination and HTTP/2.
 
 > [!NOTE]
 > **Zero Host Configuration**: You do **NOT** need to edit `/etc/hosts` or install local DNS servers. Any subdomain ending in `.127.0.0.1.nip.io` automatically resolves to your local cluster gateway.
@@ -169,10 +169,10 @@ The platform provides unified, friendly browser access to all corporate and tena
 Execute one of the following commands in a terminal:
 
 ```bash
-# Option A: Standard Port 80 (Recommended - Clean URLs with no port numbers)
+# Option A: Standard Ports 80 (HTTP) & 443 (HTTPS) (Recommended - Clean URLs)
 make proxy-80
 
-# Option B: Non-root Port 9080 (Access via http://<service>...:9080)
+# Option B: Non-root Ports 9080 (HTTP) & 9443 (HTTPS)
 make proxy
 ```
 
@@ -183,20 +183,20 @@ make proxy
 
 ### 7.2 Corporate Shared Services Admin Consoles
 
-| Service | Component | Admin Console URL (Port 80) | Default Credentials |
-|---|---|---|---|
-| **Vault / Secrets** | OpenBao Master | [http://vault.darueira-corpshared.127.0.0.1.nip.io/ui/](http://vault.darueira-corpshared.127.0.0.1.nip.io/ui/) | **Method**: `Token`<br>**Token**: `darueira-root-token` |
-| **Identity Provider** | Keycloak Master | [http://keycloak.darueira-corpshared.127.0.0.1.nip.io/admin/](http://keycloak.darueira-corpshared.127.0.0.1.nip.io/admin/) | **User**: `admin`<br>**Password**: `admin123-dev` |
-| **Enterprise SSO** | Authentik Server | [http://authentik.darueira-corpshared.127.0.0.1.nip.io](http://authentik.darueira-corpshared.127.0.0.1.nip.io) | **User**: `akadmin`<br>**Password**: `darueira-admin123` |
-| **Artifact Registry** | Sonatype Nexus OSS | [http://nexus.darueira-corpshared.127.0.0.1.nip.io](http://nexus.darueira-corpshared.127.0.0.1.nip.io) | **User**: `admin`<br>**Password**: `4ff9b717-0bd0-40ab-b0c9-d53ce21ed155` |
-| **Object Storage** | Central MinIO S3 | [http://minio.darueira-corpshared.127.0.0.1.nip.io](http://minio.darueira-corpshared.127.0.0.1.nip.io) | **User**: `minioadmin`<br>**Password**: `minioadmin123` |
-| **Metrics Dashboards** | Grafana Obs | [http://grafana.darueira-corpshared.127.0.0.1.nip.io](http://grafana.darueira-corpshared.127.0.0.1.nip.io) | **User**: `admin`<br>**Password**: `admin-dev` |
-| **Log Analytics** | OpenSearch Dashboards | [http://opensearch.darueira-corpshared.127.0.0.1.nip.io](http://opensearch.darueira-corpshared.127.0.0.1.nip.io) | *(Direct Access / SSO)* |
-| **Metrics Engine** | Prometheus Engine | [http://prometheus.darueira-corpshared.127.0.0.1.nip.io](http://prometheus.darueira-corpshared.127.0.0.1.nip.io) | *(Direct Access)* |
-| **Distributed Tracing** | Jaeger Tracing UI | [http://jaeger.darueira-corpshared.127.0.0.1.nip.io](http://jaeger.darueira-corpshared.127.0.0.1.nip.io) | *(Direct Access)* |
-| **ReBAC Explorer** | OpenFGA Playground | [http://openfga.darueira-corpshared.127.0.0.1.nip.io](http://openfga.darueira-corpshared.127.0.0.1.nip.io) | *(Direct Access)* |
-| **Developer Portal** | Spotify Backstage | [http://backstage.darueira-corpshared.127.0.0.1.nip.io](http://backstage.darueira-corpshared.127.0.0.1.nip.io) | *(SSO Authentik)* |
-| **GitOps Engine** | ArgoCD Console | [http://argocd.darueira-corpshared.127.0.0.1.nip.io](http://argocd.darueira-corpshared.127.0.0.1.nip.io) | **User**: `admin`<br>**Password**: `dev-password` |
+| Service | Component | Clean HTTPS URL (Port 443) | Clean HTTP URL (Port 80) | Default Credentials |
+|---|---|---|---|---|
+| **Vault / Secrets** | OpenBao Master | [https://vault.darueira-corpshared.127.0.0.1.nip.io/ui/](https://vault.darueira-corpshared.127.0.0.1.nip.io/ui/) | [http://vault...](http://vault.darueira-corpshared.127.0.0.1.nip.io/ui/) | **Method**: `Token`<br>**Token**: `darueira-root-token` |
+| **Identity Provider** | Keycloak Master | [https://keycloak.darueira-corpshared.127.0.0.1.nip.io/admin/](https://keycloak.darueira-corpshared.127.0.0.1.nip.io/admin/) | [http://keycloak...](http://keycloak.darueira-corpshared.127.0.0.1.nip.io/admin/) | **User**: `admin`<br>**Password**: `admin123-dev` |
+| **Enterprise SSO** | Authentik Server | [https://authentik.darueira-corpshared.127.0.0.1.nip.io](https://authentik.darueira-corpshared.127.0.0.1.nip.io) | [http://authentik...](http://authentik.darueira-corpshared.127.0.0.1.nip.io) | **User**: `akadmin`<br>**Password**: `darueira-admin123` |
+| **Artifact Registry** | Sonatype Nexus OSS | [https://nexus.darueira-corpshared.127.0.0.1.nip.io](https://nexus.darueira-corpshared.127.0.0.1.nip.io) | [http://nexus...](http://nexus.darueira-corpshared.127.0.0.1.nip.io) | **User**: `admin`<br>**Password**: `4ff9b717-0bd0-40ab-b0c9-d53ce21ed155` |
+| **Object Storage** | Central MinIO S3 | [https://minio.darueira-corpshared.127.0.0.1.nip.io](https://minio.darueira-corpshared.127.0.0.1.nip.io) | [http://minio...](http://minio.darueira-corpshared.127.0.0.1.nip.io) | **User**: `minioadmin`<br>**Password**: `minioadmin123` |
+| **Metrics Dashboards** | Grafana Obs | [https://grafana.darueira-corpshared.127.0.0.1.nip.io](https://grafana.darueira-corpshared.127.0.0.1.nip.io) | [http://grafana...](http://grafana.darueira-corpshared.127.0.0.1.nip.io) | **User**: `admin`<br>**Password**: `admin-dev` |
+| **Log Analytics** | OpenSearch Dashboards | [https://opensearch.darueira-corpshared.127.0.0.1.nip.io](https://opensearch.darueira-corpshared.127.0.0.1.nip.io) | [http://opensearch...](http://opensearch.darueira-corpshared.127.0.0.1.nip.io) | *(Direct Access / SSO)* |
+| **Metrics Engine** | Prometheus Engine | [https://prometheus.darueira-corpshared.127.0.0.1.nip.io](https://prometheus.darueira-corpshared.127.0.0.1.nip.io) | [http://prometheus...](http://prometheus.darueira-corpshared.127.0.0.1.nip.io) | *(Direct Access)* |
+| **Distributed Tracing** | Jaeger Tracing UI | [https://jaeger.darueira-corpshared.127.0.0.1.nip.io](https://jaeger.darueira-corpshared.127.0.0.1.nip.io) | [http://jaeger...](http://jaeger.darueira-corpshared.127.0.0.1.nip.io) | *(Direct Access)* |
+| **ReBAC Explorer** | OpenFGA Playground | [https://openfga.darueira-corpshared.127.0.0.1.nip.io](https://openfga.darueira-corpshared.127.0.0.1.nip.io) | [http://openfga...](http://openfga.darueira-corpshared.127.0.0.1.nip.io) | *(Direct Access)* |
+| **Developer Portal** | Spotify Backstage | [https://backstage.darueira-corpshared.127.0.0.1.nip.io](https://backstage.darueira-corpshared.127.0.0.1.nip.io) | [http://backstage...](http://backstage.darueira-corpshared.127.0.0.1.nip.io) | *(SSO Authentik)* |
+| **GitOps Engine** | ArgoCD Console | [https://argocd.darueira-corpshared.127.0.0.1.nip.io](https://argocd.darueira-corpshared.127.0.0.1.nip.io) | [http://argocd...](http://argocd.darueira-corpshared.127.0.0.1.nip.io) | **User**: `admin`<br>**Password**: `dev-password` |
 
 ---
 
@@ -204,15 +204,16 @@ make proxy
 
 Every tenant provisioned on the platform automatically receives dedicated, isolated instances of Vault, Keycloak, and MinIO:
 
-| Tenant Service | Admin Console URL (Port 80) | Default Credentials |
-|---|---|---|
-| **Tenant Vault** | [http://vault.darueira-tnt-acme.127.0.0.1.nip.io/ui/](http://vault.darueira-tnt-acme.127.0.0.1.nip.io/ui/) | **Method**: `Token`<br>**Token**: `tenant-vault-root-token-2026` |
-| **Tenant Keycloak** | [http://keycloak.darueira-tnt-acme.127.0.0.1.nip.io/admin/](http://keycloak.darueira-tnt-acme.127.0.0.1.nip.io/admin/) | **User**: `drr_tenant_admin`<br>**Password**: `tenant_keycloak_pass_2026` |
-| **Tenant MinIO S3** | [http://minio.darueira-tnt-acme.127.0.0.1.nip.io](http://minio.darueira-tnt-acme.127.0.0.1.nip.io) | **User**: `minioadmin`<br>**Password**: `minioadmin123` |
+| Tenant Service | Clean HTTPS URL (Port 443) | Clean HTTP URL (Port 80) | Default Credentials |
+|---|---|---|---|
+| **Tenant Vault** | [https://vault.darueira-tnt-acme.127.0.0.1.nip.io/ui/](https://vault.darueira-tnt-acme.127.0.0.1.nip.io/ui/) | [http://vault...](http://vault.darueira-tnt-acme.127.0.0.1.nip.io/ui/) | **Method**: `Token`<br>**Token**: `tenant-vault-root-token-2026` |
+| **Tenant Keycloak** | [https://keycloak.darueira-tnt-acme.127.0.0.1.nip.io/admin/](https://keycloak.darueira-tnt-acme.127.0.0.1.nip.io/admin/) | [http://keycloak...](http://keycloak.darueira-tnt-acme.127.0.0.1.nip.io/admin/) | **User**: `drr_tenant_admin`<br>**Password**: `tenant_keycloak_pass_2026` |
+| **Tenant MinIO S3** | [https://minio.darueira-tnt-acme.127.0.0.1.nip.io](https://minio.darueira-tnt-acme.127.0.0.1.nip.io) | [http://minio...](http://minio.darueira-tnt-acme.127.0.0.1.nip.io) | **User**: `minioadmin`<br>**Password**: `minioadmin123` |
 
 > [!NOTE]
 > **Dynamic Tenant Routing Formula**:
 > Any newly provisioned tenant `<tenant-alias>` follows the standard naming scheme:
-> `http://<service-name>.darueira-tnt-<tenant-alias>.127.0.0.1.nip.io`
+> `https://<service-name>.darueira-tnt-<tenant-alias>.127.0.0.1.nip.io`
+
 
 

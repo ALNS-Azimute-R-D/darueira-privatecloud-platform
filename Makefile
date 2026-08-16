@@ -173,44 +173,44 @@ port-forward-mgmt: ## Port-forward Management UIs (Backstage :7007, ArgoCD :8088
 	wait
 
 .PHONY: proxy
-proxy: ## Start APISIX Ingress Reverse Proxy on localhost:9080 (non-root)
-	@echo -e "${GREEN}==> Starting Darueira Reverse Proxy Gateway on localhost:9080...${NC}"
+proxy: ## Start APISIX Ingress Reverse Proxy on localhost:9080 & 9443 (non-root)
+	@echo -e "${GREEN}==> Starting Darueira Reverse Proxy Gateway on localhost:9080 (HTTP) & :9443 (HTTPS)...${NC}"
 	@echo -e "${CYAN}================================================================================${NC}"
-	@echo -e "${CYAN}  Corporate Shared Services (Access via port :9080):                            ${NC}"
+	@echo -e "${CYAN}  Corporate Shared Services (Access via HTTPS :9443 or HTTP :9080):             ${NC}"
 	@echo -e "${CYAN}================================================================================${NC}"
-	@echo -e "${CYAN}  - Vault (OpenBao):       http://vault.darueira-corpshared.127.0.0.1.nip.io:9080${NC}"
-	@echo -e "${CYAN}  - Keycloak IdP:          http://keycloak.darueira-corpshared.127.0.0.1.nip.io:9080/admin/${NC}"
-	@echo -e "${CYAN}  - Nexus OSS:             http://nexus.darueira-corpshared.127.0.0.1.nip.io:9080${NC}"
-	@echo -e "${CYAN}  - MinIO Console:         http://minio.darueira-corpshared.127.0.0.1.nip.io:9080${NC}"
-	@echo -e "${CYAN}  - Grafana Dashboards:    http://grafana.darueira-corpshared.127.0.0.1.nip.io:9080${NC}"
-	@echo -e "${CYAN}  - OpenSearch Dashboards: http://opensearch.darueira-corpshared.127.0.0.1.nip.io:9080${NC}"
-	@echo -e "${CYAN}  - Prometheus Engine:     http://prometheus.darueira-corpshared.127.0.0.1.nip.io:9080${NC}"
-	@echo -e "${CYAN}  - Jaeger Tracing:        http://jaeger.darueira-corpshared.127.0.0.1.nip.io:9080${NC}"
-	@echo -e "${CYAN}  - OpenFGA Playground:    http://openfga.darueira-corpshared.127.0.0.1.nip.io:9080${NC}"
-	@echo -e "${CYAN}  - Backstage Portal:      http://backstage.darueira-corpshared.127.0.0.1.nip.io:9080${NC}"
-	@echo -e "${CYAN}  - ArgoCD Console:        http://argocd.darueira-corpshared.127.0.0.1.nip.io:9080${NC}"
+	@echo -e "${CYAN}  - Vault (OpenBao):       https://vault.darueira-corpshared.127.0.0.1.nip.io:9443/ui/${NC}"
+	@echo -e "${CYAN}  - Keycloak IdP:          https://keycloak.darueira-corpshared.127.0.0.1.nip.io:9443/admin/${NC}"
+	@echo -e "${CYAN}  - Nexus OSS:             https://nexus.darueira-corpshared.127.0.0.1.nip.io:9443${NC}"
+	@echo -e "${CYAN}  - MinIO Console:         https://minio.darueira-corpshared.127.0.0.1.nip.io:9443${NC}"
+	@echo -e "${CYAN}  - Grafana Dashboards:    https://grafana.darueira-corpshared.127.0.0.1.nip.io:9443${NC}"
+	@echo -e "${CYAN}  - OpenSearch Dashboards: https://opensearch.darueira-corpshared.127.0.0.1.nip.io:9443${NC}"
+	@echo -e "${CYAN}  - Prometheus Engine:     https://prometheus.darueira-corpshared.127.0.0.1.nip.io:9443${NC}"
+	@echo -e "${CYAN}  - Jaeger Tracing:        https://jaeger.darueira-corpshared.127.0.0.1.nip.io:9443${NC}"
+	@echo -e "${CYAN}  - OpenFGA Playground:    https://openfga.darueira-corpshared.127.0.0.1.nip.io:9443${NC}"
+	@echo -e "${CYAN}  - Backstage Portal:      https://backstage.darueira-corpshared.127.0.0.1.nip.io:9443${NC}"
+	@echo -e "${CYAN}  - ArgoCD Console:        https://argocd.darueira-corpshared.127.0.0.1.nip.io:9443${NC}"
 	@echo -e "${CYAN}================================================================================${NC}"
-	$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway 9080:80
+	$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway 9080:80 9443:443
 
 .PHONY: proxy-80
-proxy-80: ## Start APISIX Ingress Reverse Proxy on default Port 80 (requires sudo, no port in URL)
-	@echo -e "${GREEN}==> Starting Darueira Reverse Proxy Gateway on standard Port 80 (clean URLs)...${NC}"
+proxy-80: ## Start APISIX Ingress Reverse Proxy on default Ports 80 & 443 (HTTP & HTTPS clean URLs)
+	@echo -e "${GREEN}==> Starting Darueira Reverse Proxy Gateway on standard Ports 80 & 443...${NC}"
 	@echo -e "${CYAN}================================================================================${NC}"
-	@echo -e "${CYAN}  Corporate Shared Services (Standard Port 80 - No Port in URL):                 ${NC}"
+	@echo -e "${CYAN}  Corporate Shared Services (HTTPS / TLS on Standard Port 443):                 ${NC}"
 	@echo -e "${CYAN}================================================================================${NC}"
-	@echo -e "${CYAN}  - Vault (OpenBao):       http://vault.darueira-corpshared.127.0.0.1.nip.io/ui/${NC}"
-	@echo -e "${CYAN}  - Keycloak IdP:          http://keycloak.darueira-corpshared.127.0.0.1.nip.io/admin/${NC}"
-	@echo -e "${CYAN}  - Nexus OSS:             http://nexus.darueira-corpshared.127.0.0.1.nip.io${NC}"
-	@echo -e "${CYAN}  - MinIO Console:         http://minio.darueira-corpshared.127.0.0.1.nip.io${NC}"
-	@echo -e "${CYAN}  - Grafana Dashboards:    http://grafana.darueira-corpshared.127.0.0.1.nip.io${NC}"
-	@echo -e "${CYAN}  - OpenSearch Dashboards: http://opensearch.darueira-corpshared.127.0.0.1.nip.io${NC}"
-	@echo -e "${CYAN}  - Prometheus Engine:     http://prometheus.darueira-corpshared.127.0.0.1.nip.io${NC}"
-	@echo -e "${CYAN}  - Jaeger Tracing:        http://jaeger.darueira-corpshared.127.0.0.1.nip.io${NC}"
-	@echo -e "${CYAN}  - OpenFGA Playground:    http://openfga.darueira-corpshared.127.0.0.1.nip.io${NC}"
-	@echo -e "${CYAN}  - Backstage Portal:      http://backstage.darueira-corpshared.127.0.0.1.nip.io${NC}"
-	@echo -e "${CYAN}  - ArgoCD Console:        http://argocd.darueira-corpshared.127.0.0.1.nip.io${NC}"
+	@echo -e "${CYAN}  - Vault (OpenBao):       https://vault.darueira-corpshared.127.0.0.1.nip.io/ui/${NC}"
+	@echo -e "${CYAN}  - Keycloak IdP:          https://keycloak.darueira-corpshared.127.0.0.1.nip.io/admin/${NC}"
+	@echo -e "${CYAN}  - Nexus OSS:             https://nexus.darueira-corpshared.127.0.0.1.nip.io${NC}"
+	@echo -e "${CYAN}  - MinIO Console:         https://minio.darueira-corpshared.127.0.0.1.nip.io${NC}"
+	@echo -e "${CYAN}  - Grafana Dashboards:    https://grafana.darueira-corpshared.127.0.0.1.nip.io${NC}"
+	@echo -e "${CYAN}  - OpenSearch Dashboards: https://opensearch.darueira-corpshared.127.0.0.1.nip.io${NC}"
+	@echo -e "${CYAN}  - Prometheus Engine:     https://prometheus.darueira-corpshared.127.0.0.1.nip.io${NC}"
+	@echo -e "${CYAN}  - Jaeger Tracing:        https://jaeger.darueira-corpshared.127.0.0.1.nip.io${NC}"
+	@echo -e "${CYAN}  - OpenFGA Playground:    https://openfga.darueira-corpshared.127.0.0.1.nip.io${NC}"
+	@echo -e "${CYAN}  - Backstage Portal:      https://backstage.darueira-corpshared.127.0.0.1.nip.io${NC}"
+	@echo -e "${CYAN}  - ArgoCD Console:        https://argocd.darueira-corpshared.127.0.0.1.nip.io${NC}"
 	@echo -e "${CYAN}================================================================================${NC}"
-	sudo $(KUBECTL) --kubeconfig $(HOME)/.kube/config port-forward -n drr-corpshared-plat svc/apisix-gateway 80:80
+	sudo $(KUBECTL) --kubeconfig $(HOME)/.kube/config port-forward -n drr-corpshared-plat svc/apisix-gateway 80:80 443:443
 
 .PHONY: clean
 clean: ## Clean build artifacts and temporary files

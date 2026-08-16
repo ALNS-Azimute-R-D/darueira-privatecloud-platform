@@ -19,20 +19,46 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        runAsUser: 10001
-        runAsGroup: 10001
-        fsGroup: 10001
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
       containers:
+        - name: redis
+          image: redis:7-alpine
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - containerPort: 6379
+              name: redis
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
         - name: server
           image: beryju/authentik:2024.4.2
+          imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           args: ["server"]
           ports:
             - containerPort: 9000
@@ -40,16 +66,27 @@ spec:
             - containerPort: 9443
               name: https
           env:
+            - name: AUTHENTIK_REDIS__HOST
+              value: "127.0.0.1"
             - name: AUTHENTIK_POSTGRESQL__HOST
               value: "central-postgres.drr-corpshared-plat.svc.cluster.local"
             - name: AUTHENTIK_POSTGRESQL__USER
               value: "drr_admin"
             - name: AUTHENTIK_POSTGRESQL__PASSWORD
-              value: "change-me-in-openbao-drr-admin-pw"
+              value: "change-me-in-openbao"
             - name: AUTHENTIK_POSTGRESQL__NAME
               value: "authentik"
             - name: AUTHENTIK_SECRET_KEY
               value: "change-me-in-openbao-authentik-key"
+            - name: AUTHENTIK_BOOTSTRAP_PASSWORD
+              value: "darueira-admin123"
+            - name: AUTHENTIK_BOOTSTRAP_EMAIL
+              value: "admin@darueira.local"
+          volumeMounts:
+            - name: media-storage
+              mountPath: /media
+            - name: certs-storage
+              mountPath: /certs
           resources:
             requests:
               cpu: 250m
@@ -57,6 +94,11 @@ spec:
             limits:
               cpu: 1000m
               memory: 1024Mi
+      volumes:
+        - name: media-storage
+          emptyDir: {}
+        - name: certs-storage
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

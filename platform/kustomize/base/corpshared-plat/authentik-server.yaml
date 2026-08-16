@@ -94,6 +94,47 @@ spec:
             limits:
               cpu: 1000m
               memory: 1024Mi
+        - name: worker
+          image: beryju/authentik:2024.4.2
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          args: ["worker"]
+          env:
+            - name: AUTHENTIK_REDIS__HOST
+              value: "127.0.0.1"
+            - name: AUTHENTIK_POSTGRESQL__HOST
+              value: "central-postgres.drr-corpshared-plat.svc.cluster.local"
+            - name: AUTHENTIK_POSTGRESQL__USER
+              value: "drr_admin"
+            - name: AUTHENTIK_POSTGRESQL__PASSWORD
+              value: "change-me-in-openbao"
+            - name: AUTHENTIK_POSTGRESQL__NAME
+              value: "authentik"
+            - name: AUTHENTIK_SECRET_KEY
+              value: "change-me-in-openbao-authentik-key"
+            - name: AUTHENTIK_BOOTSTRAP_PASSWORD
+              value: "darueira-admin123"
+            - name: AUTHENTIK_BOOTSTRAP_EMAIL
+              value: "admin@darueira.local"
+          volumeMounts:
+            - name: media-storage
+              mountPath: /media
+            - name: certs-storage
+              mountPath: /certs
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
       volumes:
         - name: media-storage
           emptyDir: {}

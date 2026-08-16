@@ -457,7 +457,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: init-conf
-          image: apache/apisix:3.9.1-debian
+          image: apache/apisix:3.17.0-debian
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -479,7 +479,7 @@ spec:
               mountPath: /conf-dest
       containers:
         - name: apisix
-          image: apache/apisix:3.9.1-debian
+          image: apache/apisix:3.17.0-debian
           imagePullPolicy: IfNotPresent
           args:
             - docker-start

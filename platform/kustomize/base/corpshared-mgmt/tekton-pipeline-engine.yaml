@@ -213,17 +213,15 @@ rules:
   resources:
   - namespaces
   verbs:
+  - list
   - get
-  resourceNames:
-  - tekton-pipelines
+  - watch
 - apiGroups:
   - ''
   resources:
   - namespaces/finalizers
   verbs:
   - update
-  resourceNames:
-  - tekton-pipelines
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -37181,12 +37179,24 @@ metadata:
 rules:
 - apiGroups:
   - ''
-  resourceNames:
-  - dashboard-info
   resources:
   - configmaps
+  - namespaces
+  - pods
+  - pods/log
+  - events
   verbs:
   - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -37258,10 +37268,19 @@ rules:
 - apiGroups:
   - ''
   resources:
+  - configmaps
   - events
   - namespaces
   - pods
   - pods/log
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
   verbs:
   - get
   - list
@@ -37394,17 +37413,13 @@ spec:
             weight: 100
       containers:
       - args:
-        - --default-namespace=
-        - --external-logs=
-        - --log-format=json
-        - --log-level=info
-        - --logout-url=
-        - --namespaces=
-        - --pipelines-namespace=tekton-pipelines
         - --port=9097
-        - --read-only=true
+        - --log-level=info
+        - --log-format=json
+        - --pipelines-namespace=drr-corpshared-mgmt
+        - --triggers-namespace=drr-corpshared-mgmt
+        - --read-only=false
         - --stream-logs=true
-        - --triggers-namespace=tekton-pipelines
         env:
         - name: INSTALLED_NAMESPACE
           valueFrom:

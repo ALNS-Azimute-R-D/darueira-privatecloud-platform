@@ -212,6 +212,14 @@ proxy-80: ## Start APISIX Ingress Reverse Proxy on default Ports 80 & 443 (HTTP 
 	@echo -e "${CYAN}================================================================================${NC}"
 	sudo $(KUBECTL) --kubeconfig $(HOME)/.kube/config port-forward -n drr-corpshared-plat svc/apisix-gateway 80:80 443:443
 
+.PHONY: bootstrap-apisix
+bootstrap-apisix: ## Seed all cluster routes and SSL certificates into APISIX Gateway and ETCD
+	@echo -e "${GREEN}==> Seeding platform routes and SSL into APISIX Gateway & ETCD...${NC}"
+	@trap 'kill 0' EXIT; \
+	$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway 9180:9180 & \
+	sleep 2; \
+	python3 scripts/bootstrap_apisix_routes.py
+
 .PHONY: clean
 clean: ## Clean build artifacts and temporary files
 	@echo -e "${YELLOW}==> Cleaning workspace artifacts...${NC}"

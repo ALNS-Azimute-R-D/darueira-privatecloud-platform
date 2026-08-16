@@ -15,19 +15,36 @@ data:
         listen:
           - port: 9443
         ssl_protocols: "TLSv1.2 TLSv1.3"
-      enable_admin: false
+      enable_admin: true
       enable_control: true
       control:
         ip: "0.0.0.0"
         port: 9090
       prometheus:
+        export_uri: /apisix/prometheus/metrics
         export_addr:
           ip: "0.0.0.0"
           port: 9091
     deployment:
-      role: data_plane
-      role_data_plane:
-        config_provider: yaml
+      role: traditional
+      role_traditional:
+        config_provider: etcd
+      etcd:
+        host:
+          - "http://apisix-etcd.drr-corpshared-plat.svc.cluster.local:2379"
+        prefix: "/apisix"
+        timeout: 30
+      admin:
+        admin_key:
+          - name: admin
+            key: edd1c9f034335f136f87ad84b625c8f1
+            role: admin
+    plugin_attr:
+      prometheus:
+        export_uri: /apisix/prometheus/metrics
+        export_addr:
+          ip: "0.0.0.0"
+          port: 9091
     plugins:
       - forward-auth
       - prometheus
@@ -502,9 +519,8 @@ spec:
               name: control
             - containerPort: 9091
               name: prometheus
-          env:
-            - name: APISIX_STAND_ALONE
-              value: "true"
+            - containerPort: 9180
+              name: admin
           resources:
             requests:
               cpu: 100m
@@ -575,7 +591,11 @@ spec:
       name: http-direct
     - port: 9443
       targetPort: 9443
+      nodePort: 30444
       name: https-direct
     - port: 9091
       targetPort: 9091
       name: prometheus
+    - port: 9180
+      targetPort: 9180
+      name: admin

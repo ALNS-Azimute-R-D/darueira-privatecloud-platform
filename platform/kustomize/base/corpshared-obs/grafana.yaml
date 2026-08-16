@@ -47,6 +47,10 @@ spec:
               value: "true"
             - name: GF_AUTH_ANONYMOUS_ORG_ROLE
               value: "Viewer"
+            - name: GF_SECURITY_ALLOW_EMBEDDING
+              value: "true"
+            - name: GF_SECURITY_COOKIE_SAMESITE
+              value: "none"
           resources:
             requests:
               cpu: 100m
@@ -288,6 +292,138 @@ data:
       "tags": ["darueira", "tenants", "quotas", "resources"],
       "title": "Darueira Platform - Tenant Resource Quotas",
       "uid": "darueira-tenant-quotas",
+      "version": 1
+    }
+  apisix-metrics.json: |
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+          "id": 100,
+          "title": "Apache APISIX Gateway Traffic & Performance Overview",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "unit": "reqps"
+            }
+          },
+          "gridPos": { "h": 7, "w": 8, "x": 0, "y": 1 },
+          "id": 1,
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+          "title": "Total Request Rate (QPS)",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum(rate(apisix_http_status[1m])) or sum(rate(apisix_http_requests_total[1m])) or vector(0)",
+              "legendFormat": "Total QPS"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "unit": "reqps"
+            }
+          },
+          "gridPos": { "h": 7, "w": 8, "x": 8, "y": 1 },
+          "id": 2,
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+          "title": "HTTP Status Codes Rate",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum by (code) (rate(apisix_http_status[1m]))",
+              "legendFormat": "HTTP {{code}}"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "unit": "s"
+            }
+          },
+          "gridPos": { "h": 7, "w": 8, "x": 16, "y": 1 },
+          "id": 3,
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+          "title": "Request Latency (P99 / P95 / Avg)",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(apisix_http_latency_bucket[1m])) by (le))",
+              "legendFormat": "p99 Latency"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(apisix_http_latency_bucket[1m])) by (le))",
+              "legendFormat": "p95 Latency"
+            },
+            {
+              "expr": "sum(rate(apisix_http_latency_sum[1m])) / sum(rate(apisix_http_latency_count[1m]))",
+              "legendFormat": "Avg Latency"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "unit": "Bps"
+            }
+          },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 8 },
+          "id": 4,
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+          "title": "Bandwidth (Ingress / Egress)",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum by (type) (rate(apisix_bandwidth[1m]))",
+              "legendFormat": "Bandwidth {{type}}"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "unit": "s"
+            }
+          },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 8 },
+          "id": 5,
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+          "title": "Upstream Response Latency by Route",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum by (route) (rate(apisix_upstream_latency_sum[1m]) / rate(apisix_upstream_latency_count[1m]))",
+              "legendFormat": "Route: {{route}}"
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 39,
+      "tags": ["darueira", "apisix", "gateway", "performance", "traffic"],
+      "title": "Apache APISIX - Gateway Traffic & Performance",
+      "uid": "apisix-gateway-metrics",
       "version": 1
     }
 ---

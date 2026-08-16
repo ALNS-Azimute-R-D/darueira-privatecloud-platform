@@ -145,3 +145,20 @@ spec:
     - port: 9000
       targetPort: 9000
       name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apisix-etcd
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: apisix-dashboard
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: apisix-dashboard
+  ports:
+    - port: 2379
+      targetPort: 2379
+      name: etcd

@@ -1,12 +1,12 @@
-#!/usr/bin/env python3
+import os
 import json
 import urllib.request
 import urllib.error
 import ssl
 import time
 
-ADMIN_URL = "http://127.0.0.1:9180/apisix/admin"
-ADMIN_KEY = "edd1c9f034335f136f87ad84b625c8f1"
+ADMIN_URL = os.environ.get("APISIX_ADMIN_URL", "http://127.0.0.1:9180/apisix/admin")
+ADMIN_KEY = os.environ.get("APISIX_ADMIN_KEY", "edd1c9f034335f136f87ad84b625c8f1")
 
 # SSL Certificate definition
 SSL_PAYLOAD = {

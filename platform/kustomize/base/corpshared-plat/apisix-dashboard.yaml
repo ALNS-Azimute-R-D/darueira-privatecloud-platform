@@ -127,10 +127,26 @@ spec:
             periodSeconds: 5
       volumes:
         - name: etcd-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: apisix-etcd-pvc
         - name: config-vol
           configMap:
             name: apisix-dashboard-conf
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: apisix-etcd-pvc
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: apisix-dashboard
+    darueira.io/tier: enterprise-shared
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
 ---
 apiVersion: v1
 kind: Service

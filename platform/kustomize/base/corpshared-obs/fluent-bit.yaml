@@ -51,6 +51,7 @@ data:
         Name              tail
         Tag               kube.*
         Path              /var/log/containers/*.log
+        Exclude_Path      /var/log/containers/fluent-bit-*.log
         Parser            cri
         DB                /var/log/flb_kube.db
         Mem_Buf_Limit     50MB
@@ -64,10 +65,11 @@ data:
         Kube_CA_File        /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
         Kube_Token_File     /var/run/secrets/kubernetes.io/serviceaccount/token
         Kube_Tag_Prefix     kube.var.log.containers.
-        Merge_Log           On
-        Merge_Log_Key       log_processed
-        Keep_Log            Off
-        K8S-Logging.Parser  On
+        Merge_Log           Off
+        Keep_Log            On
+        Labels              Off
+        Annotations         Off
+        K8S-Logging.Parser  Off
         K8S-Logging.Exclude Off
 
     [OUTPUT]
@@ -84,6 +86,11 @@ data:
         Logstash_Prefix darueira-k8s-logs
         Logstash_DateFormat %Y.%m.%d
         Time_Key        @timestamp
+        Replace_Dots    On
+        Generate_ID     Off
+        Write_Operation index
+        Buffer_Size     64MB
+        Trace_Error     Off
         Retry_Limit     5
 
   parsers.conf: |

@@ -340,7 +340,7 @@ ROUTES = [
             "ci.darueira-corpshared.local"
         ],
         "upstream": {
-            "nodes": {"tekton-dashboard.tekton-pipelines.svc.cluster.local:9097": 1},
+            "nodes": {"tekton-dashboard.drr-corpshared-mgmt.svc.cluster.local:9097": 1},
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}

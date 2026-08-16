@@ -5,6 +5,7 @@ resources:
   - namespace-template.yaml
   - network-policy-template.yaml
   - resource-quota.yaml
+  - tenant-secrets-template.yaml
   - envoy-sidecar-configmap.yaml
   - opa-policy-configmap.yaml
   - tenant-minio.yaml

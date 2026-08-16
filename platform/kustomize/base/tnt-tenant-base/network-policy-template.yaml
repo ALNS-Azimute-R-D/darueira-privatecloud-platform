@@ -2,7 +2,6 @@ apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
   name: tenant-isolation-policy
-  namespace: drr-tnt-base-template
 spec:
   endpointSelector: {}
   ingress:

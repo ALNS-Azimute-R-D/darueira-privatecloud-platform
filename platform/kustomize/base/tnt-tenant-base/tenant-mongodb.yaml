@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: tenant-mongodb
-  namespace: drr-tnt-base-template
   labels:
     app.kubernetes.io/name: tenant-mongodb
     app.kubernetes.io/component: nosql-database
@@ -38,11 +37,20 @@ spec:
                 - ALL
           env:
             - name: MONGO_INITDB_ROOT_USERNAME
-              value: "tenant_mongo_admin"
+              valueFrom:
+                secretKeyRef:
+                  name: tenant-mongo-credentials
+                  key: root-username
             - name: MONGO_INITDB_ROOT_PASSWORD
-              value: "tenant_mongo_secure_pass_2026"
+              valueFrom:
+                secretKeyRef:
+                  name: tenant-mongo-credentials
+                  key: root-password
             - name: MONGO_INITDB_DATABASE
-              value: "tenant_doc_db"
+              valueFrom:
+                secretKeyRef:
+                  name: tenant-mongo-credentials
+                  key: database
           ports:
             - containerPort: 27017
               name: mongodb
@@ -80,7 +88,6 @@ apiVersion: v1
 kind: Service
 metadata:
   name: tenant-mongodb
-  namespace: drr-tnt-base-template
   labels:
     app.kubernetes.io/name: tenant-mongodb
     darueira.io/tier: tenant-workload

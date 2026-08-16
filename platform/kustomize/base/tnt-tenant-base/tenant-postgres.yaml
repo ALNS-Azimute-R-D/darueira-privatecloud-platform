@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: tenant-postgres
-  namespace: drr-tnt-base-template
   labels:
     app.kubernetes.io/name: tenant-postgres
     app.kubernetes.io/component: relational-database
@@ -38,11 +37,20 @@ spec:
                 - ALL
           env:
             - name: POSTGRES_DB
-              value: "tenant_app_db"
+              valueFrom:
+                secretKeyRef:
+                  name: tenant-db-credentials
+                  key: database
             - name: POSTGRES_USER
-              value: "tenant_db_user"
+              valueFrom:
+                secretKeyRef:
+                  name: tenant-db-credentials
+                  key: username
             - name: POSTGRES_PASSWORD
-              value: "tenant_pg_secure_pass_2026"
+              valueFrom:
+                secretKeyRef:
+                  name: tenant-db-credentials
+                  key: password
             - name: PGDATA
               value: "/var/lib/postgresql/data/pgdata"
           ports:
@@ -82,7 +90,6 @@ apiVersion: v1
 kind: Service
 metadata:
   name: tenant-postgres
-  namespace: drr-tnt-base-template
   labels:
     app.kubernetes.io/name: tenant-postgres
     darueira.io/tier: tenant-workload

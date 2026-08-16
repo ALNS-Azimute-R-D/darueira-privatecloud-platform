@@ -52,6 +52,8 @@ spec:
               value: "true"
             - name: KC_HOSTNAME_STRICT
               value: "false"
+            - name: KC_HOSTNAME_STRICT_HTTPS
+              value: "false"
           ports:
             - containerPort: 8080
               name: http

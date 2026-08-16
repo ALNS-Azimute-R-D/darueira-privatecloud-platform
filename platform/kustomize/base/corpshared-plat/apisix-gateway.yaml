@@ -488,12 +488,14 @@ spec:
           command:
             - /bin/sh
             - -c
-            - cp -r /usr/local/apisix/conf/* /conf-dest/ && cp -f /config-source/* /conf-dest/
+            - cp -r /usr/local/apisix/conf/* /conf-dest/ && cp -f /config-source/* /conf-dest/ && cp -r /usr/local/apisix/apisix/cli/* /cli-dest/ && sed -i 's/set \$var_x_forwarded_port.*\$server_port;/set_by_lua_block \$var_x_forwarded_port {\n                local scheme = ngx.var.scheme\n                local p = ngx.req.get_headers()[\x27X-Forwarded-Port\x27]\n                if p and p ~= \x27\x27 and p ~= \x279080\x27 and p ~= \x279443\x27 then\n                    return p\n                end\n                if scheme == \x27https\x27 then\n                    return \x27443\x27\n                else\n                    return \x2780\x27\n                end\n            }/g' /cli-dest/ngx_tpl.lua
           volumeMounts:
             - name: config-source
               mountPath: /config-source
             - name: conf-dir
               mountPath: /conf-dest
+            - name: cli-dir
+              mountPath: /cli-dest
       containers:
         - name: apisix
           image: apache/apisix:3.17.0-debian
@@ -531,6 +533,8 @@ spec:
           volumeMounts:
             - name: conf-dir
               mountPath: /usr/local/apisix/conf
+            - name: cli-dir
+              mountPath: /usr/local/apisix/apisix/cli
             - name: logs-dir
               mountPath: /usr/local/apisix/logs
             - name: temp-dir
@@ -558,6 +562,8 @@ spec:
           configMap:
             name: apisix-config
         - name: conf-dir
+          emptyDir: {}
+        - name: cli-dir
           emptyDir: {}
         - name: logs-dir
           emptyDir: {}

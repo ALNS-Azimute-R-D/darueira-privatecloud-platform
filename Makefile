@@ -208,6 +208,7 @@ proxy: ## Start APISIX Ingress Reverse Proxy on localhost:9080 & 9443 (non-root)
 	@echo -e "${CYAN}  - OpenFGA Playground:    https://openfga.darueira-corpshared.127.0.0.1.nip.io:9443${NC}"
 	@echo -e "${CYAN}  - Backstage Portal:      https://backstage.darueira-corpshared.127.0.0.1.nip.io:9443${NC}"
 	@echo -e "${CYAN}  - ArgoCD Console:        https://argocd.darueira-corpshared.127.0.0.1.nip.io:9443${NC}"
+	@echo -e "${CYAN}  - Tekton CI/CD Console:  https://tekton.darueira-corpshared.127.0.0.1.nip.io:9443${NC}"
 	@echo -e "${CYAN}================================================================================${NC}"
 	$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway 9080:80 9443:443
 
@@ -228,6 +229,7 @@ proxy-80: ## Start APISIX Ingress Reverse Proxy on default Ports 80 & 443 (HTTP 
 	@echo -e "${CYAN}  - OpenFGA Playground:    https://openfga.darueira-corpshared.127.0.0.1.nip.io${NC}"
 	@echo -e "${CYAN}  - Backstage Portal:      https://backstage.darueira-corpshared.127.0.0.1.nip.io${NC}"
 	@echo -e "${CYAN}  - ArgoCD Console:        https://argocd.darueira-corpshared.127.0.0.1.nip.io${NC}"
+	@echo -e "${CYAN}  - Tekton CI/CD Console:  https://tekton.darueira-corpshared.127.0.0.1.nip.io${NC}"
 	@echo -e "${CYAN}================================================================================${NC}"
 	sudo $(KUBECTL) --kubeconfig $(HOME)/.kube/config port-forward -n drr-corpshared-plat svc/apisix-gateway 80:80 443:443
 

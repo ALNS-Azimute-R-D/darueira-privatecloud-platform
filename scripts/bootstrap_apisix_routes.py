@@ -321,7 +321,26 @@ ROUTES = [
             "gitops.darueira-corpshared.local"
         ],
         "upstream": {
-            "nodes": {"argocd-server-placeholder.drr-corpshared-mgmt.svc.cluster.local:8080": 1},
+            "nodes": {"argocd-server.drr-corpshared-mgmt.svc.cluster.local:80": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {"prometheus": {}}
+    },
+    {
+        "id": "route-host-tekton",
+        "name": "Tekton Pipelines Dashboard",
+        "desc": "Official CI/CD Admin Console for Tekton Pipelines",
+        "uri": "/*",
+        "hosts": [
+            "tekton.darueira-corpshared.127.0.0.1.nip.io",
+            "tekton.darueira-corpshared.192.168.178.84.nip.io",
+            "tekton.darueira-corpshared.127.0.0.1.sslip.io",
+            "tekton.darueira-corpshared.local",
+            "ci.darueira-corpshared.127.0.0.1.nip.io",
+            "ci.darueira-corpshared.local"
+        ],
+        "upstream": {
+            "nodes": {"tekton-dashboard.tekton-pipelines.svc.cluster.local:9097": 1},
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}

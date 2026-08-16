@@ -53,6 +53,8 @@ spec:
               value: "false"
             - name: GF_SECURITY_ALLOW_EMBEDDING
               value: "true"
+            - name: GF_SECURITY_CONTENT_SECURITY_POLICY
+              value: "false"
             - name: GF_SECURITY_COOKIE_SAMESITE
               value: "none"
             - name: GF_USERS_VIEWERS_CAN_EDIT

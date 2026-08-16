@@ -21,6 +21,9 @@ data:
         access_log:
           file_path: /dev/stdout
       max_cpu: 0
+      security:
+        x_frame_options: "sameorigin"
+        content_security_policy: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: *; frame-src * blob: data: https: http: 'self' 'unsafe-inline';"
     authentication:
       secret: darueira-apisix-dashboard-jwt-token-key-2026
       expire_time: 86400

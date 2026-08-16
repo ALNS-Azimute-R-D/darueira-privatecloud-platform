@@ -488,14 +488,14 @@ spec:
           command:
             - /bin/sh
             - -c
-            - cp -r /usr/local/apisix/conf/* /conf-dest/ && cp -f /config-source/* /conf-dest/ && cp -r /usr/local/apisix/apisix/cli/* /cli-dest/ && sed -i 's/set \$var_x_forwarded_port.*\$server_port;/set_by_lua_block \$var_x_forwarded_port {\n                local scheme = ngx.var.scheme\n                local p = ngx.req.get_headers()[\x27X-Forwarded-Port\x27]\n                if p and p ~= \x27\x27 and p ~= \x279080\x27 and p ~= \x279443\x27 then\n                    return p\n                end\n                if scheme == \x27https\x27 then\n                    return \x27443\x27\n                else\n                    return \x2780\x27\n                end\n            }/g' /cli-dest/ngx_tpl.lua
+            - cp -r /usr/local/apisix/conf/* /conf-dest/ && cp -f /config-source/* /conf-dest/ && cp -r /usr/local/apisix/apisix/* /apisix-lib-dest/ && sed -i 's/local port = port_from_host or api_ctx.var.server_port/local port = port_from_host or (proto == "https" and "443" or "80")/g' /apisix-lib-dest/init.lua && sed -i 's/local host = http_host/local host = http_host:match("^([^:]+)") or http_host/g' /apisix-lib-dest/init.lua
           volumeMounts:
             - name: config-source
               mountPath: /config-source
             - name: conf-dir
               mountPath: /conf-dest
-            - name: cli-dir
-              mountPath: /cli-dest
+            - name: apisix-lib-dir
+              mountPath: /apisix-lib-dest
       containers:
         - name: apisix
           image: apache/apisix:3.17.0-debian
@@ -533,8 +533,8 @@ spec:
           volumeMounts:
             - name: conf-dir
               mountPath: /usr/local/apisix/conf
-            - name: cli-dir
-              mountPath: /usr/local/apisix/apisix/cli
+            - name: apisix-lib-dir
+              mountPath: /usr/local/apisix/apisix
             - name: logs-dir
               mountPath: /usr/local/apisix/logs
             - name: temp-dir
@@ -563,7 +563,7 @@ spec:
             name: apisix-config
         - name: conf-dir
           emptyDir: {}
-        - name: cli-dir
+        - name: apisix-lib-dir
           emptyDir: {}
         - name: logs-dir
           emptyDir: {}

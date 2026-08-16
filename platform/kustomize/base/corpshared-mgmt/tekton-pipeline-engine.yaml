@@ -35502,6 +35502,1619 @@ spec:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 ---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tekton-triggers-admin
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - configmaps
+  - services
+  - events
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - deployments/finalizers
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - triggers.tekton.dev
+  resources:
+  - clustertriggerbindings
+  - clusterinterceptors
+  - interceptors
+  - eventlisteners
+  - triggerbindings
+  - triggertemplates
+  - triggers
+  - eventlisteners/finalizers
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - triggers.tekton.dev
+  resources:
+  - clustertriggerbindings/status
+  - clusterinterceptors/status
+  - interceptors/status
+  - eventlisteners/status
+  - triggerbindings/status
+  - triggertemplates/status
+  - triggers/status
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - serving.knative.dev
+  resources:
+  - '*'
+  - '*/status'
+  - '*/finalizers'
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - deletecollection
+  - patch
+  - watch
+- apiGroups:
+  - ''
+  resources:
+  - namespaces
+  verbs:
+  - get
+  resourceNames:
+  - tekton-pipelines
+- apiGroups:
+  - ''
+  resources:
+  - namespaces/finalizers
+  verbs:
+  - update
+  resourceNames:
+  - tekton-pipelines
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tekton-triggers-core-interceptors
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tekton-triggers-core-interceptors-secrets
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+rules:
+- apiGroups:
+  - triggers.tekton.dev
+  resources:
+  - clusterinterceptors
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+- apiGroups:
+  - ''
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  resourceNames:
+  - tekton-triggers-core-interceptors-certs
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tekton-triggers-eventlistener-roles
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+rules:
+- apiGroups:
+  - triggers.tekton.dev
+  resources:
+  - eventlisteners
+  - triggerbindings
+  - interceptors
+  - triggertemplates
+  - triggers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ''
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - tekton.dev
+  resources:
+  - pipelineruns
+  - pipelineresources
+  - taskruns
+  verbs:
+  - create
+- apiGroups:
+  - ''
+  resources:
+  - serviceaccounts
+  verbs:
+  - impersonate
+- apiGroups:
+  - ''
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tekton-triggers-eventlistener-clusterroles
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+rules:
+- apiGroups:
+  - triggers.tekton.dev
+  resources:
+  - clustertriggerbindings
+  - clusterinterceptors
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ''
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tekton-triggers-admin-webhook
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tekton-triggers-core-interceptors
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tekton-triggers-info
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - configmaps
+  resourceNames:
+  - triggers-info
+  verbs:
+  - get
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-triggers-controller
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-triggers-webhook
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-triggers-core-interceptors
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-triggers-controller-admin
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+subjects:
+- kind: ServiceAccount
+  name: tekton-triggers-controller
+  namespace: drr-corpshared-mgmt
+roleRef:
+  kind: ClusterRole
+  name: tekton-triggers-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-triggers-webhook-admin
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+subjects:
+- kind: ServiceAccount
+  name: tekton-triggers-webhook
+  namespace: drr-corpshared-mgmt
+roleRef:
+  kind: ClusterRole
+  name: tekton-triggers-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-triggers-core-interceptors
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+subjects:
+- kind: ServiceAccount
+  name: tekton-triggers-core-interceptors
+  namespace: drr-corpshared-mgmt
+roleRef:
+  kind: ClusterRole
+  name: tekton-triggers-core-interceptors
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-triggers-core-interceptors-secrets
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+subjects:
+- kind: ServiceAccount
+  name: tekton-triggers-core-interceptors
+  namespace: drr-corpshared-mgmt
+roleRef:
+  kind: ClusterRole
+  name: tekton-triggers-core-interceptors-secrets
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tekton-triggers-webhook-admin
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+subjects:
+- kind: ServiceAccount
+  name: tekton-triggers-webhook
+  namespace: drr-corpshared-mgmt
+roleRef:
+  kind: Role
+  name: tekton-triggers-admin-webhook
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tekton-triggers-core-interceptors
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+subjects:
+- kind: ServiceAccount
+  name: tekton-triggers-core-interceptors
+  namespace: drr-corpshared-mgmt
+roleRef:
+  kind: Role
+  name: tekton-triggers-core-interceptors
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tekton-triggers-info
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+subjects:
+- kind: Group
+  name: system:authenticated
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tekton-triggers-info
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: clusterinterceptors.triggers.tekton.dev
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+    triggers.tekton.dev/release: v0.34.0
+    version: v0.34.0
+spec:
+  group: triggers.tekton.dev
+  scope: Cluster
+  names:
+    kind: ClusterInterceptor
+    plural: clusterinterceptors
+    singular: clusterinterceptor
+    shortNames:
+    - ci
+    categories:
+    - tekton
+    - tekton-triggers
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        x-kubernetes-preserve-unknown-fields: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: clustertriggerbindings.triggers.tekton.dev
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+    triggers.tekton.dev/release: v0.34.0
+    version: v0.34.0
+spec:
+  group: triggers.tekton.dev
+  scope: Cluster
+  names:
+    kind: ClusterTriggerBinding
+    plural: clustertriggerbindings
+    singular: clustertriggerbinding
+    shortNames:
+    - ctb
+    categories:
+    - tekton
+    - tekton-triggers
+  versions:
+  - name: v1beta1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        x-kubernetes-preserve-unknown-fields: true
+    subresources:
+      status: {}
+  - name: v1alpha1
+    served: true
+    storage: false
+    schema:
+      openAPIV3Schema:
+        type: object
+        x-kubernetes-preserve-unknown-fields: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: eventlisteners.triggers.tekton.dev
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+    triggers.tekton.dev/release: v0.34.0
+    version: v0.34.0
+spec:
+  group: triggers.tekton.dev
+  scope: Namespaced
+  names:
+    kind: EventListener
+    plural: eventlisteners
+    singular: eventlistener
+    shortNames:
+    - el
+    categories:
+    - tekton
+    - tekton-triggers
+  versions:
+  - name: v1beta1
+    served: true
+    storage: true
+    subresources:
+      status: {}
+    schema:
+      openAPIV3Schema:
+        type: object
+        x-kubernetes-preserve-unknown-fields: true
+    additionalPrinterColumns:
+    - name: Address
+      type: string
+      jsonPath: .status.address.url
+    - name: Available
+      type: string
+      jsonPath: .status.conditions[?(@.type=='Available')].status
+    - name: Reason
+      type: string
+      jsonPath: .status.conditions[?(@.type=='Available')].reason
+    - name: Ready
+      type: string
+      jsonPath: .status.conditions[?(@.type=='Ready')].status
+    - name: Reason
+      type: string
+      jsonPath: .status.conditions[?(@.type=='Ready')].reason
+  - name: v1alpha1
+    served: true
+    storage: false
+    schema:
+      openAPIV3Schema:
+        type: object
+        x-kubernetes-preserve-unknown-fields: true
+    subresources:
+      status: {}
+    additionalPrinterColumns:
+    - name: Address
+      type: string
+      jsonPath: .status.address.url
+    - name: Available
+      type: string
+      jsonPath: .status.conditions[?(@.type=='Available')].status
+    - name: Reason
+      type: string
+      jsonPath: .status.conditions[?(@.type=='Available')].reason
+    - name: Ready
+      type: string
+      jsonPath: .status.conditions[?(@.type=='Ready')].status
+    - name: Reason
+      type: string
+      jsonPath: .status.conditions[?(@.type=='Ready')].reason
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: interceptors.triggers.tekton.dev
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+    triggers.tekton.dev/release: v0.34.0
+    version: v0.34.0
+spec:
+  group: triggers.tekton.dev
+  scope: Namespaced
+  names:
+    kind: Interceptor
+    plural: interceptors
+    singular: interceptor
+    shortNames:
+    - ni
+    categories:
+    - tekton
+    - tekton-triggers
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        x-kubernetes-preserve-unknown-fields: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: triggers.triggers.tekton.dev
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+    triggers.tekton.dev/release: v0.34.0
+    version: v0.34.0
+spec:
+  group: triggers.tekton.dev
+  scope: Namespaced
+  names:
+    kind: Trigger
+    plural: triggers
+    singular: trigger
+    shortNames:
+    - tri
+    categories:
+    - tekton
+    - tekton-triggers
+  versions:
+  - name: v1beta1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        x-kubernetes-preserve-unknown-fields: true
+    subresources:
+      status: {}
+  - name: v1alpha1
+    served: true
+    storage: false
+    schema:
+      openAPIV3Schema:
+        type: object
+        x-kubernetes-preserve-unknown-fields: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: triggerbindings.triggers.tekton.dev
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+    triggers.tekton.dev/release: v0.34.0
+    version: v0.34.0
+spec:
+  group: triggers.tekton.dev
+  scope: Namespaced
+  names:
+    kind: TriggerBinding
+    plural: triggerbindings
+    singular: triggerbinding
+    shortNames:
+    - tb
+    categories:
+    - tekton
+    - tekton-triggers
+  versions:
+  - name: v1beta1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        x-kubernetes-preserve-unknown-fields: true
+    subresources:
+      status: {}
+  - name: v1alpha1
+    served: true
+    storage: false
+    schema:
+      openAPIV3Schema:
+        type: object
+        x-kubernetes-preserve-unknown-fields: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: triggertemplates.triggers.tekton.dev
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+    triggers.tekton.dev/release: v0.34.0
+    version: v0.34.0
+spec:
+  group: triggers.tekton.dev
+  scope: Namespaced
+  names:
+    kind: TriggerTemplate
+    plural: triggertemplates
+    singular: triggertemplate
+    shortNames:
+    - tt
+    categories:
+    - tekton
+    - tekton-triggers
+  versions:
+  - name: v1beta1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        x-kubernetes-preserve-unknown-fields: true
+    subresources:
+      status: {}
+  - name: v1alpha1
+    served: true
+    storage: false
+    schema:
+      openAPIV3Schema:
+        type: object
+        x-kubernetes-preserve-unknown-fields: true
+    subresources:
+      status: {}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: triggers-webhook-certs
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+    triggers.tekton.dev/release: v0.34.0
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validation.webhook.triggers.tekton.dev
+  labels:
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+    triggers.tekton.dev/release: v0.34.0
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: tekton-triggers-webhook
+      namespace: drr-corpshared-mgmt
+  failurePolicy: Fail
+  sideEffects: None
+  name: validation.webhook.triggers.tekton.dev
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: webhook.triggers.tekton.dev
+  labels:
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+    triggers.tekton.dev/release: v0.34.0
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: tekton-triggers-webhook
+      namespace: drr-corpshared-mgmt
+  failurePolicy: Fail
+  sideEffects: None
+  name: webhook.triggers.tekton.dev
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: config.webhook.triggers.tekton.dev
+  labels:
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+    triggers.tekton.dev/release: v0.34.0
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: tekton-triggers-webhook
+      namespace: drr-corpshared-mgmt
+  failurePolicy: Fail
+  sideEffects: None
+  name: config.webhook.triggers.tekton.dev
+  namespaceSelector:
+    matchExpressions:
+    - key: triggers.tekton.dev/release
+      operator: Exists
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tekton-triggers-aggregate-edit
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+    rbac.authorization.k8s.io/aggregate-to-edit: 'true'
+    rbac.authorization.k8s.io/aggregate-to-admin: 'true'
+rules:
+- apiGroups:
+  - triggers.tekton.dev
+  resources:
+  - clustertriggerbindings
+  - clusterinterceptors
+  - eventlisteners
+  - interceptors
+  - triggers
+  - triggerbindings
+  - triggertemplates
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tekton-triggers-aggregate-view
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+    rbac.authorization.k8s.io/aggregate-to-view: 'true'
+rules:
+- apiGroups:
+  - triggers.tekton.dev
+  resources:
+  - clustertriggerbindings
+  - clusterinterceptors
+  - eventlisteners
+  - interceptors
+  - triggers
+  - triggerbindings
+  - triggertemplates
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults-triggers
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+data:
+  _example: '################################
+
+    #                              #
+
+    #    EXAMPLE CONFIGURATION     #
+
+    #                              #
+
+    ################################
+
+
+    # This block is not actually functional configuration,
+
+    # but serves to illustrate the available configuration
+
+    # options and document them in a way that is accessible
+
+    # to users that `kubectl edit` this config map.
+
+    #
+
+    # These sample configuration options may be copied out of
+
+    # this example block and unindented to be in the data block
+
+    # to actually change the configuration.
+
+
+    # default-service-account contains the default service account name
+
+    # to use for TaskRun and PipelineRun, if none is specified.
+
+    default-service-account: "default"
+
+    default-run-as-user: "65532"
+
+    default-run-as-group: "65532"
+
+    default-fs-group: "65532"
+
+    default-run-as-non-root: "true" # allowed values are true and false
+
+    '
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feature-flags-triggers
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+data:
+  enable-api-fields: stable
+  labels-exclusion-pattern: ''
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: triggers-info
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+data:
+  version: v0.34.0
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-leader-election-triggers-controller
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+data:
+  _example: '################################
+
+    #                              #
+
+    #    EXAMPLE CONFIGURATION     #
+
+    #                              #
+
+    ################################
+
+    # This block is not actually functional configuration,
+
+    # but serves to illustrate the available configuration
+
+    # options and document them in a way that is accessible
+
+    # to users that `kubectl edit` this config map.
+
+    #
+
+    # These sample configuration options may be copied out of
+
+    # this example block and unindented to be in the data block
+
+    # to actually change the configuration.
+
+    # lease-duration is how long non-leaders will wait to try to acquire the
+
+    # lock; 15 seconds is the value used by core kubernetes controllers.
+
+    lease-duration: "60s"
+
+    # renew-deadline is how long a leader will try to renew the lease before
+
+    # giving up; 10 seconds is the value used by core kubernetes controllers.
+
+    renew-deadline: "40s"
+
+    # retry-period is how long the leader election client waits between tries of
+
+    # actions; 2 seconds is the value used by core kubernetes controllers.
+
+    retry-period: "10s"
+
+    # buckets is the number of buckets used to partition key space of each
+
+    # Reconciler. If this number is M and the replica number of the controller
+
+    # is N, the N replicas will compete for the M buckets. The owner of a
+
+    # bucket will take care of the reconciling for the keys partitioned into
+
+    # that bucket.
+
+    buckets: "1"
+
+    '
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-leader-election-triggers-webhook
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+data:
+  _example: '################################
+
+    #                              #
+
+    #    EXAMPLE CONFIGURATION     #
+
+    #                              #
+
+    ################################
+
+    # This block is not actually functional configuration,
+
+    # but serves to illustrate the available configuration
+
+    # options and document them in a way that is accessible
+
+    # to users that `kubectl edit` this config map.
+
+    #
+
+    # These sample configuration options may be copied out of
+
+    # this example block and unindented to be in the data block
+
+    # to actually change the configuration.
+
+    # lease-duration is how long non-leaders will wait to try to acquire the
+
+    # lock; 15 seconds is the value used by core kubernetes controllers.
+
+    lease-duration: "60s"
+
+    # renew-deadline is how long a leader will try to renew the lease before
+
+    # giving up; 10 seconds is the value used by core kubernetes controllers.
+
+    renew-deadline: "40s"
+
+    # retry-period is how long the leader election client waits between tries of
+
+    # actions; 2 seconds is the value used by core kubernetes controllers.
+
+    retry-period: "10s"
+
+    # buckets is the number of buckets used to partition key space of each
+
+    # Reconciler. If this number is M and the replica number of the controller
+
+    # is N, the N replicas will compete for the M buckets. The owner of a
+
+    # bucket will take care of the reconciling for the keys partitioned into
+
+    # that bucket.
+
+    buckets: "1"
+
+    '
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-logging-triggers
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+data:
+  zap-logger-config: "{\n  \"level\": \"info\",\n  \"development\": false,\n  \"disableStacktrace\"\
+    : true,\n  \"sampling\": {\n    \"initial\": 100,\n    \"thereafter\": 100\n \
+    \ },\n  \"outputPaths\": [\"stdout\"],\n  \"errorOutputPaths\": [\"stderr\"],\n\
+    \  \"encoding\": \"json\",\n  \"encoderConfig\": {\n    \"timeKey\": \"timestamp\"\
+    ,\n    \"levelKey\": \"severity\",\n    \"nameKey\": \"logger\",\n    \"callerKey\"\
+    : \"caller\",\n    \"messageKey\": \"message\",\n    \"stacktraceKey\": \"stacktrace\"\
+    ,\n    \"lineEnding\": \"\",\n    \"levelEncoder\": \"\",\n    \"timeEncoder\"\
+    : \"iso8601\",\n    \"durationEncoder\": \"\",\n    \"callerEncoder\": \"\"\n\
+    \  }\n}\n"
+  loglevel.controller: info
+  loglevel.webhook: info
+  loglevel.eventlistener: info
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-observability-triggers
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+data:
+  _example: '################################
+
+    #                              #
+
+    #    EXAMPLE CONFIGURATION     #
+
+    #                              #
+
+    ################################
+
+
+    # This block is not actually functional configuration,
+
+    # but serves to illustrate the available configuration
+
+    # options and document them in a way that is accessible
+
+    # to users that `kubectl edit` this config map.
+
+    #
+
+    # These sample configuration options may be copied out of
+
+    # this example block and unindented to be in the data block
+
+    # to actually change the configuration.
+
+
+    # metrics.backend-destination field specifies the system metrics destination.
+
+    # It supports either prometheus (the default) or stackdriver.
+
+    # Note: Using stackdriver will incur additional charges
+
+    metrics.backend-destination: prometheus
+
+
+    # metrics.stackdriver-project-id field specifies the stackdriver project ID. This
+
+    # field is optional. When running on GCE, application default credentials will
+    be
+
+    # used if this field is not provided.
+
+    metrics.stackdriver-project-id: "<your stackdriver project id>"
+
+
+    # metrics.allow-stackdriver-custom-metrics indicates whether it is allowed to
+    send metrics to
+
+    # Stackdriver using "global" resource type and custom metric type if the
+
+    # metrics are not supported by "knative_revision" resource type. Setting this
+
+    # flag to "true" could cause extra Stackdriver charge.
+
+    # If metrics.backend-destination is not Stackdriver, this is ignored.
+
+    metrics.allow-stackdriver-custom-metrics: "false"
+
+    '
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: controller
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/version: v0.34.0
+    app.kubernetes.io/part-of: tekton-triggers
+    triggers.tekton.dev/release: v0.34.0
+    app: tekton-triggers-controller
+    version: v0.34.0
+  name: tekton-triggers-controller
+  namespace: drr-corpshared-mgmt
+spec:
+  ports:
+  - name: http-metrics
+    port: 9000
+    protocol: TCP
+    targetPort: 9000
+  selector:
+    app.kubernetes.io/name: controller
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-triggers-controller
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: controller
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/version: v0.34.0
+    app.kubernetes.io/part-of: tekton-triggers
+    triggers.tekton.dev/release: v0.34.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: controller
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/instance: default
+      app.kubernetes.io/part-of: tekton-triggers
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: controller
+        app.kubernetes.io/component: controller
+        app.kubernetes.io/instance: default
+        app.kubernetes.io/version: v0.34.0
+        app.kubernetes.io/part-of: tekton-triggers
+        app: tekton-triggers-controller
+        triggers.tekton.dev/release: v0.34.0
+        version: v0.34.0
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/os
+                operator: NotIn
+                values:
+                - windows
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: controller
+                  app.kubernetes.io/component: controller
+                  app.kubernetes.io/instance: default
+                  app.kubernetes.io/part-of: tekton-triggers
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      serviceAccountName: tekton-triggers-controller
+      containers:
+      - name: tekton-triggers-controller
+        image: ghcr.io/tektoncd/triggers/controller-f656ca31de179ab913fa76abc255c315:v0.34.0@sha256:472ed3311309a9ac066afd8be2ae435cb6cc5bc73240a5f82a9b04ee5c6f77eb
+        args:
+        - -logtostderr
+        - -stderrthreshold
+        - INFO
+        - -el-image
+        - ghcr.io/tektoncd/triggers/eventlistenersink-7ad1faa98cddbcb0c24990303b220bb8:v0.34.0@sha256:6af463bd78b8ce864cc89f961a4c604db297c1a5c375dd038519483b3f85541d
+        - -el-port
+        - '8080'
+        - -el-security-context=true
+        - -el-read-only-root-filesystem=true
+        - -el-events
+        - disable
+        - -el-readtimeout
+        - '5'
+        - -el-writetimeout
+        - '40'
+        - -el-idletimeout
+        - '120'
+        - -el-timeouthandler
+        - '30'
+        - -el-httpclient-readtimeout
+        - '30'
+        - -el-httpclient-keep-alive
+        - '30'
+        - -el-httpclient-tlshandshaketimeout
+        - '10'
+        - -el-httpclient-responseheadertimeout
+        - '10'
+        - -el-httpclient-expectcontinuetimeout
+        - '1'
+        - -period-seconds
+        - '10'
+        - -failure-threshold
+        - '3'
+        env:
+        - name: SYSTEM_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONFIG_LOGGING_NAME
+          value: config-logging-triggers
+        - name: CONFIG_OBSERVABILITY_NAME
+          value: config-observability-triggers
+        - name: CONFIG_DEFAULTS_NAME
+          value: config-defaults-triggers
+        - name: METRICS_DOMAIN
+          value: tekton.dev/triggers
+        - name: METRICS_PROMETHEUS_PORT
+          value: '9000'
+        - name: CONFIG_LEADERELECTION_NAME
+          value: config-leader-election-triggers-controllers
+        - name: KUBERNETES_MIN_VERSION
+          value: v1.28.0
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+          runAsUser: 65532
+          runAsGroup: 65532
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tekton-triggers-webhook
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: webhook
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/version: v0.34.0
+    app.kubernetes.io/part-of: tekton-triggers
+    app: tekton-triggers-webhook
+    version: v0.34.0
+    triggers.tekton.dev/release: v0.34.0
+spec:
+  ports:
+  - name: https-webhook
+    port: 443
+    targetPort: 8443
+  selector:
+    app.kubernetes.io/name: webhook
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-triggers-webhook
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: webhook
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/version: v0.34.0
+    app.kubernetes.io/part-of: tekton-triggers
+    triggers.tekton.dev/release: v0.34.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: webhook
+      app.kubernetes.io/component: webhook
+      app.kubernetes.io/instance: default
+      app.kubernetes.io/part-of: tekton-triggers
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: webhook
+        app.kubernetes.io/component: webhook
+        app.kubernetes.io/instance: default
+        app.kubernetes.io/version: v0.34.0
+        app.kubernetes.io/part-of: tekton-triggers
+        app: tekton-triggers-webhook
+        triggers.tekton.dev/release: v0.34.0
+        version: v0.34.0
+    spec:
+      serviceAccountName: tekton-triggers-webhook
+      containers:
+      - name: webhook
+        image: ghcr.io/tektoncd/triggers/webhook-dd1edc925ee1772a9f76e2c1bc291ef6:v0.34.0@sha256:71ef9c830240870c76496f1858abc350d08be93365fc8bea17853aa94f64adcd
+        env:
+        - name: SYSTEM_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONFIG_LOGGING_NAME
+          value: config-logging-triggers
+        - name: WEBHOOK_SERVICE_NAME
+          value: tekton-triggers-webhook
+        - name: WEBHOOK_SECRET_NAME
+          value: triggers-webhook-certs
+        - name: METRICS_DOMAIN
+          value: tekton.dev/triggers
+        - name: CONFIG_LEADERELECTION_NAME
+          value: config-leader-election-triggers-webhook
+        - name: KUBERNETES_MIN_VERSION
+          value: v1.28.0
+        ports:
+        - name: metrics
+          containerPort: 9000
+        - name: profiling
+          containerPort: 8008
+        - name: https-webhook
+          containerPort: 8443
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsUser: 65532
+          runAsGroup: 65532
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tekton-triggers-core-interceptors-certs
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: core-interceptors
+    app.kubernetes.io/component: interceptors
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+    triggers.tekton.dev/release: v0.34.0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-triggers-core-interceptors
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: core-interceptors
+    app.kubernetes.io/component: interceptors
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/version: v0.34.0
+    app.kubernetes.io/part-of: tekton-triggers
+    triggers.tekton.dev/release: v0.34.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: core-interceptors
+      app.kubernetes.io/component: interceptors
+      app.kubernetes.io/instance: default
+      app.kubernetes.io/part-of: tekton-triggers
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: core-interceptors
+        app.kubernetes.io/component: interceptors
+        app.kubernetes.io/instance: default
+        app.kubernetes.io/version: v0.34.0
+        app.kubernetes.io/part-of: tekton-triggers
+        app: tekton-triggers-core-interceptors
+        triggers.tekton.dev/release: v0.34.0
+        version: v0.34.0
+    spec:
+      serviceAccountName: tekton-triggers-core-interceptors
+      containers:
+      - name: tekton-triggers-core-interceptors
+        image: ghcr.io/tektoncd/triggers/interceptors-3176d6a3f314c3655b30bfd36e421dd5:v0.34.0@sha256:b7858bddaa29c376c1f79f87c96ccdf9588f320a547950638f51e0c84303fd69
+        ports:
+        - containerPort: 8443
+        args:
+        - -logtostderr
+        - -stderrthreshold
+        - INFO
+        env:
+        - name: SYSTEM_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CONFIG_LOGGING_NAME
+          value: config-logging-triggers
+        - name: CONFIG_OBSERVABILITY_NAME
+          value: config-observability-triggers
+        - name: METRICS_DOMAIN
+          value: tekton.dev/triggers
+        - name: INTERCEPTOR_TLS_SVC_NAME
+          value: tekton-triggers-core-interceptors
+        - name: INTERCEPTOR_TLS_SECRET_NAME
+          value: tekton-triggers-core-interceptors-certs
+        - name: KUBERNETES_MIN_VERSION
+          value: v1.28.0
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8443
+            scheme: HTTPS
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsUser: 65532
+          runAsGroup: 65532
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: tekton-triggers-core-interceptors
+    app.kubernetes.io/component: interceptors
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/version: v0.34.0
+    app.kubernetes.io/part-of: tekton-triggers
+    triggers.tekton.dev/release: v0.34.0
+    app: tekton-triggers-core-interceptors
+    version: v0.34.0
+  name: tekton-triggers-core-interceptors
+  namespace: drr-corpshared-mgmt
+spec:
+  ports:
+  - name: https
+    port: 8443
+  selector:
+    app.kubernetes.io/name: core-interceptors
+    app.kubernetes.io/component: interceptors
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-triggers
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterInterceptor
+metadata:
+  name: cel
+  labels:
+    server/type: https
+spec:
+  clientConfig:
+    service:
+      name: tekton-triggers-core-interceptors
+      namespace: tekton-pipelines
+      path: cel
+      port: 8443
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterInterceptor
+metadata:
+  name: bitbucket
+  labels:
+    server/type: https
+spec:
+  clientConfig:
+    service:
+      name: tekton-triggers-core-interceptors
+      namespace: tekton-pipelines
+      path: bitbucket
+      port: 8443
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterInterceptor
+metadata:
+  name: slack
+  labels:
+    server/type: https
+spec:
+  clientConfig:
+    service:
+      name: tekton-triggers-core-interceptors
+      namespace: tekton-pipelines
+      path: slack
+      port: 8443
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterInterceptor
+metadata:
+  name: github
+  labels:
+    server/type: https
+spec:
+  clientConfig:
+    service:
+      name: tekton-triggers-core-interceptors
+      namespace: tekton-pipelines
+      path: github
+      port: 8443
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterInterceptor
+metadata:
+  name: gitlab
+  labels:
+    server/type: https
+spec:
+  clientConfig:
+    service:
+      name: tekton-triggers-core-interceptors
+      namespace: tekton-pipelines
+      path: gitlab
+      port: 8443
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:

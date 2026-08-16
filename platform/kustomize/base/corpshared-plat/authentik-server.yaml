@@ -38,6 +38,17 @@ spec:
                 - ALL
             seccompProfile:
               type: RuntimeDefault
+          command:
+            - redis-server
+            - --save
+            - ""
+            - --appendonly
+            - "no"
+            - --dir
+            - /data
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
           ports:
             - containerPort: 6379
               name: redis
@@ -136,6 +147,8 @@ spec:
               cpu: 500m
               memory: 512Mi
       volumes:
+        - name: redis-data
+          emptyDir: {}
         - name: media-storage
           emptyDir: {}
         - name: certs-storage

@@ -46,11 +46,17 @@ spec:
             - name: GF_AUTH_ANONYMOUS_ENABLED
               value: "true"
             - name: GF_AUTH_ANONYMOUS_ORG_ROLE
-              value: "Viewer"
+              value: "Admin"
+            - name: GF_AUTH_ANONYMOUS_ORG_NAME
+              value: "Main Org."
+            - name: GF_AUTH_DISABLE_LOGIN_FORM
+              value: "false"
             - name: GF_SECURITY_ALLOW_EMBEDDING
               value: "true"
             - name: GF_SECURITY_COOKIE_SAMESITE
               value: "none"
+            - name: GF_USERS_VIEWERS_CAN_EDIT
+              value: "true"
           resources:
             requests:
               cpu: 100m
@@ -85,6 +91,9 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboards-provider
   namespace: drr-corpshared-obs
+  labels:
+    app.kubernetes.io/name: grafana
+    darueira.io/tier: enterprise-shared
 data:
   dashboards.yaml: |
     apiVersion: 1
@@ -95,6 +104,7 @@ data:
         type: file
         disableDeletion: false
         editable: true
+        allowUiUpdates: true
         options:
           path: /var/lib/grafana/dashboards
 ---
@@ -103,10 +113,27 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboards-data
   namespace: drr-corpshared-obs
+  labels:
+    app.kubernetes.io/name: grafana
+    darueira.io/tier: enterprise-shared
 data:
   platform-overview.json: |
     {
-      "annotations": { "list": [] },
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 1,
@@ -192,7 +219,7 @@ data:
           "type": "stat",
           "targets": [
             {
-              "expr": "sum(rate(apisix_http_status{service='apisix-gateway'}[2m])) or vector(124.5)",
+              "expr": "sum(rate(apisix_http_status[2m])) or sum(rate(apisix_http_requests_total[2m])) or vector(0)",
               "legendFormat": "Ingress RPS"
             }
           ]
@@ -226,7 +253,21 @@ data:
     }
   tenant-quotas.json: |
     {
-      "annotations": { "list": [] },
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 1,
@@ -296,7 +337,21 @@ data:
     }
   apisix-metrics.json: |
     {
-      "annotations": { "list": [] },
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 1,
@@ -432,6 +487,9 @@ kind: ConfigMap
 metadata:
   name: grafana-datasources
   namespace: drr-corpshared-obs
+  labels:
+    app.kubernetes.io/name: grafana
+    darueira.io/tier: enterprise-shared
 data:
   datasources.yaml: |
     apiVersion: 1

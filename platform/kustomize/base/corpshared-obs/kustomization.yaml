@@ -12,3 +12,4 @@ resources:
   - jaeger.yaml
   - opensearch.yaml
   - opensearch-dashboards.yaml
+  - fluent-bit.yaml

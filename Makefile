@@ -210,7 +210,7 @@ proxy-80: ## Start APISIX Ingress Reverse Proxy on default Port 80 (requires sud
 	@echo -e "${CYAN}  - Backstage Portal:      http://backstage.darueira-corpshared.127.0.0.1.nip.io${NC}"
 	@echo -e "${CYAN}  - ArgoCD Console:        http://argocd.darueira-corpshared.127.0.0.1.nip.io${NC}"
 	@echo -e "${CYAN}================================================================================${NC}"
-	sudo $(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway 80:80
+	sudo $(KUBECTL) --kubeconfig $(HOME)/.kube/config port-forward -n drr-corpshared-plat svc/apisix-gateway 80:80
 
 .PHONY: clean
 clean: ## Clean build artifacts and temporary files

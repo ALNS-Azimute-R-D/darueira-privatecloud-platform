@@ -249,6 +249,21 @@ data:
             "jaeger.drr-corpshared-obs.svc.cluster.local:16686": 1
           type: roundrobin
 
+      # APISIX Dashboard (Gateway Admin Console)
+      - id: route-host-apisix-dashboard
+        uri: /*
+        hosts:
+          - "apisix.darueira-corpshared.127.0.0.1.nip.io"
+          - "apisix.darueira-corpshared.192.168.178.84.nip.io"
+          - "apisix.darueira-corpshared.127.0.0.1.sslip.io"
+          - "apisix.darueira-corpshared.local"
+          - "gateway.darueira-corpshared.127.0.0.1.nip.io"
+          - "gateway.darueira-corpshared.local"
+        upstream:
+          nodes:
+            "apisix-dashboard.drr-corpshared-plat.svc.cluster.local:9000": 1
+          type: roundrobin
+
       # OpenFGA Playground UI
       - id: route-host-openfga
         uri: /*

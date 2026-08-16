@@ -17,4 +17,5 @@ resources:
   - iam-authz-svc.yaml
   - tenant-svc.yaml
   - apisix-gateway.yaml
+  - apisix-dashboard.yaml
   - tls-secret.yaml

@@ -185,6 +185,7 @@ make proxy
 
 | Service | Component | Clean HTTPS URL (Port 443) | Clean HTTP URL (Port 80) | Default Credentials |
 |---|---|---|---|---|
+| **API Gateway** | Apache APISIX Dashboard | [https://apisix.darueira-corpshared.127.0.0.1.nip.io](https://apisix.darueira-corpshared.127.0.0.1.nip.io) | [http://apisix...](http://apisix.darueira-corpshared.127.0.0.1.nip.io) | **User**: `admin`<br>**Password**: `admin` |
 | **Vault / Secrets** | OpenBao Master | [https://vault.darueira-corpshared.127.0.0.1.nip.io/ui/](https://vault.darueira-corpshared.127.0.0.1.nip.io/ui/) | [http://vault...](http://vault.darueira-corpshared.127.0.0.1.nip.io/ui/) | **Method**: `Token`<br>**Token**: `darueira-root-token` |
 | **Identity Provider** | Keycloak Master | [https://keycloak.darueira-corpshared.127.0.0.1.nip.io/admin/](https://keycloak.darueira-corpshared.127.0.0.1.nip.io/admin/) | [http://keycloak...](http://keycloak.darueira-corpshared.127.0.0.1.nip.io/admin/) | **User**: `admin`<br>**Password**: `admin123-dev` |
 | **Enterprise SSO** | Authentik Server | [https://authentik.darueira-corpshared.127.0.0.1.nip.io](https://authentik.darueira-corpshared.127.0.0.1.nip.io) | [http://authentik...](http://authentik.darueira-corpshared.127.0.0.1.nip.io) | **User**: `akadmin`<br>**Password**: `darueira-admin123` |

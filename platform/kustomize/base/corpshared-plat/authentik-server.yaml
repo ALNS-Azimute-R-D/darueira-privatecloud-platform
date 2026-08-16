@@ -60,7 +60,7 @@ spec:
               cpu: 200m
               memory: 128Mi
         - name: server
-          image: beryju/authentik:2024.4.2
+          image: ghcr.io/goauthentik/server:2026.5.6
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -106,7 +106,7 @@ spec:
               cpu: 1000m
               memory: 1024Mi
         - name: worker
-          image: beryju/authentik:2024.4.2
+          image: ghcr.io/goauthentik/server:2026.5.6
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

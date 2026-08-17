@@ -1,3 +1,835 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backstage-app-config
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: backstage
+    darueira.io/tier: enterprise-shared
+data:
+  app-config.yaml: |
+    app:
+      title: Darueira Developer Portal
+      baseUrl: https://backstage.darueira-corpshared.127.0.0.1.nip.io
+
+    organization:
+      name: Darueira Private Cloud Platform
+
+    backend:
+      baseUrl: https://backstage.darueira-corpshared.127.0.0.1.nip.io
+      listen:
+        port: 7007
+        host: 0.0.0.0
+      cors:
+        origin: https://backstage.darueira-corpshared.127.0.0.1.nip.io
+        methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
+        credentials: true
+      auth:
+        keys:
+          - secret: "darueira-backstage-jwt-secret-key-2026-very-secure"
+      database:
+        client: pg
+        connection:
+          host: central-postgres.drr-corpshared-plat.svc.cluster.local
+          port: 5432
+          user: drr_admin
+          password: change-me-in-openbao
+          database: drr_backstage_db
+          ssl: false
+        ensureSchemaExists: true
+
+    dynamicPlugins:
+      rootDirectory: 'dynamic-plugins-root'
+
+    integrations:
+      github:
+        - host: git.darueira-corpshared.127.0.0.1.nip.io
+          apiBaseUrl: https://git.darueira-corpshared.127.0.0.1.nip.io/api/v1
+      gitlab:
+        - host: gitlab.com
+
+    proxy:
+      '/sonarqube':
+        target: 'http://127.0.0.1:9000'
+      '/jenkins/api':
+        target: 'http://127.0.0.1:8080'
+      '/jira/api':
+        target: 'https://jira.example.com'
+      '/acr/api':
+        target: 'https://example.azurecr.io'
+      '/jfrog-artifactory/api':
+        target: 'https://artifactory.example.com'
+      '/dynatrace':
+        target: 'https://dynatrace.example.com'
+      '/nexus-repository-manager':
+        target: 'http://nexus-oss.drr-corpshared-plat.svc.cluster.local:8081'
+
+    argocd:
+      appLocatorMethods:
+        - type: 'config'
+          instances:
+            - name: darueira-argocd
+              url: https://argocd.darueira-corpshared.127.0.0.1.nip.io
+
+    kubernetes:
+      serviceLocatorMethod:
+        type: 'multiTenant'
+      clusterLocatorMethods:
+        - type: 'config'
+          clusters:
+            - url: https://kubernetes.default.svc
+              name: local-cluster
+              authProvider: 'serviceAccount'
+              skipTLSVerify: true
+
+    techdocs:
+      builder: 'local'
+      generator:
+        runIn: 'local'
+      publisher:
+        type: 'local'
+
+    catalog:
+      rules:
+        - allow: [Component, System, API, Resource, Location, Template, Group, User]
+      locations:
+        - type: file
+          target: /opt/catalog-entities/all.yaml
+          rules:
+            - allow: [Component, System, API, Resource, Location, Template, Group, User]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backstage-catalog-entities
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: backstage
+    darueira.io/tier: enterprise-shared
+data:
+  all.yaml: |
+    apiVersion: backstage.io/v1alpha1
+    kind: System
+    metadata:
+      name: darueira-plat
+      title: Corporate Platform Services
+      description: Central identity, relational & document persistence, messaging brokers,
+        and ingress gateway.
+    spec:
+      owner: group:platform-core-team
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: System
+    metadata:
+      name: darueira-secr
+      title: Corporate Security & PKI
+      description: Enterprise secret management (OpenBao) and local X.509 Certificate
+        Authority (Step-CA).
+    spec:
+      owner: group:security-team
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: System
+    metadata:
+      name: darueira-obs
+      title: Corporate Observability & Telemetry
+      description: OpenTelemetry Collector, Prometheus, Grafana, OpenSearch logs, and
+        Jaeger APM tracing.
+    spec:
+      owner: group:sre-team
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: System
+    metadata:
+      name: darueira-mgmt
+      title: Corporate Management & CI/CD
+      description: ArgoCD GitOps engine, Tekton Pipelines, Internal Developer Portal (Backstage),
+        and Environment Orchestrator.
+    spec:
+      owner: group:devops-team
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: System
+    metadata:
+      name: tenant-acme
+      title: Tenant ACME Corp Services
+      description: Isolated tenant plane hosting ACME workloads, dedicated databases,
+        and tenant IAM.
+    spec:
+      owner: group:acme-tenant-team
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Component
+    metadata:
+      name: keycloak-central
+      title: Platform Central Keycloak
+      description: Central IAM and OpenID Connect / OAuth2 server for platform administrators
+        and upstream federation.
+      tags:
+      - security
+      - iam
+      - oidc
+      - oauth2
+      - keycloak
+      links:
+      - url: https://keycloak.darueira-corpshared.127.0.0.1.nip.io
+        title: Keycloak Admin Console
+        icon: dashboard
+    spec:
+      type: service
+      lifecycle: production
+      owner: group:security-team
+      system: darueira-plat
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Component
+    metadata:
+      name: authentik-directory
+      title: Authentik Enterprise Directory
+      description: Master corporate LDAP and identity directory source of truth for employees
+        and external partners.
+      tags:
+      - security
+      - ldap
+      - directory
+      - sso
+      - authentik
+      links:
+      - url: https://authentik.darueira-corpshared.127.0.0.1.nip.io
+        title: Authentik Admin Interface
+        icon: dashboard
+    spec:
+      type: service
+      lifecycle: production
+      owner: group:security-team
+      system: darueira-plat
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Component
+    metadata:
+      name: forgejo-git
+      title: Forgejo Git Server
+      description: Lightweight self-hosted Git repository server providing local CI/CD
+        autonomy, pull requests, and webhooks.
+      tags:
+      - git
+      - scm
+      - devops
+      - forgejo
+      - gitea
+      links:
+      - url: https://git.darueira-corpshared.127.0.0.1.nip.io
+        title: Forgejo Web UI
+        icon: web
+    spec:
+      type: service
+      lifecycle: production
+      owner: group:devops-team
+      system: darueira-plat
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Component
+    metadata:
+      name: stalwart-mailserver
+      title: Stalwart Enterprise Mail Server
+      description: High-performance all-in-one mail server supporting JMAP, IMAP4, SMTP,
+        and Web Admin Console.
+      tags:
+      - email
+      - smtp
+      - imap
+      - jmap
+      - stalwart
+      links:
+      - url: https://mail.darueira-corpshared.127.0.0.1.nip.io
+        title: Stalwart Web Management
+        icon: email
+    spec:
+      type: service
+      lifecycle: production
+      owner: group:platform-core-team
+      system: darueira-plat
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Component
+    metadata:
+      name: openfga-rebac
+      title: OpenFGA ReBAC Authorization
+      description: Relationship-Based Access Control (ReBAC) engine implementing Zanzibar
+        fine-grained authorization.
+      tags:
+      - security
+      - authz
+      - rebac
+      - openfga
+      - zanzibar
+    spec:
+      type: service
+      lifecycle: production
+      owner: group:security-team
+      system: darueira-plat
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Component
+    metadata:
+      name: apisix-gateway
+      title: Apache APISIX Edge Gateway
+      description: High-performance dynamic API Gateway and Ingress routing traffic across
+        platform planes and tenants.
+      tags:
+      - networking
+      - gateway
+      - ingress
+      - apisix
+      - reverse-proxy
+      links:
+      - url: https://apisix.darueira-corpshared.127.0.0.1.nip.io
+        title: APISIX Dashboard
+        icon: dashboard
+    spec:
+      type: service
+      lifecycle: production
+      owner: group:sre-team
+      system: darueira-plat
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Component
+    metadata:
+      name: nexus-oss
+      title: Sonatype Nexus OSS
+      description: Universal artifact repository manager for Maven, npm, Go modules, and
+        Docker containers.
+      tags:
+      - artifacts
+      - maven
+      - docker
+      - registry
+      - nexus
+      links:
+      - url: https://nexus.darueira-corpshared.127.0.0.1.nip.io
+        title: Nexus Repository Manager
+        icon: dashboard
+    spec:
+      type: service
+      lifecycle: production
+      owner: group:devops-team
+      system: darueira-plat
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Component
+    metadata:
+      name: argocd-gitops
+      title: ArgoCD GitOps Engine
+      description: Declarative GitOps continuous delivery controller synchronizing K8s
+        state with Git repositories.
+      tags:
+      - gitops
+      - cd
+      - kubernetes
+      - argocd
+      links:
+      - url: https://argocd.darueira-corpshared.127.0.0.1.nip.io
+        title: ArgoCD Dashboard
+        icon: dashboard
+    spec:
+      type: service
+      lifecycle: production
+      owner: group:devops-team
+      system: darueira-mgmt
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Component
+    metadata:
+      name: tekton-pipelines
+      title: Tekton CI/CD Pipeline Engine
+      description: Kubernetes-native CI/CD pipeline automation framework with event listeners
+        and pipeline runs.
+      tags:
+      - ci
+      - pipelines
+      - tekton
+      - kubernetes
+      links:
+      - url: https://tekton.darueira-corpshared.127.0.0.1.nip.io
+        title: Tekton Dashboard
+        icon: dashboard
+    spec:
+      type: service
+      lifecycle: production
+      owner: group:devops-team
+      system: darueira-mgmt
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Component
+    metadata:
+      name: grafana-telemetry
+      title: Grafana Observability Portal
+      description: Central metrics, dashboards, and tracing visualization dashboard.
+      tags:
+      - observability
+      - monitoring
+      - metrics
+      - grafana
+      links:
+      - url: https://grafana.darueira-corpshared.127.0.0.1.nip.io
+        title: Grafana UI
+        icon: dashboard
+    spec:
+      type: service
+      lifecycle: production
+      owner: group:sre-team
+      system: darueira-obs
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Component
+    metadata:
+      name: opensearch-analytics
+      title: OpenSearch Log Analytics
+      description: Distributed log search, index management, and log exploration UI.
+      tags:
+      - observability
+      - logging
+      - opensearch
+      links:
+      - url: https://opensearch.darueira-corpshared.127.0.0.1.nip.io
+        title: OpenSearch Dashboards
+        icon: dashboard
+    spec:
+      type: service
+      lifecycle: production
+      owner: group:sre-team
+      system: darueira-obs
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Component
+    metadata:
+      name: jaeger-tracing
+      title: Jaeger Distributed Tracing
+      description: End-to-end distributed APM transaction tracing and latency bottleneck
+        analysis.
+      tags:
+      - observability
+      - tracing
+      - jaeger
+      - apm
+      links:
+      - url: https://jaeger.darueira-corpshared.127.0.0.1.nip.io
+        title: Jaeger UI
+        icon: dashboard
+    spec:
+      type: service
+      lifecycle: production
+      owner: group:sre-team
+      system: darueira-obs
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Component
+    metadata:
+      name: tenant-acme-keycloak
+      title: ACME Corp Tenant Keycloak
+      description: Dedicated, isolated IAM Keycloak instance for ACME business applications
+        and tenant users.
+      tags:
+      - tenant
+      - iam
+      - keycloak
+      - acme
+      links:
+      - url: https://keycloak.darueira-tnt-acme.127.0.0.1.nip.io
+        title: ACME Keycloak Realm Console
+        icon: dashboard
+    spec:
+      type: service
+      lifecycle: production
+      owner: group:acme-tenant-team
+      system: tenant-acme
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Resource
+    metadata:
+      name: central-postgres
+      title: Central PostgreSQL 17 RDBMS
+      description: Centralized PostgreSQL cluster hosting drr_keycloak_db, drr_authentik_db,
+        drr_git_db, drr_backstage_db, and drr_stalwart_mailserver_db.
+      tags:
+      - database
+      - postgresql
+      - rdbms
+      - sql
+    spec:
+      type: database
+      owner: group:platform-core-team
+      system: darueira-plat
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Resource
+    metadata:
+      name: central-minio
+      title: Central MinIO S3 Object Storage
+      description: S3-compatible high-performance object storage for backups, artifacts,
+        and TechDocs bundles.
+      tags:
+      - storage
+      - s3
+      - minio
+      - blobs
+      links:
+      - url: https://s3-console.darueira-corpshared.127.0.0.1.nip.io
+        title: MinIO Console
+        icon: dashboard
+    spec:
+      type: storage
+      owner: group:platform-core-team
+      system: darueira-plat
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Resource
+    metadata:
+      name: message-broker-kafka
+      title: Redpanda Kafka Streaming & Kafbat UI
+      description: High-throughput event streaming broker with integrated Kafbat UI management
+        console.
+      tags:
+      - messaging
+      - kafka
+      - redpanda
+      - streaming
+      - kafbat
+      links:
+      - url: https://kafka.darueira-corpshared.127.0.0.1.nip.io
+        title: Kafbat UI Console
+        icon: dashboard
+    spec:
+      type: queue
+      owner: group:platform-core-team
+      system: darueira-plat
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Resource
+    metadata:
+      name: message-broker-rabbitmq
+      title: RabbitMQ 4 Message Broker & Management
+      description: Enterprise AMQP message broker with management console and persistent
+        queue storage.
+      tags:
+      - messaging
+      - rabbitmq
+      - amqp
+      - queue
+      links:
+      - url: https://rabbitmq.darueira-corpshared.127.0.0.1.nip.io
+        title: RabbitMQ Management
+        icon: dashboard
+    spec:
+      type: queue
+      owner: group:platform-core-team
+      system: darueira-plat
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Resource
+    metadata:
+      name: openbao-vault
+      title: OpenBao Enterprise Secrets Vault
+      description: Hardware-grade secret engine, dynamic database credential leasing,
+        and PKI cert issuer.
+      tags:
+      - security
+      - secrets
+      - vault
+      - openbao
+      links:
+      - url: https://vault.darueira-corpshared.127.0.0.1.nip.io
+        title: OpenBao UI
+        icon: lock
+    spec:
+      type: vault
+      owner: group:security-team
+      system: darueira-secr
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Resource
+    metadata:
+      name: tenant-acme-postgres
+      title: ACME Tenant PostgreSQL
+      description: Dedicated PostgreSQL instance hosting drr_tnt_keycloak_db and drr_tnt_bizapps_db
+        (with schemas schm01..schm10).
+      tags:
+      - tenant
+      - database
+      - postgresql
+      - acme
+    spec:
+      type: database
+      owner: group:acme-tenant-team
+      system: tenant-acme
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Resource
+    metadata:
+      name: tenant-acme-mongodb
+      title: ACME Tenant MongoDB 7
+      description: Dedicated document database instance hosting tenant_doc_db collections.
+      tags:
+      - tenant
+      - database
+      - mongodb
+      - nosql
+      - acme
+    spec:
+      type: database
+      owner: group:acme-tenant-team
+      system: tenant-acme
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Group
+    metadata:
+      name: platform-core-team
+      title: Darueira Platform Core Team
+      description: Engineers responsible for base platform infrastructure, compute, storage,
+        and networking.
+    spec:
+      type: team
+      children: []
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Group
+    metadata:
+      name: security-team
+      title: InfoSec & IAM Team
+      description: Engineers responsible for Zero Trust security, OpenFGA ReBAC, Authentik,
+        Keycloak, and OpenBao.
+    spec:
+      type: team
+      children: []
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Group
+    metadata:
+      name: devops-team
+      title: DevOps & Platform Engineering
+      description: Engineers responsible for CI/CD pipelines, GitOps, Backstage Developer
+        Experience, and Nexus.
+    spec:
+      type: team
+      children: []
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Group
+    metadata:
+      name: sre-team
+      title: SRE & Observability Team
+      description: Engineers maintaining monitoring, APISIX edge routing, OpenSearch,
+        Prometheus, and Grafana.
+    spec:
+      type: team
+      children: []
+    ---
+    apiVersion: backstage.io/v1alpha1
+    kind: Group
+    metadata:
+      name: acme-tenant-team
+      title: ACME Corp Engineering Team
+      description: Tenant developers and operators responsible for ACME business applications.
+    spec:
+      type: team
+      children: []
+    ---
+    apiVersion: scaffolder.backstage.io/v1beta3
+    kind: Template
+    metadata:
+      name: spring-boot-kotlin-service
+      title: Spring Boot 3 + Kotlin Microservice
+      description: Scaffolds an enterprise Spring Boot microservice with Kotlin, Gradle,
+        OpenFGA ReBAC SDK, Tekton CI/CD pipeline, and ArgoCD GitOps deployment.
+      tags:
+      - recommended
+      - spring-boot
+      - kotlin
+      - java
+      - backend
+      - openfga
+    spec:
+      owner: group:platform-core-team
+      type: service
+      parameters:
+      - title: Service Configuration
+        required:
+        - component_id
+        - description
+        - owner
+        properties:
+          component_id:
+            title: Service Name
+            type: string
+            description: Unique name for the service (e.g. payment-service, order-processor)
+            ui:autofocus: true
+          description:
+            title: Description
+            type: string
+            description: Brief summary of the service's purpose
+          owner:
+            title: Owner
+            type: string
+            description: Team responsible for maintaining this component
+            ui:field: OwnerPicker
+            ui:options:
+              allowedKinds:
+              - Group
+      - title: Architecture & Infrastructure Options
+        properties:
+          database:
+            title: Relational Database
+            type: string
+            description: Target PostgreSQL database for persistence
+            enum:
+            - Central PostgreSQL (Shared Platform)
+            - Tenant Dedicated PostgreSQL (ACME Corp)
+            - None
+            default: Tenant Dedicated PostgreSQL (ACME Corp)
+          messaging:
+            title: Message Broker Integration
+            type: string
+            description: Event messaging broker integration
+            enum:
+            - Kafka / Redpanda
+            - RabbitMQ
+            - None
+            default: Kafka / Redpanda
+      steps:
+      - id: log-scaffolding
+        name: Scaffolding Service
+        action: debug:log
+        input:
+          message: 'Scaffolding Spring Boot Kotlin microservice: ${{ parameters.component_id
+            }}'
+      output:
+        links:
+        - title: Repository
+          url: https://git.darueira-corpshared.127.0.0.1.nip.io
+    ---
+    apiVersion: scaffolder.backstage.io/v1beta3
+    kind: Template
+    metadata:
+      name: go-microservice-template
+      title: Go / Gin Ultra-Fast Microservice
+      description: Scaffolds a high-throughput Go service using Gin, OpenTelemetry tracing,
+        Prometheus metrics endpoint, Docker multi-stage build, and APISIX routing.
+      tags:
+      - golang
+      - gin
+      - backend
+      - fast
+      - api
+    spec:
+      owner: group:platform-core-team
+      type: service
+      parameters:
+      - title: Service Details
+        required:
+        - component_id
+        - owner
+        properties:
+          component_id:
+            title: Service Name
+            type: string
+            description: Name of the Go microservice
+          owner:
+            title: Owner
+            type: string
+            ui:field: OwnerPicker
+      steps:
+      - id: log-scaffolding
+        name: Scaffolding Go Service
+        action: debug:log
+        input:
+          message: 'Scaffolding Go microservice: ${{ parameters.component_id }}'
+      output:
+        links:
+        - title: Repository
+          url: https://git.darueira-corpshared.127.0.0.1.nip.io
+    ---
+    apiVersion: scaffolder.backstage.io/v1beta3
+    kind: Template
+    metadata:
+      name: react-microfrontend-template
+      title: React 19 + TypeScript Microfrontend
+      description: Scaffolds a modern web microfrontend with React 19, TypeScript, Vite,
+        Material UI, Leaflet.js maps, and Keycloak OIDC Authentication.
+      tags:
+      - frontend
+      - react
+      - typescript
+      - vite
+      - leaflet
+    spec:
+      owner: group:devops-team
+      type: website
+      parameters:
+      - title: Microfrontend Details
+        required:
+        - component_id
+        - owner
+        properties:
+          component_id:
+            title: Frontend Name
+            type: string
+            description: Name of the microfrontend application
+          owner:
+            title: Owner
+            type: string
+            ui:field: OwnerPicker
+      steps:
+      - id: log-scaffolding
+        name: Scaffolding Frontend
+        action: debug:log
+        input:
+          message: 'Scaffolding React microfrontend: ${{ parameters.component_id }}'
+      output:
+        links:
+        - title: Repository
+          url: https://git.darueira-corpshared.127.0.0.1.nip.io
+    ---
+    apiVersion: scaffolder.backstage.io/v1beta3
+    kind: Template
+    metadata:
+      name: tenant-provisioning-template
+      title: Provision New Platform Tenant
+      description: Automated Golden Path to provision a complete isolated tenant environment
+        (Namespace, PostgreSQL DBs, Schemas, OpenBao Secrets, Keycloak Realm, NetworkPolicies).
+      tags:
+      - platform
+      - tenant
+      - automation
+      - multi-tenancy
+    spec:
+      owner: group:platform-core-team
+      type: environment
+      parameters:
+      - title: Tenant Identification
+        required:
+        - tenant_id
+        - tenant_name
+        properties:
+          tenant_id:
+            title: Tenant Identifier
+            type: string
+            description: Lowercase alphanumeric identifier (e.g. globex, initech, wayne)
+          tenant_name:
+            title: Tenant Display Name
+            type: string
+            description: Full company name (e.g. Globex Corporation)
+      steps:
+      - id: log-scaffolding
+        name: Provisioning Tenant Plane
+        action: debug:log
+        input:
+          message: 'Provisioning tenant environment for: ${{ parameters.tenant_name }}
+            (${{ parameters.tenant_id }})'
+      output:
+        links:
+        - title: ArgoCD Applications
+          url: https://argocd.darueira-corpshared.127.0.0.1.nip.io
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -20,14 +852,14 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        runAsUser: 10001
-        runAsGroup: 10001
-        fsGroup: 10001
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: backstage
-          image: node:20-alpine
+          image: quay.io/janus-idp/backstage-showcase:latest
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -35,10 +867,6 @@ spec:
             capabilities:
               drop:
                 - ALL
-          command:
-            - node
-            - -e
-            - "const http = require('http'); http.createServer((req, res) => { res.writeHead(200, {'Content-Type': 'application/json'}); res.end(JSON.stringify({service: 'backstage-idp', status: 'UP'})); }).listen(7007, '0.0.0.0', () => console.log('Backstage IDP placeholder listening on 7007'));"
           ports:
             - containerPort: 7007
               name: http
@@ -49,19 +877,33 @@ spec:
               value: "central-postgres.drr-corpshared-plat.svc.cluster.local"
             - name: POSTGRES_PORT
               value: "5432"
+            - name: POSTGRES_USER
+              value: "drr_admin"
+            - name: POSTGRES_PASSWORD
+              value: "change-me-in-openbao"
+            - name: POSTGRES_DB
+              value: "drr_backstage_db"
           resources:
             requests:
-              cpu: 250m
+              cpu: 200m
               memory: 512Mi
             limits:
-              cpu: 1000m
-              memory: 1024Mi
+              cpu: 1500m
+              memory: 1536Mi
           volumeMounts:
-            - name: tmp
-              mountPath: /tmp
+            - name: config-volume
+              mountPath: /opt/app-root/src/app-config.yaml
+              subPath: app-config.yaml
+            - name: catalog-volume
+              mountPath: /opt/catalog-entities/all.yaml
+              subPath: all.yaml
       volumes:
-        - name: tmp
-          emptyDir: {}
+        - name: config-volume
+          configMap:
+            name: backstage-app-config
+        - name: catalog-volume
+          configMap:
+            name: backstage-catalog-entities
 ---
 apiVersion: v1
 kind: Service

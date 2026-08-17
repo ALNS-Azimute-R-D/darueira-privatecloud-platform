@@ -1,0 +1,173 @@
+# ==============================================================================
+# DARUEIRA PLATFORM - BACKSTAGE SOFTWARE TEMPLATES (GOLDEN PATHS)
+# ==============================================================================
+
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: spring-boot-kotlin-service
+  title: Spring Boot 3 + Kotlin Microservice
+  description: Scaffolds an enterprise Spring Boot microservice with Kotlin, Gradle, OpenFGA ReBAC SDK, Tekton CI/CD pipeline, and ArgoCD GitOps deployment.
+  tags: [recommended, spring-boot, kotlin, java, backend, openfga]
+spec:
+  owner: group:platform-core-team
+  type: service
+  parameters:
+    - title: Service Configuration
+      required:
+        - component_id
+        - description
+        - owner
+      properties:
+        component_id:
+          title: Service Name
+          type: string
+          description: Unique name for the service (e.g. payment-service, order-processor)
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+          description: Brief summary of the service's purpose
+        owner:
+          title: Owner
+          type: string
+          description: Team responsible for maintaining this component
+          ui:field: OwnerPicker
+          ui:options:
+            allowedKinds:
+              - Group
+    - title: Architecture & Infrastructure Options
+      properties:
+        database:
+          title: Relational Database
+          type: string
+          description: Target PostgreSQL database for persistence
+          enum:
+            - "Central PostgreSQL (Shared Platform)"
+            - "Tenant Dedicated PostgreSQL (ACME Corp)"
+            - "None"
+          default: "Tenant Dedicated PostgreSQL (ACME Corp)"
+        messaging:
+          title: Message Broker Integration
+          type: string
+          description: Event messaging broker integration
+          enum:
+            - "Kafka / Redpanda"
+            - "RabbitMQ"
+            - "None"
+          default: "Kafka / Redpanda"
+  steps:
+    - id: log-scaffolding
+      name: Scaffolding Service
+      action: debug:log
+      input:
+        message: "Scaffolding Spring Boot Kotlin microservice: ${{ parameters.component_id }}"
+  output:
+    links:
+      - title: Repository
+        url: https://git.darueira-corpshared.127.0.0.1.nip.io
+---
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: go-microservice-template
+  title: Go / Gin Ultra-Fast Microservice
+  description: Scaffolds a high-throughput Go service using Gin, OpenTelemetry tracing, Prometheus metrics endpoint, Docker multi-stage build, and APISIX routing.
+  tags: [golang, gin, backend, fast, api]
+spec:
+  owner: group:platform-core-team
+  type: service
+  parameters:
+    - title: Service Details
+      required:
+        - component_id
+        - owner
+      properties:
+        component_id:
+          title: Service Name
+          type: string
+          description: Name of the Go microservice
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+  steps:
+    - id: log-scaffolding
+      name: Scaffolding Go Service
+      action: debug:log
+      input:
+        message: "Scaffolding Go microservice: ${{ parameters.component_id }}"
+  output:
+    links:
+      - title: Repository
+        url: https://git.darueira-corpshared.127.0.0.1.nip.io
+---
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: react-microfrontend-template
+  title: React 19 + TypeScript Microfrontend
+  description: Scaffolds a modern web microfrontend with React 19, TypeScript, Vite, Material UI, Leaflet.js maps, and Keycloak OIDC Authentication.
+  tags: [frontend, react, typescript, vite, leaflet]
+spec:
+  owner: group:devops-team
+  type: website
+  parameters:
+    - title: Microfrontend Details
+      required:
+        - component_id
+        - owner
+      properties:
+        component_id:
+          title: Frontend Name
+          type: string
+          description: Name of the microfrontend application
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+  steps:
+    - id: log-scaffolding
+      name: Scaffolding Frontend
+      action: debug:log
+      input:
+        message: "Scaffolding React microfrontend: ${{ parameters.component_id }}"
+  output:
+    links:
+      - title: Repository
+        url: https://git.darueira-corpshared.127.0.0.1.nip.io
+---
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: tenant-provisioning-template
+  title: Provision New Platform Tenant
+  description: Automated Golden Path to provision a complete isolated tenant environment (Namespace, PostgreSQL DBs, Schemas, OpenBao Secrets, Keycloak Realm, NetworkPolicies).
+  tags: [platform, tenant, automation, multi-tenancy]
+spec:
+  owner: group:platform-core-team
+  type: environment
+  parameters:
+    - title: Tenant Identification
+      required:
+        - tenant_id
+        - tenant_name
+      properties:
+        tenant_id:
+          title: Tenant Identifier
+          type: string
+          description: Lowercase alphanumeric identifier (e.g. globex, initech, wayne)
+        tenant_name:
+          title: Tenant Display Name
+          type: string
+          description: Full company name (e.g. Globex Corporation)
+  steps:
+    - id: log-scaffolding
+      name: Provisioning Tenant Plane
+      action: debug:log
+      input:
+        message: "Provisioning tenant environment for: ${{ parameters.tenant_name }} (${{ parameters.tenant_id }})"
+  output:
+    links:
+      - title: ArgoCD Applications
+        url: https://argocd.darueira-corpshared.127.0.0.1.nip.io

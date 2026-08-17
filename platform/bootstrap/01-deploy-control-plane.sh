@@ -82,7 +82,15 @@ for ns in "${NAMESPACES[@]}"; do
     fi
 done
 
-# 2. Deploy Security & Secrets Internal Base (OpenBao / SPIRE / cert-manager)
+# 2. Deploy CRDs, StorageClass and PersistentVolumes
+log_info "Applying Darueira CRDs..."
+${KUBECTL} apply -f "${REPO_ROOT}/operators/darueira-operator/config/crd/bases/"
+
+log_info "Applying Darueira Host StorageClass & PersistentVolumes..."
+${KUBECTL} apply -f "${REPO_ROOT}/platform/kustomize/base/storage-class.yaml"
+${KUBECTL} apply -f "${REPO_ROOT}/platform/kustomize/base/storage-pvs.yaml"
+
+# 3. Deploy Security & Secrets Internal Base (OpenBao / SPIRE / cert-manager)
 log_info "Applying Base Kustomize: corpshared-secr-internal..."
 ${KUBECTL} apply -k "${REPO_ROOT}/platform/kustomize/base/corpshared-secr-internal"
 

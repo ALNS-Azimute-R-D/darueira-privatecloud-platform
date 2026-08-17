@@ -34,6 +34,8 @@ spec:
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           command:
             - rpk
             - redpanda
@@ -68,6 +70,8 @@ spec:
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - containerPort: 8080
               name: http-ui
@@ -89,7 +93,25 @@ spec:
               memory: 512Mi
       volumes:
         - name: kafka-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: message-broker-kafka-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: message-broker-kafka-pvc
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: message-broker-kafka
+    darueira.io/tier: enterprise-shared
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: darueira-host-storage
+  volumeName: pv-drr-message-broker-kafka
+  resources:
+    requests:
+      storage: 5Gi
 ---
 apiVersion: v1
 kind: Service

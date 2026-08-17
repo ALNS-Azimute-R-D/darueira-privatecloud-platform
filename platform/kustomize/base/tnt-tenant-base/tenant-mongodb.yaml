@@ -35,6 +35,8 @@ spec:
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           env:
             - name: MONGO_INITDB_ROOT_USERNAME
               valueFrom:
@@ -82,7 +84,24 @@ spec:
             periodSeconds: 5
       volumes:
         - name: mongo-storage
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: tenant-mongodb-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tenant-mongodb-pvc
+  labels:
+    app.kubernetes.io/name: tenant-mongodb
+    darueira.io/tier: tenant-workload
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: darueira-host-storage
+  volumeName: pv-drr-tnt-acme-mongodb
+  resources:
+    requests:
+      storage: 10Gi
 ---
 apiVersion: v1
 kind: Service

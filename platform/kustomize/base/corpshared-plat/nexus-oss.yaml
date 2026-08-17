@@ -1,3 +1,20 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nexus-data-pvc
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: nexus-oss
+    darueira.io/tier: enterprise-shared
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: darueira-host-storage
+  volumeName: pv-drr-nexus-data
+  resources:
+    requests:
+      storage: 10Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -19,9 +36,9 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        runAsUser: 10001
-        runAsGroup: 10001
-        fsGroup: 10001
+        runAsUser: 200
+        runAsGroup: 200
+        fsGroup: 200
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -52,7 +69,8 @@ spec:
               mountPath: /nexus-data
       volumes:
         - name: nexus-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: nexus-data-pvc
 ---
 apiVersion: v1
 kind: Service

@@ -33,6 +33,8 @@ spec:
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           env:
             - name: discovery.type
               value: single-node
@@ -61,7 +63,25 @@ spec:
               mountPath: /usr/share/opensearch/data
       volumes:
         - name: opensearch-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: opensearch-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: opensearch-pvc
+  namespace: drr-corpshared-obs
+  labels:
+    app.kubernetes.io/name: opensearch
+    darueira.io/tier: enterprise-shared
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: darueira-host-storage
+  volumeName: pv-drr-opensearch-data
+  resources:
+    requests:
+      storage: 10Gi
 ---
 apiVersion: v1
 kind: Service

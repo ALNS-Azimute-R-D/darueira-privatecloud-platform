@@ -20,9 +20,9 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        runAsUser: 10001
-        runAsGroup: 10001
-        fsGroup: 10001
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -61,6 +61,7 @@ spec:
         name: postgres-data
       spec:
         accessModes: ["ReadWriteOnce"]
+        storageClassName: darueira-host-storage
         resources:
           requests:
             storage: 10Gi

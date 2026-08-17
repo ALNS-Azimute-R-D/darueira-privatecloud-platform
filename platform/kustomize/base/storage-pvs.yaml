@@ -1,0 +1,259 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-central-postgres
+  labels:
+    darueira.io/volume: central-postgres
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: postgres-data-central-postgres-0
+    namespace: drr-corpshared-plat
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/corpshared-plat/central-postgres
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-central-minio
+  labels:
+    darueira.io/volume: central-minio
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: central-minio-pvc
+    namespace: drr-corpshared-plat
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/corpshared-plat/central-minio
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-forgejo-git
+  labels:
+    darueira.io/volume: forgejo-git
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: forgejo-git-pvc
+    namespace: drr-corpshared-plat
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/corpshared-plat/forgejo-git
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-message-broker-kafka
+  labels:
+    darueira.io/volume: message-broker-kafka
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: message-broker-kafka-pvc
+    namespace: drr-corpshared-plat
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/corpshared-plat/message-broker-kafka
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-message-broker-rabbitmq
+  labels:
+    darueira.io/volume: message-broker-rabbitmq
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: message-broker-rabbitmq-pvc
+    namespace: drr-corpshared-plat
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/corpshared-plat/message-broker-rabbitmq
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-nexus-data
+  labels:
+    darueira.io/volume: nexus-data
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: nexus-data-pvc
+    namespace: drr-corpshared-plat
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/corpshared-plat/nexus-data
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-stalwart-mail
+  labels:
+    darueira.io/volume: stalwart-mail
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: stalwart-mail-pvc
+    namespace: drr-corpshared-plat
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/corpshared-plat/stalwart-mail
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-opensearch-data
+  labels:
+    darueira.io/volume: opensearch-data
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: opensearch-pvc
+    namespace: drr-corpshared-obs
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/corpshared-obs/opensearch
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-prometheus-data
+  labels:
+    darueira.io/volume: prometheus-data
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: prometheus-pvc
+    namespace: drr-corpshared-obs
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/corpshared-obs/prometheus-data
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-grafana-data
+  labels:
+    darueira.io/volume: grafana-data
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: grafana-pvc
+    namespace: drr-corpshared-obs
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/corpshared-obs/grafana-data
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-tnt-acme-postgres
+  labels:
+    darueira.io/volume: tnt-acme-postgres
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: tenant-postgres-pvc
+    namespace: drr-tnt-acme
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/tenants/tnt-acme/tenant-postgres
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-tnt-acme-mongodb
+  labels:
+    darueira.io/volume: tnt-acme-mongodb
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: tenant-mongodb-pvc
+    namespace: drr-tnt-acme
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/tenants/tnt-acme/tenant-mongodb
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-tnt-acme-minio
+  labels:
+    darueira.io/volume: tnt-acme-minio
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: tenant-minio-pvc
+    namespace: drr-tnt-acme
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/tenants/tnt-acme/tenant-minio
+    type: DirectoryOrCreate

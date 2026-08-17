@@ -1,3 +1,19 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: central-minio-pvc
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: central-minio
+    darueira.io/tier: enterprise-shared
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: darueira-host-storage
+  resources:
+    requests:
+      storage: 10Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -19,9 +35,9 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        runAsUser: 10001
-        runAsGroup: 10001
-        fsGroup: 10001
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -33,6 +49,8 @@ spec:
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           command:
             - minio
             - server
@@ -59,9 +77,47 @@ spec:
           volumeMounts:
             - name: minio-data
               mountPath: /data
+        - name: bucket-provisioner
+          image: minio/mc:RELEASE.2024-05-09T17-04-24Z
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: MC_CONFIG_DIR
+              value: "/tmp/.mc"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for Central MinIO server..."
+              until /usr/bin/mc alias set local http://127.0.0.1:9000 minioadmin minioadmin-change-me; do
+                sleep 2
+              done
+              echo "Central MinIO ready. Ensuring standard corporate buckets exist..."
+              /usr/bin/mc mb -p local/drr-corp-techdocs || true
+              /usr/bin/mc mb -p local/drr-corp-backups || true
+              /usr/bin/mc mb -p local/drr-corp-artifacts || true
+              /usr/bin/mc mb -p local/drr-corp-mail-storage || true
+              /usr/bin/mc mb -p local/drr-corp-logs-archive || true
+              echo "Corporate buckets successfully verified!"
+              tail -f /dev/null
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
       volumes:
         - name: minio-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: central-minio-pvc
 ---
 apiVersion: v1
 kind: Service

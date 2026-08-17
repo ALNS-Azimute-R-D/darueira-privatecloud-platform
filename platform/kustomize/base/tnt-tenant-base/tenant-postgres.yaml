@@ -20,9 +20,9 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        runAsUser: 70
-        runAsGroup: 70
-        fsGroup: 70
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -35,6 +35,8 @@ spec:
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           env:
             - name: POSTGRES_DB
               valueFrom:
@@ -51,6 +53,10 @@ spec:
                 secretKeyRef:
                   name: tenant-db-credentials
                   key: password
+            - name: POSTGRES_HOST_AUTH_METHOD
+              value: "scram-sha-256"
+            - name: POSTGRES_INITDB_ARGS
+              value: "--auth-host=scram-sha-256"
             - name: PGDATA
               value: "/var/lib/postgresql/data/pgdata"
           ports:
@@ -84,7 +90,24 @@ spec:
             periodSeconds: 5
       volumes:
         - name: pg-storage
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: tenant-postgres-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tenant-postgres-pvc
+  labels:
+    app.kubernetes.io/name: tenant-postgres
+    darueira.io/tier: tenant-workload
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: darueira-host-storage
+  volumeName: pv-drr-tnt-acme-postgres
+  resources:
+    requests:
+      storage: 10Gi
 ---
 apiVersion: v1
 kind: Service

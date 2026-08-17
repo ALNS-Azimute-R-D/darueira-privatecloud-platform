@@ -10,6 +10,7 @@ resources:
   - central-minio.yaml
   - nexus-oss.yaml
   - stalwart-mail.yaml
+  - forgejo-git.yaml
   - authentik-server.yaml
   - keycloak.yaml
   - message-broker-kafka.yaml

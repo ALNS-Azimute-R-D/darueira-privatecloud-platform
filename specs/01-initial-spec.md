@@ -131,9 +131,10 @@ v
 | :--- | :--- | :--- | :--- |
 | **Developer Portal** | Spotify Backstage | Enterprise Shared | OIDC (Authentik) + OpenFGA RBAC Plugin |
 | **Universal Registry** | Sonatype Nexus OSS | Enterprise Shared | Authentik LDAP Outpost (Docker, Helm, Maven, NPM, PyPI) |
+| **Git Repository Server** | Forgejo Git | Enterprise Shared | Native Git HTTP / SSH (:2222) + Webhooks + GitHub REST API |
 | **Corporate Mail** | Stalwart Mail Server | Enterprise Shared | Authentik LDAP Outpost / Directory Sync (SMTP, IMAP, JMAP) |
 | **Control Plane Storage** | Central MinIO | Enterprise Shared | Internal S3 credentials for Nexus, TechDocs, Stalwart Blobs |
-| **Control Plane DB** | Central PostgreSQL 17 | Enterprise Shared | Dedicated databases (`authentik`, `drr_stalwart_mailserver_db`, `openfga`, `backstage`) |
+| **Control Plane DB** | Central PostgreSQL 17 | Enterprise Shared | Dedicated databases (`authentik`, `drr_git_db`, `drr_stalwart_mailserver_db`, `openfga`, `backstage`) |
 | **CI Engine** | Tekton Pipelines | Enterprise Shared | K8s RBAC + Workload Identity |
 | **CD / GitOps** | ArgoCD | Enterprise Shared | Authentik OIDC SSO |
 | **Master PKI / Vault** | OpenBao Master | `secr-internal` | Root/Intermediate CA & SPIRE Master Keys |

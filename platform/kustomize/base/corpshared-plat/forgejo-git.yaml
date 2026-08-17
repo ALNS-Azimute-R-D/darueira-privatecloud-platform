@@ -1,0 +1,131 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: forgejo-git
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: forgejo-git
+    app.kubernetes.io/component: git-server
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: forgejo-git
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: forgejo-git
+        darueira.io/tier: enterprise-shared
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: forgejo
+          image: codeberg.org/forgejo/forgejo:10-rootless
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 3000
+              name: http-web
+            - containerPort: 2222
+              name: ssh
+          env:
+            - name: USER_UID
+              value: "1000"
+            - name: USER_GID
+              value: "1000"
+            - name: GITEA_WORK_DIR
+              value: "/var/lib/gitea"
+            - name: GITEA_CUSTOM
+              value: "/var/lib/gitea/custom"
+            - name: FORGEJO__database__DB_TYPE
+              value: "postgres"
+            - name: FORGEJO__database__HOST
+              value: "central-postgres.drr-corpshared-plat.svc.cluster.local:5432"
+            - name: FORGEJO__database__NAME
+              value: "drr_git_db"
+            - name: FORGEJO__database__USER
+              value: "drr_admin"
+            - name: FORGEJO__database__PASSWD
+              value: "change-me-in-openbao"
+            - name: FORGEJO__server__DOMAIN
+              value: "git.darueira-corpshared.127.0.0.1.nip.io"
+            - name: FORGEJO__server__ROOT_URL
+              value: "https://git.darueira-corpshared.127.0.0.1.nip.io/"
+            - name: FORGEJO__server__SSH_PORT
+              value: "2222"
+            - name: FORGEJO__server__SSH_LISTEN_PORT
+              value: "2222"
+            - name: FORGEJO__server__HTTP_PORT
+              value: "3000"
+            - name: FORGEJO__webhook__ALLOWED_HOST_LIST
+              value: "*"
+            - name: FORGEJO__security__INSTALL_LOCK
+              value: "true"
+            - name: FORGEJO__service__DISABLE_REGISTRATION
+              value: "false"
+            - name: FORGEJO__service__REQUIRE_SIGNIN_VIEW
+              value: "false"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: forgejo-data
+              mountPath: /var/lib/gitea
+            - name: forgejo-config
+              mountPath: /etc/gitea
+      volumes:
+        - name: forgejo-data
+          persistentVolumeClaim:
+            claimName: forgejo-git-pvc
+        - name: forgejo-config
+          emptyDir: {}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: forgejo-git-pvc
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: forgejo-git
+    darueira.io/tier: enterprise-shared
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: forgejo-git
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: forgejo-git
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: forgejo-git
+  ports:
+    - port: 3000
+      targetPort: 3000
+      name: http-web
+    - port: 2222
+      targetPort: 2222
+      name: ssh

@@ -232,6 +232,25 @@ ROUTES = [
         "plugins": {"prometheus": {}}
     },
     {
+        "id": "route-host-forgejo",
+        "name": "Forgejo Git Server",
+        "desc": "Enterprise Git Repository and Version Control Platform",
+        "uri": "/*",
+        "hosts": [
+            "git.darueira-corpshared.127.0.0.1.nip.io",
+            "git.darueira-corpshared.192.168.178.84.nip.io",
+            "git.darueira-corpshared.127.0.0.1.sslip.io",
+            "git.darueira-corpshared.local",
+            "forgejo.darueira-corpshared.127.0.0.1.nip.io",
+            "forgejo.darueira-corpshared.local"
+        ],
+        "upstream": {
+            "nodes": {"forgejo-git.drr-corpshared-plat.svc.cluster.local:3000": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {"prometheus": {}}
+    },
+    {
         "id": "route-host-minio-corp",
         "name": "Central MinIO S3",
         "desc": "Corporate Object Storage S3 Console",

@@ -227,6 +227,21 @@ data:
             "message-broker-rabbitmq.drr-corpshared-plat.svc.cluster.local:15672": 1
           type: roundrobin
 
+      # Forgejo Git Repository Server
+      - id: route-host-forgejo
+        uri: /*
+        hosts:
+          - "git.darueira-corpshared.127.0.0.1.nip.io"
+          - "git.darueira-corpshared.192.168.178.84.nip.io"
+          - "git.darueira-corpshared.127.0.0.1.sslip.io"
+          - "git.darueira-corpshared.local"
+          - "forgejo.darueira-corpshared.127.0.0.1.nip.io"
+          - "forgejo.darueira-corpshared.local"
+        upstream:
+          nodes:
+            "forgejo-git.drr-corpshared-plat.svc.cluster.local:3000": 1
+          type: roundrobin
+
       # Central MinIO S3 Console
       - id: route-host-minio-console
         uri: /*

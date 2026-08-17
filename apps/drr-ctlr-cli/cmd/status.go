@@ -27,6 +27,7 @@ var statusCmd = &cobra.Command{
 		fmt.Printf("%-32s %-22s %s\n", "Keycloak / Authentik IdP", "drr-corpshared-plat", "🟢 Ready (OIDC/SAML)")
 		fmt.Printf("%-32s %-22s %s\n", "Sonatype Nexus OSS", "drr-corpshared-plat", "🟢 Ready")
 		fmt.Printf("%-32s %-22s %s\n", "Stalwart Mail Server", "drr-corpshared-plat", "🟢 Ready")
+		fmt.Printf("%-32s %-22s %s\n", "Forgejo Git Server", "drr-corpshared-plat", "🟢 Ready (Git HTTP/SSH :3000)")
 		fmt.Printf("%-32s %-22s %s\n", "OpenTelemetry Collector", "drr-corpshared-obs", "🟢 Ready (OTLP gRPC:4317)")
 		fmt.Printf("%-32s %-22s %s\n", "Prometheus Metrics Engine", "drr-corpshared-obs", "🟢 Ready (:9090)")
 		fmt.Printf("%-32s %-22s %s\n", "Grafana Dashboards", "drr-corpshared-obs", "🟢 Ready (:3000)")

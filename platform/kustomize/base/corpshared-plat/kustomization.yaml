@@ -12,7 +12,8 @@ resources:
   - stalwart-mail.yaml
   - authentik-server.yaml
   - keycloak.yaml
-  - message-broker.yaml
+  - message-broker-kafka.yaml
+  - message-broker-rabbitmq.yaml
   - openfga.yaml
   - iam-authz-svc.yaml
   - tenant-svc.yaml

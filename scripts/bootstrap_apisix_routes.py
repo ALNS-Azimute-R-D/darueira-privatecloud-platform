@@ -196,6 +196,42 @@ ROUTES = [
         "plugins": {"prometheus": {}}
     },
     {
+        "id": "route-host-kafka-ui",
+        "name": "Kafbat UI (Kafka Web Console)",
+        "desc": "Open Source Management and Topic Explorer for Kafka and Redpanda",
+        "uri": "/*",
+        "hosts": [
+            "kafka.darueira-corpshared.127.0.0.1.nip.io",
+            "kafka.darueira-corpshared.192.168.178.84.nip.io",
+            "kafka.darueira-corpshared.127.0.0.1.sslip.io",
+            "kafka.darueira-corpshared.local",
+            "kafbat.darueira-corpshared.127.0.0.1.nip.io",
+            "kafbat.darueira-corpshared.local"
+        ],
+        "upstream": {
+            "nodes": {"message-broker-kafka.drr-corpshared-plat.svc.cluster.local:8080": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {"prometheus": {}}
+    },
+    {
+        "id": "route-host-rabbitmq",
+        "name": "RabbitMQ Management Console",
+        "desc": "Enterprise AMQP Message Broker Management Interface",
+        "uri": "/*",
+        "hosts": [
+            "rabbitmq.darueira-corpshared.127.0.0.1.nip.io",
+            "rabbitmq.darueira-corpshared.192.168.178.84.nip.io",
+            "rabbitmq.darueira-corpshared.127.0.0.1.sslip.io",
+            "rabbitmq.darueira-corpshared.local"
+        ],
+        "upstream": {
+            "nodes": {"message-broker-rabbitmq.drr-corpshared-plat.svc.cluster.local:15672": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {"prometheus": {}}
+    },
+    {
         "id": "route-host-minio-corp",
         "name": "Central MinIO S3",
         "desc": "Corporate Object Storage S3 Console",

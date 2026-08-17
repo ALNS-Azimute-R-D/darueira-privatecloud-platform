@@ -35,6 +35,8 @@ data:
         prefix: "/apisix"
         timeout: 30
       admin:
+        allow_admin:
+          - 0.0.0.0/0
         admin_key:
           - name: admin
             key: edd1c9f034335f136f87ad84b625c8f1
@@ -195,6 +197,34 @@ data:
         upstream:
           nodes:
             "stalwart-mail.drr-corpshared-plat.svc.cluster.local:8080": 1
+          type: roundrobin
+
+      # Kafbat UI (Kafka / Redpanda Web Console)
+      - id: route-host-kafka-ui
+        uri: /*
+        hosts:
+          - "kafka.darueira-corpshared.127.0.0.1.nip.io"
+          - "kafka.darueira-corpshared.192.168.178.84.nip.io"
+          - "kafka.darueira-corpshared.127.0.0.1.sslip.io"
+          - "kafka.darueira-corpshared.local"
+          - "kafbat.darueira-corpshared.127.0.0.1.nip.io"
+          - "kafbat.darueira-corpshared.local"
+        upstream:
+          nodes:
+            "message-broker-kafka.drr-corpshared-plat.svc.cluster.local:8080": 1
+          type: roundrobin
+
+      # RabbitMQ Management Console
+      - id: route-host-rabbitmq
+        uri: /*
+        hosts:
+          - "rabbitmq.darueira-corpshared.127.0.0.1.nip.io"
+          - "rabbitmq.darueira-corpshared.192.168.178.84.nip.io"
+          - "rabbitmq.darueira-corpshared.127.0.0.1.sslip.io"
+          - "rabbitmq.darueira-corpshared.local"
+        upstream:
+          nodes:
+            "message-broker-rabbitmq.drr-corpshared-plat.svc.cluster.local:15672": 1
           type: roundrobin
 
       # Central MinIO S3 Console

@@ -21,6 +21,14 @@ spec:
               protocol: TCP
             - port: "9001"
               protocol: TCP
+            - port: "9092"
+              protocol: TCP
+            - port: "9644"
+              protocol: TCP
+            - port: "5672"
+              protocol: TCP
+            - port: "15672"
+              protocol: TCP
             - port: "25"
               protocol: TCP
             - port: "465"

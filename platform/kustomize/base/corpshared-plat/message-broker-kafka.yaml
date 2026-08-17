@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: message-broker
+  name: message-broker-kafka
   namespace: drr-corpshared-plat
   labels:
-    app.kubernetes.io/name: message-broker
+    app.kubernetes.io/name: message-broker-kafka
     app.kubernetes.io/component: kafka
     darueira.io/tier: enterprise-shared
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: message-broker
+      app.kubernetes.io/name: message-broker-kafka
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: message-broker
+        app.kubernetes.io/name: message-broker-kafka
         darueira.io/tier: enterprise-shared
     spec:
       securityContext:
@@ -41,7 +41,7 @@ spec:
             - --mode=dev-container
             - --check=false
             - --kafka-addr=PLAINTEXT://0.0.0.0:9092
-            - --advertise-kafka-addr=PLAINTEXT://message-broker.drr-corpshared-plat.svc.cluster.local:9092
+            - --advertise-kafka-addr=PLAINTEXT://message-broker-kafka.drr-corpshared-plat.svc.cluster.local:9092
             - --smp=1
             - --memory=768M
             - --reserve-memory=0M
@@ -60,6 +60,33 @@ spec:
           volumeMounts:
             - name: kafka-data
               mountPath: /var/lib/redpanda/data
+        - name: kafbat-ui
+          image: ghcr.io/kafbat/kafka-ui:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 8080
+              name: http-ui
+          env:
+            - name: KAFKA_CLUSTERS_0_NAME
+              value: "darueira-corp-kafka"
+            - name: KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS
+              value: "127.0.0.1:9092"
+            - name: SERVER_PORT
+              value: "8080"
+            - name: DYNAMIC_CONFIG_ENABLED
+              value: "true"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
       volumes:
         - name: kafka-data
           emptyDir: {}
@@ -67,15 +94,15 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: message-broker
+  name: message-broker-kafka
   namespace: drr-corpshared-plat
   labels:
-    app.kubernetes.io/name: message-broker
+    app.kubernetes.io/name: message-broker-kafka
     darueira.io/tier: enterprise-shared
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: message-broker
+    app.kubernetes.io/name: message-broker-kafka
   ports:
     - port: 9092
       targetPort: 9092
@@ -83,3 +110,6 @@ spec:
     - port: 9644
       targetPort: 9644
       name: admin
+    - port: 8080
+      targetPort: 8080
+      name: http-ui

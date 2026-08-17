@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: message-broker-rabbitmq
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: message-broker-rabbitmq
+    app.kubernetes.io/component: rabbitmq
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: message-broker-rabbitmq
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: message-broker-rabbitmq
+        darueira.io/tier: enterprise-shared
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:4-management-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 5672
+              name: amqp
+            - containerPort: 15672
+              name: http-mgmt
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              value: "drr_admin"
+            - name: RABBITMQ_DEFAULT_PASS
+              value: "darueira-admin123"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          volumeMounts:
+            - name: rabbitmq-data
+              mountPath: /var/lib/rabbitmq
+      volumes:
+        - name: rabbitmq-data
+          persistentVolumeClaim:
+            claimName: message-broker-rabbitmq-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: message-broker-rabbitmq-pvc
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: message-broker-rabbitmq
+    darueira.io/tier: enterprise-shared
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: message-broker-rabbitmq
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: message-broker-rabbitmq
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: message-broker-rabbitmq
+  ports:
+    - port: 5672
+      targetPort: 5672
+      name: amqp
+    - port: 15672
+      targetPort: 15672
+      name: http-mgmt

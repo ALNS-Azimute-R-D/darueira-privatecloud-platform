@@ -71,7 +71,7 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - pg_isready -U tenant_db_user -d tenant_app_db
+                - pg_isready -U drr_tnt_svcs_admin -d drr_tnt_keycloak_db
             initialDelaySeconds: 15
             periodSeconds: 10
           readinessProbe:
@@ -79,7 +79,7 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - pg_isready -U tenant_db_user -d tenant_app_db
+                - pg_isready -U drr_tnt_svcs_admin -d drr_tnt_keycloak_db
             initialDelaySeconds: 5
             periodSeconds: 5
       volumes:

@@ -173,10 +173,10 @@ port-forward-mgmt: ## Port-forward Management UIs (Backstage :7007, ArgoCD :8088
 .PHONY: port-forward-db
 port-forward-db: ## Port-forward all Platform & Tenant Databases (Central PG :5432, Tenant PG :5433, Tenant Mongo :27017)
 	@echo -e "${GREEN}==> Exposing Platform & Tenant Databases on localhost for IDE Database Tools...${NC}"
-	@echo -e "${CYAN}  1. Central PostgreSQL (Control Plane / Keycloak / Authentik / IAM):${NC}"
-	@echo -e "${YELLOW}     Host: localhost | Port: 5432 | User: drr_admin | Password: change-me-in-openbao | DB: drr_controlplane_db${NC}"
-	@echo -e "${CYAN}  2. Tenant PostgreSQL (Tenant Workloads - ACME Corp):${NC}"
-	@echo -e "${YELLOW}     Host: localhost | Port: 5433 | User: tenant_db_user | Password: tenant_pg_secure_pass_2026 | DB: tenant_app_db${NC}"
+	@echo -e "${CYAN}  1. Central PostgreSQL (Keycloak, Authentik, Forgejo Git, Stalwart Mail, OpenFGA):${NC}"
+	@echo -e "${YELLOW}     Host: localhost | Port: 5432 | User: drr_admin | Password: change-me-in-openbao | DBs: drr_keycloak_db, drr_authentik_db, drr_git_db, drr_stalwart_mailserver_db${NC}"
+	@echo -e "${CYAN}  2. Tenant PostgreSQL (Tenant Services & BizApps - ACME Corp):${NC}"
+	@echo -e "${YELLOW}     Host: localhost | Port: 5433 | SuperUsers: drr_tnt_svcs_admin, drr_tnt_bizapps_dba | Password: tenant_pg_secure_pass_2026 | DBs: drr_tnt_keycloak_db, drr_tnt_bizapps_db (schm01..10)${NC}"
 	@echo -e "${CYAN}  3. Tenant MongoDB (Tenant Workloads - ACME Corp):${NC}"
 	@echo -e "${YELLOW}     Host: localhost | Port: 27017 | User: tenant_mongo_admin | Password: tenant_mongo_secure_pass_2026 | DB: tenant_doc_db (authSource: admin)${NC}"
 	@trap 'kill 0' EXIT; \

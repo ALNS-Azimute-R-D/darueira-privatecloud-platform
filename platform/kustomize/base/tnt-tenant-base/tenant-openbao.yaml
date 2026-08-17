@@ -143,10 +143,16 @@ spec:
 
               echo "==> [OpenBao Syncer] OpenBao is ready. Verifying / seeding KV secrets store..."
 
-              # 1. Seed tenant-db secret if not exists
-              if ! curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/secret/data/tenant-db" | grep -q 'tenant_app_db'; then
+              # 1. Seed tenant-db secret (Keycloak DB) if not exists
+              if ! curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/secret/data/tenant-db" | grep -q 'drr_tnt_keycloak_db'; then
                 echo "--> Seeding secret/tenant-db in OpenBao..."
-                curl -s -X POST -H "X-Vault-Token: $VAULT_TOKEN" -d '{"data": {"database": "tenant_app_db", "username": "tenant_db_user", "password": "tenant_pg_secure_pass_2026"}}' "$VAULT_ADDR/v1/secret/data/tenant-db"
+                curl -s -X POST -H "X-Vault-Token: $VAULT_TOKEN" -d '{"data": {"database": "drr_tnt_keycloak_db", "username": "drr_tnt_svcs_admin", "password": "tenant_pg_secure_pass_2026"}}' "$VAULT_ADDR/v1/secret/data/tenant-db"
+              fi
+
+              # 1b. Seed tenant-bizapps-db secret if not exists
+              if ! curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/secret/data/tenant-bizapps-db" | grep -q 'drr_tnt_bizapps_db'; then
+                echo "--> Seeding secret/tenant-bizapps-db in OpenBao..."
+                curl -s -X POST -H "X-Vault-Token: $VAULT_TOKEN" -d '{"data": {"database": "drr_tnt_bizapps_db", "username": "drr_tnt_bizapps_dba", "password": "tenant_pg_secure_pass_2026"}}' "$VAULT_ADDR/v1/secret/data/tenant-bizapps-db"
               fi
 
               # 2. Seed tenant-keycloak secret if not exists
@@ -182,6 +188,7 @@ spec:
 
               echo "==> [OpenBao Syncer] Syncing OpenBao KV secrets to Kubernetes Secrets..."
               sync_to_k8s "tenant-db-credentials" "tenant-db"
+              sync_to_k8s "tenant-bizapps-db-credentials" "tenant-bizapps-db"
               sync_to_k8s "tenant-keycloak-credentials" "tenant-keycloak"
               sync_to_k8s "tenant-mongo-credentials" "tenant-mongo"
               sync_to_k8s "tenant-minio-credentials" "tenant-minio"
@@ -190,6 +197,7 @@ spec:
               while true; do
                 sleep 20
                 sync_to_k8s "tenant-db-credentials" "tenant-db"
+                sync_to_k8s "tenant-bizapps-db-credentials" "tenant-bizapps-db"
                 sync_to_k8s "tenant-keycloak-credentials" "tenant-keycloak"
                 sync_to_k8s "tenant-mongo-credentials" "tenant-mongo"
                 sync_to_k8s "tenant-minio-credentials" "tenant-minio"

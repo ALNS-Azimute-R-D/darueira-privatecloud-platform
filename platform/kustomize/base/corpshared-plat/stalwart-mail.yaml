@@ -19,27 +19,36 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        runAsUser: 10001
-        runAsGroup: 10001
-        fsGroup: 10001
+        runAsUser: 2000
+        runAsGroup: 2000
+        fsGroup: 2000
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: stalwart-mail
-          image: stalwartlabs/mail-server:v0.8.0
+          image: stalwartlabs/stalwart:latest
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
             capabilities:
               drop:
                 - ALL
+              add:
+                - NET_BIND_SERVICE
           ports:
             - containerPort: 8080
               name: http-admin
             - containerPort: 25
               name: smtp
+            - containerPort: 465
+              name: smtps
+            - containerPort: 587
+              name: submission
             - containerPort: 993
               name: imaps
+          env:
+            - name: STALWART_RECOVERY_ADMIN
+              value: "admin:darueira-admin123"
           resources:
             requests:
               cpu: 100m
@@ -48,11 +57,61 @@ spec:
               cpu: 500m
               memory: 512Mi
           volumeMounts:
+            - name: stalwart-config-vol
+              mountPath: /etc/stalwart
             - name: mail-data
-              mountPath: /opt/stalwart-mail
+              mountPath: /var/lib/stalwart
       volumes:
+        - name: stalwart-config-vol
+          configMap:
+            name: stalwart-config
         - name: mail-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: stalwart-mail-pvc
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stalwart-config
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: stalwart-mail
+    darueira.io/tier: enterprise-shared
+data:
+  config.json: |
+    {
+      "@type": "PostgreSql",
+      "timeout": 15000,
+      "useTls": false,
+      "allowInvalidCerts": false,
+      "poolMaxConnections": 10,
+      "poolRecyclingMethod": "fast",
+      "readReplicas": {},
+      "host": "central-postgres",
+      "port": 5432,
+      "database": "drr_stalwart_mailserver_db",
+      "authUsername": "drr_admin",
+      "authSecret": {
+        "@type": "Value",
+        "secret": "change-me-in-openbao"
+      },
+      "options": null
+    }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: stalwart-mail-pvc
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: stalwart-mail
+    darueira.io/tier: enterprise-shared
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
 ---
 apiVersion: v1
 kind: Service
@@ -73,6 +132,12 @@ spec:
     - port: 25
       targetPort: 25
       name: smtp
+    - port: 465
+      targetPort: 465
+      name: smtps
+    - port: 587
+      targetPort: 587
+      name: submission
     - port: 993
       targetPort: 993
       name: imaps

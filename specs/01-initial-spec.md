@@ -131,15 +131,16 @@ v
 | :--- | :--- | :--- | :--- |
 | **Developer Portal** | Spotify Backstage | Enterprise Shared | OIDC (Authentik) + OpenFGA RBAC Plugin |
 | **Universal Registry** | Sonatype Nexus OSS | Enterprise Shared | Authentik LDAP Outpost (Docker, Helm, Maven, NPM, PyPI) |
-| **Corporate Mail** | Stalwart Mail Server | Enterprise Shared | Authentik OIDC / LDAP Outpost (SMTP/IMAP) |
-| **Control Plane Storage** | Central MinIO | Enterprise Shared | Internal S3 credentials for Nexus, TechDocs, Stalwart |
-| **Control Plane DB** | Central PostgreSQL | Enterprise Shared | Dedicated schemas/instances for Authentik, OpenFGA, Backstage |
+| **Corporate Mail** | Stalwart Mail Server | Enterprise Shared | Authentik LDAP Outpost / Directory Sync (SMTP, IMAP, JMAP) |
+| **Control Plane Storage** | Central MinIO | Enterprise Shared | Internal S3 credentials for Nexus, TechDocs, Stalwart Blobs |
+| **Control Plane DB** | Central PostgreSQL 17 | Enterprise Shared | Dedicated databases (`authentik`, `drr_stalwart_mailserver_db`, `openfga`, `backstage`) |
 | **CI Engine** | Tekton Pipelines | Enterprise Shared | K8s RBAC + Workload Identity |
 | **CD / GitOps** | ArgoCD | Enterprise Shared | Authentik OIDC SSO |
 | **Master PKI / Vault** | OpenBao Master | `secr-internal` | Root/Intermediate CA & SPIRE Master Keys |
 | **Dynamic Secrets** | OpenBao Tenant Engine | Tenant Environment | SPIFFE Auth Method (Zero Static Tokens) |
 | **Edge API Gateway** | Apache APISIX | Tenant Environment | mTLS termination + OpenFGA Plugin |
-| **Tenant IAM / IdP** | Keycloak / Clavex | Tenant Environment | Federated with Authentik Master |
+| **Central Platform IAM** | Keycloak Platform | Enterprise Shared | Federated with Authentik Master Directory (Upstream OIDC Brokering) |
+| **Tenant Application IAM** | Keycloak Tenant Instance | Tenant Environment | Dedicated per-tenant Keycloak managing business application users |
 | **Tenant Object Storage** | Tenant MinIO / Buckets | Tenant Environment | S3 API + Tenant IAM Policies |
 | **Tenant Relational DB** | PostgreSQL | Tenant Environment | CloudNative-PG Operator |
 | **Tenant NoSQL DB** | MongoDB | Tenant Environment | MongoDB Community Operator |

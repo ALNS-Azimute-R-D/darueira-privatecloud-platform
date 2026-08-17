@@ -177,6 +177,25 @@ ROUTES = [
         "plugins": {"prometheus": {}}
     },
     {
+        "id": "route-host-stalwart-mail",
+        "name": "Stalwart Mail Server WebAdmin",
+        "desc": "Enterprise Corporate Mail Server Administration Console & JMAP",
+        "uri": "/*",
+        "hosts": [
+            "mail.darueira-corpshared.127.0.0.1.nip.io",
+            "mail.darueira-corpshared.192.168.178.84.nip.io",
+            "mail.darueira-corpshared.127.0.0.1.sslip.io",
+            "mail.darueira-corpshared.local",
+            "stalwart.darueira-corpshared.127.0.0.1.nip.io",
+            "stalwart.darueira-corpshared.local"
+        ],
+        "upstream": {
+            "nodes": {"stalwart-mail.drr-corpshared-plat.svc.cluster.local:8080": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {"prometheus": {}}
+    },
+    {
         "id": "route-host-minio-corp",
         "name": "Central MinIO S3",
         "desc": "Corporate Object Storage S3 Console",

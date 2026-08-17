@@ -134,6 +134,10 @@ spec:
               value: "darueira-admin123"
             - name: AUTHENTIK_BOOTSTRAP_EMAIL
               value: "admin@darueira.local"
+            - name: AUTHENTIK_LISTEN__HTTP
+              value: "0.0.0.0:9001"
+            - name: AUTHENTIK_LISTEN__METRICS
+              value: "0.0.0.0:9301"
           volumeMounts:
             - name: media-storage
               mountPath: /media

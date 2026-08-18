@@ -302,6 +302,16 @@ validate-backstage: ## Validate Spotify Backstage IDP OIDC authentication, Catal
 	@echo -e "${GREEN}==> Validating Spotify Backstage IDP OIDC & Software Templates...${NC}"
 	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/validate_backstage_iam.py
 
+.PHONY: bootstrap-openfga
+bootstrap-openfga: ## Configure OpenFGA ReBAC store, authorization model, and relationship tuples
+	@echo -e "${GREEN}==> Bootstrapping OpenFGA ReBAC Model & Relationship Tuples...${NC}"
+	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/bootstrap_openfga_rebac.py
+
+.PHONY: validate-openfga
+validate-openfga: ## Validate OpenFGA ReBAC engine, relationship checks, and cross-tenant boundaries
+	@echo -e "${GREEN}==> Validating OpenFGA ReBAC & Zero Trust Authorization Suite...${NC}"
+	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/validate_openfga_rebac.py
+
 .PHONY: clean
 clean: ## Clean build artifacts and temporary files
 	@echo -e "${YELLOW}==> Cleaning workspace artifacts...${NC}"

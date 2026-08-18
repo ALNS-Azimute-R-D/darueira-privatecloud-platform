@@ -22,3 +22,4 @@ resources:
   - apisix-gateway.yaml
   - apisix-dashboard.yaml
   - tls-secret.yaml
+  - webmail.yaml

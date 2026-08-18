@@ -196,6 +196,23 @@ ROUTES = [
         "plugins": {"prometheus": {}}
     },
     {
+        "id": "route-host-webmail",
+        "name": "Darueira Enterprise Webmail",
+        "desc": "Roundcube Webmail Client for Corporate Mailboxes",
+        "uri": "/*",
+        "hosts": [
+            "webmail.darueira-corpshared.127.0.0.1.nip.io",
+            "webmail.darueira-corpshared.192.168.178.84.nip.io",
+            "webmail.darueira-corpshared.127.0.0.1.sslip.io",
+            "webmail.darueira-corpshared.local"
+        ],
+        "upstream": {
+            "nodes": {"webmail.drr-corpshared-plat.svc.cluster.local:80": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {"prometheus": {}}
+    },
+    {
         "id": "route-host-kafka-ui",
         "name": "Kafbat UI (Kafka Web Console)",
         "desc": "Open Source Management and Topic Explorer for Kafka and Redpanda",

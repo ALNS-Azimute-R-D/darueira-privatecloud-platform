@@ -1,0 +1,177 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webmail
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: webmail
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: webmail
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: webmail
+        darueira.io/tier: enterprise-shared
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 33
+        runAsGroup: 33
+        fsGroup: 33
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: webmail
+          image: roundcube/roundcubemail:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: ROUNDCUBEMAIL_DEFAULT_HOST
+              value: "ssl://stalwart-mail.drr-corpshared-plat.svc.cluster.local"
+            - name: ROUNDCUBEMAIL_DEFAULT_PORT
+              value: "993"
+            - name: ROUNDCUBEMAIL_SMTP_SERVER
+              value: "tls://stalwart-mail.drr-corpshared-plat.svc.cluster.local"
+            - name: ROUNDCUBEMAIL_SMTP_PORT
+              value: "587"
+            - name: ROUNDCUBEMAIL_SKIN
+              value: "elastic"
+            - name: ROUNDCUBEMAIL_PRODUCT_NAME
+              value: "Darueira Enterprise Webmail"
+            - name: ROUNDCUBEMAIL_PLUGINS
+              value: "archive,zipdownload,managesieve"
+            - name: ROUNDCUBEMAIL_DB_TYPE
+              value: "pgsql"
+            - name: ROUNDCUBEMAIL_DB_HOST
+              value: "central-postgres"
+            - name: ROUNDCUBEMAIL_DB_PORT
+              value: "5432"
+            - name: ROUNDCUBEMAIL_DB_USER
+              value: "drr_admin"
+            - name: ROUNDCUBEMAIL_DB_PASSWORD
+              value: "change-me-in-openbao"
+            - name: ROUNDCUBEMAIL_DB_NAME
+              value: "drr_roundcube_db"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi
+          volumeMounts:
+            - name: ca-bundle-vol
+              mountPath: /etc/ssl/certs/darueira-ca.pem
+              subPath: ca.crt
+            - name: apache-config-vol
+              mountPath: /etc/apache2/ports.conf
+              subPath: ports.conf
+            - name: apache-config-vol
+              mountPath: /etc/apache2/sites-available/000-default.conf
+              subPath: 000-default.conf
+            - name: roundcube-custom-config-vol
+              mountPath: /var/roundcube/config/custom.php
+              subPath: custom.php
+      volumes:
+        - name: ca-bundle-vol
+          secret:
+            secretName: darueira-wildcard-tls
+        - name: apache-config-vol
+          configMap:
+            name: webmail-apache-config
+        - name: roundcube-custom-config-vol
+          configMap:
+            name: webmail-roundcube-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: webmail-apache-config
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: webmail
+    darueira.io/tier: enterprise-shared
+data:
+  ports.conf: |
+    Listen 8080
+    <IfModule ssl_module>
+      Listen 8443
+    </IfModule>
+    <IfModule mod_gnutls.c>
+      Listen 8443
+    </IfModule>
+  000-default.conf: |
+    <VirtualHost *:8080>
+      ServerAdmin webmaster@localhost
+      DocumentRoot /var/www/html/public_html
+      <Directory /var/www/html/public_html>
+        Options -Indexes +FollowSymLinks
+        AllowOverride All
+        Require all granted
+      </Directory>
+      ErrorLog ${APACHE_LOG_DIR}/error.log
+      CustomLog ${APACHE_LOG_DIR}/access.log combined
+    </VirtualHost>
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: webmail-roundcube-config
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: webmail
+    darueira.io/tier: enterprise-shared
+data:
+  custom.php: |
+    <?php
+    $config['imap_conn_options'] = [
+        'ssl' => [
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+            'allow_self_signed' => true,
+        ],
+    ];
+    $config['smtp_conn_options'] = [
+        'ssl' => [
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+            'allow_self_signed' => true,
+        ],
+    ];
+    $config['managesieve_conn_options'] = [
+        'ssl' => [
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+            'allow_self_signed' => true,
+        ],
+    ];
+    $config['product_name'] = 'Darueira Enterprise Webmail';
+    $config['support_url'] = 'https://mail.darueira-corpshared.127.0.0.1.nip.io';
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webmail
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: webmail
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: webmail
+  ports:
+    - port: 80
+      targetPort: 8080
+      name: http

@@ -24,7 +24,7 @@ STALWART_JMAP_URL = os.environ.get("STALWART_JMAP_URL", "http://stalwart-mail.dr
 STALWART_ADMIN_USER = os.environ.get("STALWART_ADMIN_USER", "admin")
 STALWART_ADMIN_PASS = os.environ.get("STALWART_ADMIN_PASS", "darueira-admin123")
 
-KEYCLOAK_ISSUER_URL = os.environ.get("KEYCLOAK_ISSUER_URL", "http://keycloak.drr-corpshared-plat.svc.cluster.local:8080/realms/darueira-platform-svcs")
+KEYCLOAK_ISSUER_URL = os.environ.get("KEYCLOAK_ISSUER_URL", "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs")
 LDAP_URL = os.environ.get("LDAP_URL", "ldap://authentik-ldap-outpost.drr-corpshared-plat.svc.cluster.local:389")
 LDAP_BASE_DN = os.environ.get("LDAP_BASE_DN", "dc=darueira,dc=local")
 LDAP_BIND_DN = os.environ.get("LDAP_BIND_DN", "cn=akadmin,ou=users,dc=darueira,dc=local")

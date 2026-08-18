@@ -24,6 +24,37 @@ spec:
         fsGroup: 2000
         seccompProfile:
           type: RuntimeDefault
+      hostAliases:
+        - ip: "10.152.183.121"
+          hostnames:
+            - "keycloak.darueira-corpshared.127.0.0.1.nip.io"
+            - "keycloak.darueira-corpshared.local"
+            - "mail.darueira-corpshared.127.0.0.1.nip.io"
+            - "mail.darueira-corpshared.local"
+            - "authentik.darueira-corpshared.127.0.0.1.nip.io"
+            - "authentik.darueira-corpshared.local"
+      initContainers:
+        - name: setup-ca-certs
+          image: stalwartlabs/stalwart:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          command:
+            - sh
+            - -c
+            - |
+              cp -r /etc/ssl/certs/* /tmp/ssl-certs/
+              cat /tmp/custom-ca/ca.crt >> /tmp/ssl-certs/ca-certificates.crt
+              cp /tmp/custom-ca/ca.crt /tmp/ssl-certs/b889551d.0
+              cp /tmp/custom-ca/ca.crt /tmp/ssl-certs/darueira-ca.pem
+          volumeMounts:
+            - name: ca-bundle-vol
+              mountPath: /tmp/ssl-certs
+            - name: darueira-tls-secret
+              mountPath: /tmp/custom-ca
       containers:
         - name: stalwart-mail
           image: stalwartlabs/stalwart:latest
@@ -49,6 +80,10 @@ spec:
           env:
             - name: STALWART_RECOVERY_ADMIN
               value: "admin:darueira-admin123"
+            - name: SSL_CERT_FILE
+              value: "/etc/ssl/certs/ca-certificates.crt"
+            - name: SSL_CERT_DIR
+              value: "/etc/ssl/certs"
           resources:
             requests:
               cpu: 100m
@@ -61,6 +96,8 @@ spec:
               mountPath: /etc/stalwart
             - name: mail-data
               mountPath: /var/lib/stalwart
+            - name: ca-bundle-vol
+              mountPath: /etc/ssl/certs
       volumes:
         - name: stalwart-config-vol
           configMap:
@@ -68,6 +105,11 @@ spec:
         - name: mail-data
           persistentVolumeClaim:
             claimName: stalwart-mail-pvc
+        - name: ca-bundle-vol
+          emptyDir: {}
+        - name: darueira-tls-secret
+          secret:
+            secretName: darueira-wildcard-tls
 ---
 apiVersion: v1
 kind: ConfigMap

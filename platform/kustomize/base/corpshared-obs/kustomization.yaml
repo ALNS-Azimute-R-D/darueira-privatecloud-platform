@@ -13,3 +13,11 @@ resources:
   - opensearch.yaml
   - opensearch-dashboards.yaml
   - fluent-bit.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+  - name: opensearch-dashboards-saved-objects
+    files:
+      - opensearch-saved-objects.ndjson=dashboards/opensearch-saved-objects.ndjson

@@ -12,6 +12,7 @@ resources:
   - stalwart-mail.yaml
   - forgejo-git.yaml
   - authentik-server.yaml
+  - authentik-ldap-outpost.yaml
   - keycloak.yaml
   - message-broker-kafka.yaml
   - message-broker-rabbitmq.yaml

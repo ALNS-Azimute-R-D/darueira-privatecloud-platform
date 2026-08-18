@@ -1,0 +1,78 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: forgejo-push-binding
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/component: ci-triggers
+    darueira.io/tier: enterprise-shared
+spec:
+  params:
+    - name: git-url
+      value: $(body.repository.clone_url)
+    - name: git-revision
+      value: $(body.after)
+    - name: repository-name
+      value: $(body.repository.name)
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: forgejo-pipeline-template
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/component: ci-triggers
+    darueira.io/tier: enterprise-shared
+spec:
+  params:
+    - name: git-url
+      description: "Repository clone URL"
+    - name: git-revision
+      description: "Commit SHA or branch"
+    - name: repository-name
+      description: "Name of the Git repository"
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:
+        generateName: "forgejo-ci-$(tt.params.repository-name)-"
+        namespace: drr-corpshared-mgmt
+        labels:
+          darueira.io/tier: enterprise-shared
+          darueira.io/triggered-by: forgejo-webhook
+      spec:
+        pipelineRef:
+          name: standard-ci-cd-pipeline
+        params:
+          - name: git-url
+            value: $(tt.params.git-url)
+          - name: git-revision
+            value: $(tt.params.git-revision)
+          - name: image-name
+            value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/darueira/$(tt.params.repository-name):$(tt.params.git-revision)"
+        workspaces:
+          - name: pipeline-workspace
+            volumeClaimTemplate:
+              spec:
+                accessModes:
+                  - ReadWriteOnce
+                resources:
+                  requests:
+                    storage: 1Gi
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: forgejo-webhook-listener
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/component: ci-triggers
+    darueira.io/tier: enterprise-shared
+spec:
+  serviceAccountName: tekton-triggers-controller
+  triggers:
+    - name: forgejo-events
+      bindings:
+        - ref: forgejo-push-binding
+      template:
+        ref: forgejo-pipeline-template

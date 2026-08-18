@@ -81,6 +81,11 @@ bootstrap-control-plane: deploy-crds ## Apply Kustomize manifests to deploy Ente
 	@echo -e "${GREEN}==> Deploying Enterprise Shared Services Control Plane...${NC}"
 	@bash platform/bootstrap/01-deploy-control-plane.sh
 
+.PHONY: import-dashboards
+import-dashboards: ## Generate and import declarative OpenSearch Dashboards, Visualizations, and Saved Searches
+	@echo -e "${GREEN}==> Provisioning OpenSearch Dashboards Saved Objects...${NC}"
+	@bash scripts/import_opensearch_dashboards.sh
+
 .PHONY: validate-manifests
 validate-manifests: ## Validate all Kustomize base manifests
 	@echo -e "${GREEN}==> Validating Kustomize base manifests...${NC}"
@@ -240,6 +245,21 @@ bootstrap-apisix: ## Seed all cluster routes and SSL certificates into APISIX Ga
 	$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway 9180:9180 & \
 	sleep 2; \
 	python3 scripts/bootstrap_apisix_routes.py
+
+.PHONY: bootstrap-authentik
+bootstrap-authentik: ## Seed corporate users, groups, and LDAP provider into Authentik directory
+	@echo -e "${GREEN}==> Bootstrapping Authentik Corporate Directory (HR/AD)...${NC}"
+	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/bootstrap_authentik_directory.py
+
+.PHONY: bootstrap-iam
+bootstrap-iam: bootstrap-authentik ## Bootstrap Authentik LDAP Directory and Keycloak IAM Federation & Clients
+	@echo -e "${GREEN}==> Bootstrapping Keycloak Realm, User Federation, and OIDC/SAML Clients...${NC}"
+	bash scripts/bootstrap_keycloak_iam.sh
+
+.PHONY: validate-iam
+validate-iam: ## Run end-to-end authentication and token claims assertions for corporate users
+	@echo -e "${GREEN}==> Validating IAM Federation & Keycloak OIDC Authentication...${NC}"
+	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/validate_iam_federation.py
 
 .PHONY: clean
 clean: ## Clean build artifacts and temporary files

@@ -1,10 +1,519 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: ServiceAccount
 metadata:
-  name: argocd-server-placeholder
+  name: argocd-server
   namespace: drr-corpshared-mgmt
   labels:
     app.kubernetes.io/name: argocd-server
+    darueira.io/tier: enterprise-shared
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-application-controller
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-application-controller
+    darueira.io/tier: enterprise-shared
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-repo-server
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-repo-server
+    darueira.io/tier: enterprise-shared
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-applicationset-controller
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-applicationset-controller
+    darueira.io/tier: enterprise-shared
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-redis
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-redis
+    darueira.io/tier: enterprise-shared
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-server
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-server
+    darueira.io/tier: enterprise-shared
+rules:
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps", "events"]
+    verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications", "applicationsets", "appprojects"]
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-server
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-server
+    darueira.io/tier: enterprise-shared
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-server
+subjects:
+  - kind: ServiceAccount
+    name: argocd-server
+    namespace: drr-corpshared-mgmt
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-application-controller
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-application-controller
+    darueira.io/tier: enterprise-shared
+rules:
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps", "events"]
+    verbs: ["*"]
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications", "applicationsets", "appprojects"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-application-controller
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-application-controller
+    darueira.io/tier: enterprise-shared
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-application-controller
+subjects:
+  - kind: ServiceAccount
+    name: argocd-application-controller
+    namespace: drr-corpshared-mgmt
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-repo-server
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-repo-server
+    darueira.io/tier: enterprise-shared
+rules:
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps", "events"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-repo-server
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-repo-server
+    darueira.io/tier: enterprise-shared
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-repo-server
+subjects:
+  - kind: ServiceAccount
+    name: argocd-repo-server
+    namespace: drr-corpshared-mgmt
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argocd-application-controller
+  labels:
+    app.kubernetes.io/name: argocd-application-controller
+    darueira.io/tier: enterprise-shared
+rules:
+  - apiGroups: ["", "*"]
+    resources: ["*"]
+    verbs: ["*"]
+  - nonResourceURLs: ["*"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argocd-application-controller
+  labels:
+    app.kubernetes.io/name: argocd-application-controller
+    darueira.io/tier: enterprise-shared
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-application-controller
+subjects:
+  - kind: ServiceAccount
+    name: argocd-application-controller
+    namespace: drr-corpshared-mgmt
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argocd-server
+  labels:
+    app.kubernetes.io/name: argocd-server
+    darueira.io/tier: enterprise-shared
+rules:
+  - apiGroups: ["", "*"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "list", "get"]
+  - nonResourceURLs: ["*"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argocd-server
+  labels:
+    app.kubernetes.io/name: argocd-server
+    darueira.io/tier: enterprise-shared
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-server
+subjects:
+  - kind: ServiceAccount
+    name: argocd-server
+    namespace: drr-corpshared-mgmt
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argocd-applicationset-controller
+  labels:
+    app.kubernetes.io/name: argocd-applicationset-controller
+    darueira.io/tier: enterprise-shared
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications", "applicationsets", "appprojects"]
+    verbs: ["*"]
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps", "events", "namespaces"]
+    verbs: ["*"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argocd-applicationset-controller
+  labels:
+    app.kubernetes.io/name: argocd-applicationset-controller
+    darueira.io/tier: enterprise-shared
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-applicationset-controller
+subjects:
+  - kind: ServiceAccount
+    name: argocd-applicationset-controller
+    namespace: drr-corpshared-mgmt
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+    darueira.io/tier: enterprise-shared
+data:
+  admin.enabled: "true"
+  url: "https://argocd.darueira-corpshared.127.0.0.1.nip.io"
+  application.instanceLabelKey: "argocd.argoproj.io/instance"
+  repositories: |
+    - url: http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/drr-admin/darueira-privatecloud-platform.git
+      name: darueira-forgejo-platform
+      type: git
+    - url: https://github.com/dexterity/darueira-privatecloud-platform.git
+      name: darueira-github-upstream
+      type: git
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cmd-params-cm
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-cmd-params-cm
+    app.kubernetes.io/part-of: argocd
+    darueira.io/tier: enterprise-shared
+data:
+  server.insecure: "true"
+  server.basehref: "/"
+  repo.server: "argocd-repo-server.drr-corpshared-mgmt.svc.cluster.local:8081"
+  redis.server: "argocd-redis.drr-corpshared-mgmt.svc.cluster.local:6379"
+  applicationsetcontroller.namespace: "drr-corpshared-mgmt"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-rbac-cm
+    app.kubernetes.io/part-of: argocd
+    darueira.io/tier: enterprise-shared
+data:
+  policy.default: role:admin
+  policy.csv: |
+    g, admin, role:admin
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-tls-certs-cm
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-tls-certs-cm
+    app.kubernetes.io/part-of: argocd
+    darueira.io/tier: enterprise-shared
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-ssh-known-hosts-cm
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-ssh-known-hosts-cm
+    app.kubernetes.io/part-of: argocd
+    darueira.io/tier: enterprise-shared
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-secret
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-secret
+    app.kubernetes.io/part-of: argocd
+    darueira.io/tier: enterprise-shared
+type: Opaque
+data:
+  # dev-password bcrypt hash
+  admin.password: JDJiJDEyJGw2RG5HMW5RbHZUWWNkLjZTdDF2UU9sT3RPNmNUY3VRNnB5Lkgxbk9tbjYzSnFwWHZ3TmN5
+  admin.passwordMtime: MjAyNi0wMS0wMVQwMDowMDowMFo=
+  server.secretkey: ZGFydWVpcmEtYXJnb2NkLXNlY3JldC1rZXktMjAyNg==
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-redis
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-redis
+    app.kubernetes.io/component: redis
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-redis
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-redis
+        darueira.io/tier: enterprise-shared
+    spec:
+      serviceAccountName: argocd-redis
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - redis-server
+            - --save
+            - ""
+            - --appendonly
+            - "no"
+          ports:
+            - containerPort: 6379
+              name: redis
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-redis
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-redis
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: argocd-redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-repo-server
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-repo-server
+    app.kubernetes.io/component: repo-server
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-repo-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-repo-server
+        darueira.io/tier: enterprise-shared
+    spec:
+      serviceAccountName: argocd-repo-server
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: repo-server
+          image: quay.io/argoproj/argocd:v2.13.3
+          imagePullPolicy: IfNotPresent
+          command:
+            - argocd-repo-server
+          args:
+            - --redis
+            - argocd-redis.drr-corpshared-mgmt.svc.cluster.local:6379
+          ports:
+            - containerPort: 8081
+              name: server
+            - containerPort: 8084
+              name: metrics
+          env:
+            - name: ARGOCD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: ARGOCD_REPOSERVER_PARALLELISM_LIMIT
+              value: "10"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: argocd-repo-server-tls
+              mountPath: /app/config/tls
+            - name: gpg-keys
+              mountPath: /app/config/gpg/keys
+            - name: gpg-source
+              mountPath: /app/config/gpg/source
+            - name: ssh-known-hosts
+              mountPath: /app/config/ssh
+            - name: tls-certs
+              mountPath: /app/config/ssl
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: argocd-repo-server-tls
+          emptyDir: {}
+        - name: gpg-keys
+          emptyDir: {}
+        - name: gpg-source
+          emptyDir: {}
+        - name: ssh-known-hosts
+          configMap:
+            name: argocd-ssh-known-hosts-cm
+        - name: tls-certs
+          configMap:
+            name: argocd-tls-certs-cm
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-repo-server
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-repo-server
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: argocd-repo-server
+  ports:
+    - name: server
+      port: 8081
+      targetPort: 8081
+    - name: metrics
+      port: 8084
+      targetPort: 8084
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-server
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/component: server
     darueira.io/tier: enterprise-shared
 spec:
   replicas: 1
@@ -17,36 +526,44 @@ spec:
         app.kubernetes.io/name: argocd-server
         darueira.io/tier: enterprise-shared
     spec:
+      serviceAccountName: argocd-server
       securityContext:
         runAsNonRoot: true
-        runAsUser: 10001
-        runAsGroup: 10001
-        fsGroup: 10001
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: argocd-server
-          image: node:20-alpine
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: false
-            capabilities:
-              drop:
-                - ALL
-            seccompProfile:
-              type: RuntimeDefault
+        - name: server
+          image: quay.io/argoproj/argocd:v2.13.3
+          imagePullPolicy: IfNotPresent
           command:
-            - node
-            - -e
-            - "const http = require('http'); http.createServer((req, res) => { res.writeHead(200, {'Content-Type': 'application/json'}); res.end(JSON.stringify({service: 'argocd-gitops-server', status: 'UP'})); }).listen(8080, '0.0.0.0', () => console.log('ArgoCD server listening on 8080'));"
+            - argocd-server
+          args:
+            - --insecure
+            - --staticassets
+            - /shared/app
+            - --redis
+            - argocd-redis.drr-corpshared-mgmt.svc.cluster.local:6379
+            - --repo-server
+            - argocd-repo-server.drr-corpshared-mgmt.svc.cluster.local:8081
           ports:
             - containerPort: 8080
               name: http
+            - containerPort: 8083
+              name: metrics
           env:
             - name: ARGOCD_NAMESPACE
-              value: drr-corpshared-mgmt
-            - name: USER
-              value: "10001"
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           resources:
             requests:
               cpu: 100m
@@ -57,34 +574,31 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: ssh-known-hosts
+              mountPath: /app/config/ssh
+            - name: tls-certs
+              mountPath: /app/config/ssl
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 15
       volumes:
         - name: tmp
           emptyDir: {}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: argocd-cm
-  namespace: drr-corpshared-mgmt
-data:
-  server.insecure: "true"
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: argocd-cmd-params-cm
-  namespace: drr-corpshared-mgmt
-data:
-  server.insecure: "true"
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: argocd-secret
-  namespace: drr-corpshared-mgmt
-type: Opaque
-data:
-  admin.password: JDJhJDEwJHgySjN0QUYvRklCSGhaUFBvR1l4ZE9Oa0lrdk50a005N3N3MkdPSTN3eUd1eVQ3N0F6U3Vx # dev-password
+        - name: ssh-known-hosts
+          configMap:
+            name: argocd-ssh-known-hosts-cm
+        - name: tls-certs
+          configMap:
+            name: argocd-tls-certs-cm
 ---
 apiVersion: v1
 kind: Service
@@ -103,7 +617,190 @@ spec:
       port: 80
       protocol: TCP
       targetPort: 8080
+    - name: http-8080
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
     - name: https
       port: 443
       protocol: TCP
+      targetPort: 8080
+    - name: metrics
+      port: 8083
+      protocol: TCP
+      targetPort: 8083
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-application-controller
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-application-controller
+    app.kubernetes.io/component: application-controller
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-application-controller
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-application-controller
+        darueira.io/tier: enterprise-shared
+    spec:
+      serviceAccountName: argocd-application-controller
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: application-controller
+          image: quay.io/argoproj/argocd:v2.13.3
+          imagePullPolicy: IfNotPresent
+          command:
+            - argocd-application-controller
+          args:
+            - --status-processors
+            - "20"
+            - --operation-processors
+            - "10"
+            - --redis
+            - argocd-redis.drr-corpshared-mgmt.svc.cluster.local:6379
+            - --repo-server
+            - argocd-repo-server.drr-corpshared-mgmt.svc.cluster.local:8081
+          ports:
+            - containerPort: 8082
+              name: metrics
+          env:
+            - name: ARGOCD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-application-controller
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-application-controller
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: argocd-application-controller
+  ports:
+    - name: metrics
+      port: 8082
+      targetPort: 8082
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-applicationset-controller
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-applicationset-controller
+    app.kubernetes.io/component: applicationset-controller
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-applicationset-controller
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-applicationset-controller
+        darueira.io/tier: enterprise-shared
+    spec:
+      serviceAccountName: argocd-applicationset-controller
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: applicationset-controller
+          image: quay.io/argoproj/argocd:v2.13.3
+          imagePullPolicy: IfNotPresent
+          command:
+            - argocd-applicationset-controller
+          args:
+            - --argocd-repo-server
+            - argocd-repo-server.drr-corpshared-mgmt.svc.cluster.local:8081
+          ports:
+            - containerPort: 7000
+              name: metrics
+            - containerPort: 8080
+              name: webhook
+          env:
+            - name: ARGOCD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-applicationset-controller
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: argocd-applicationset-controller
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: argocd-applicationset-controller
+  ports:
+    - name: metrics
+      port: 7000
+      targetPort: 7000
+    - name: webhook
+      port: 8080
       targetPort: 8080

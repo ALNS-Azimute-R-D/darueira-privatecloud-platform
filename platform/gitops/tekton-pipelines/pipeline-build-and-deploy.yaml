@@ -1,21 +1,22 @@
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: standard-ci-pipeline
+  name: standard-ci-cd-pipeline
   namespace: drr-corpshared-mgmt
   labels:
-    app.kubernetes.io/component: ci-pipeline
+    app.kubernetes.io/component: ci-cd-pipeline
     darueira.io/tier: enterprise-shared
 spec:
-  description: "Standard end-to-end continuous integration pipeline: Clone -> Build/Test -> Security Scan -> Kaniko Image Build & Push -> Artifact Notification"
+  description: "Standard end-to-end continuous integration & continuous deployment pipeline: Forgejo Git Clone -> Build/Test -> Security Scan -> Kaniko Image Build & Push to Nexus Registry -> ArgoCD GitOps Sync"
   params:
     - name: git-url
       type: string
+      default: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/drr-admin/darueira-privatecloud-platform.git"
       description: "Git repository repository URL"
     - name: git-revision
       type: string
-      default: "main"
-      description: "Git revision or branch"
+      default: "master"
+      description: "Git revision, branch or commit SHA"
     - name: runtime
       type: string
       default: "golang"
@@ -26,11 +27,16 @@ spec:
       description: "Application directory within repository"
     - name: image-name
       type: string
-      description: "Target container image destination (e.g. localhost:8082/storefront:v1.0.0)"
+      default: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/darueira/sample-app:latest"
+      description: "Target container image destination (Nexus OCI registry)"
     - name: dockerfile-path
       type: string
       default: "Dockerfile"
       description: "Relative path to Dockerfile"
+    - name: argocd-app-name
+      type: string
+      default: "corpshared-plat"
+      description: "Name of the target ArgoCD application to synchronize after build"
   workspaces:
     - name: pipeline-workspace
       description: "Shared workspace for cloned code and build artifacts"
@@ -88,3 +94,12 @@ spec:
       workspaces:
         - name: source
           workspace: pipeline-workspace
+
+    - name: sync-argocd-deployment
+      taskRef:
+        name: task-argocd-sync
+      runAfter:
+        - build-and-publish-image
+      params:
+        - name: application-name
+          value: $(params.argocd-app-name)

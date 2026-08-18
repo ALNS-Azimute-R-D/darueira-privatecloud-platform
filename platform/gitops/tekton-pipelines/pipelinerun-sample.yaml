@@ -1,29 +1,31 @@
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  generateName: ci-pipeline-run-
+  name: sample-ci-pipeline-run
   namespace: drr-corpshared-mgmt
   labels:
-    tekton.dev/pipeline: standard-ci-pipeline
+    tekton.dev/pipeline: standard-ci-cd-pipeline
     darueira.io/tenant: acme
     darueira.io/project: storefront
     darueira.io/environment: prod
 spec:
   pipelineRef:
-    name: standard-ci-pipeline
+    name: standard-ci-cd-pipeline
   params:
     - name: git-url
-      value: "https://github.com/dexterity/darueira-sample-workload.git"
+      value: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/drr-admin/darueira-privatecloud-platform.git"
     - name: git-revision
-      value: "main"
+      value: "master"
     - name: runtime
       value: "golang"
     - name: source-subpath
-      value: "."
+      value: "apps/drr-ctlr-cli"
     - name: image-name
-      value: "localhost:8082/acme-storefront:v1.0.0"
+      value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/darueira/drr-ctlr-cli:latest"
     - name: dockerfile-path
       value: "Dockerfile"
+    - name: argocd-app-name
+      value: "corpshared-mgmt"
   workspaces:
     - name: pipeline-workspace
       volumeClaimTemplate:

@@ -57,14 +57,66 @@ spec:
             httpGet:
               path: /api/status
               port: 5601
-            initialDelaySeconds: 15
-            periodSeconds: 10
+            initialDelaySeconds: 20
+            periodSeconds: 15
           readinessProbe:
             httpGet:
               path: /api/status
               port: 5601
-            initialDelaySeconds: 10
-            periodSeconds: 5
+            initialDelaySeconds: 15
+            periodSeconds: 10
+
+        - name: dashboards-provisioner
+          image: alpine/k8s:1.30.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          command:
+            - sh
+            - -c
+            - |
+              echo "==> [Dashboards Provisioner] Waiting for OpenSearch Dashboards API to become available..."
+              until curl -s -f http://localhost:5601/api/status >/dev/null 2>&1; do
+                sleep 4
+              done
+              echo "==> [Dashboards Provisioner] OpenSearch Dashboards is UP. Importing declarative Saved Objects..."
+              curl -s -X POST "http://localhost:5601/api/saved_objects/_import?overwrite=true" \
+                -H "osd-xsrf: true" \
+                --form file=@/opt/dashboards/opensearch-saved-objects.ndjson
+              echo ""
+              echo "==> [Dashboards Provisioner] Setting default index pattern to darueira-k8s-logs..."
+              curl -s -X POST "http://localhost:5601/api/opensearch-dashboards/settings/defaultIndex" \
+                -H "osd-xsrf: true" \
+                -H "Content-Type: application/json" \
+                -d '{"value": "darueira-k8s-logs"}'
+              echo ""
+              echo "==> [Dashboards Provisioner] Declarative provisioning completed successfully!"
+              while true; do sleep 86400; done
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: saved-objects
+              mountPath: /opt/dashboards
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: saved-objects
+          configMap:
+            name: opensearch-dashboards-saved-objects
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

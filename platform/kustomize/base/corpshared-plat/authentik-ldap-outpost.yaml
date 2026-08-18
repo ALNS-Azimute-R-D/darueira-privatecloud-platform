@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authentik-ldap-outpost
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: authentik-ldap-outpost
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: authentik-ldap-outpost
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: authentik-ldap-outpost
+        darueira.io/tier: enterprise-shared
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ldap-outpost
+          image: ghcr.io/goauthentik/ldap:2026.5.6
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: AUTHENTIK_HOST
+              value: "http://authentik-server.drr-corpshared-plat.svc.cluster.local:9000"
+            - name: AUTHENTIK_INSECURE
+              value: "true"
+            - name: AUTHENTIK_TOKEN
+              value: "authentik-ldap-outpost-secret-key-2026"
+            - name: AUTHENTIK_LOG_LEVEL
+              value: "info"
+          ports:
+            - containerPort: 3389
+              name: ldap
+            - containerPort: 6636
+              name: ldaps
+            - containerPort: 9300
+              name: metrics
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: authentik-ldap-outpost
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: authentik-ldap-outpost
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: authentik-ldap-outpost
+  ports:
+    - port: 389
+      targetPort: 3389
+      name: ldap
+    - port: 636
+      targetPort: 6636
+      name: ldaps
+    - port: 9300
+      targetPort: 9300
+      name: metrics

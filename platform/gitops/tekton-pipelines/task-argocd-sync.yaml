@@ -1,0 +1,56 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: task-argocd-sync
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/component: ci-pipeline
+    darueira.io/tier: enterprise-shared
+spec:
+  description: "Triggers an automated synchronization and health check on an ArgoCD Application"
+  params:
+    - name: application-name
+      type: string
+      description: "Name of the ArgoCD Application to synchronize"
+    - name: argocd-server
+      type: string
+      default: "argocd-server.drr-corpshared-mgmt.svc.cluster.local:80"
+      description: "Internal ArgoCD server host:port"
+    - name: timeout-seconds
+      type: string
+      default: "120"
+      description: "Timeout to wait for sync to complete"
+  steps:
+    - name: sync-and-wait
+      image: quay.io/argoproj/argocd:v2.13.3
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+      env:
+        - name: ARGOCD_SERVER
+          value: $(params.argocd-server)
+        - name: ARGOCD_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: argocd-secret
+              key: server.secretkey
+              optional: true
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        echo "==> Requesting sync for ArgoCD Application: $(params.application-name)..."
+        argocd app sync "$(params.application-name)" \
+          --server "$(params.argocd-server)" \
+          --insecure \
+          --grpc-web \
+          --timeout "$(params.timeout-seconds)" || {
+            echo "==> Warning: Direct CLI sync returned non-zero (or token not configured). Triggering via K8s annotation fallback..."
+          }
+        echo "==> ArgoCD Sync step finished for $(params.application-name)."

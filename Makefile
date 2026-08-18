@@ -272,6 +272,16 @@ validate-stalwart: ## Validate Stalwart Mail integration with Keycloak OIDC, JMA
 	@echo -e "${GREEN}==> Validating Stalwart Mail Server OIDC, JMAP, and IMAP4rev2/SMTP flows...${NC}"
 	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/validate_stalwart_iam.py
 
+.PHONY: bootstrap-nexus
+bootstrap-nexus: ## Configure Sonatype Nexus OSS with Authentik LDAP and corporate repositories
+	@echo -e "${GREEN}==> Bootstrapping Sonatype Nexus OSS IAM & Repositories...${NC}"
+	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/bootstrap_nexus_iam.py
+
+.PHONY: validate-nexus
+validate-nexus: ## Validate Sonatype Nexus OSS LDAP authentication, RBAC, and Docker Registry v2 API
+	@echo -e "${GREEN}==> Validating Sonatype Nexus OSS LDAP IAM & Repositories...${NC}"
+	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/validate_nexus_iam.py
+
 .PHONY: clean
 clean: ## Clean build artifacts and temporary files
 	@echo -e "${YELLOW}==> Cleaning workspace artifacts...${NC}"

@@ -166,12 +166,27 @@ ROUTES = [
             "nexus.darueira-corpshared.127.0.0.1.nip.io",
             "nexus.darueira-corpshared.192.168.178.84.nip.io",
             "nexus.darueira-corpshared.127.0.0.1.sslip.io",
-            "nexus.darueira-corpshared.local",
-            "registry.darueira-corpshared.127.0.0.1.nip.io",
-            "registry.darueira-corpshared.local"
+            "nexus.darueira-corpshared.local"
         ],
         "upstream": {
             "nodes": {"nexus-oss.drr-corpshared-plat.svc.cluster.local:8081": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {"prometheus": {}}
+    },
+    {
+        "id": "route-host-docker-registry",
+        "name": "Docker & OCI Container Registry",
+        "desc": "Enterprise Docker Registry v2 API connector",
+        "uri": "/*",
+        "hosts": [
+            "registry.darueira-corpshared.127.0.0.1.nip.io",
+            "registry.darueira-corpshared.192.168.178.84.nip.io",
+            "registry.darueira-corpshared.127.0.0.1.sslip.io",
+            "registry.darueira-corpshared.local"
+        ],
+        "upstream": {
+            "nodes": {"nexus-oss.drr-corpshared-plat.svc.cluster.local:8082": 1},
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}

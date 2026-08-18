@@ -273,7 +273,7 @@ def bootstrap_directories_and_auth():
     print("--> Configuring Authentication Singleton & Default Roles...")
     auth_list = get_objects("x:Authentication")
     auth_config = {
-        "directoryId": oidc_dir_id,
+        "directoryId": ldap_dir_id,
         "defaultUserRoleIds": {"b": True},
         "defaultGroupRoleIds": {"c": True},
         "defaultAdminRoleIds": {"e": True}
@@ -284,14 +284,14 @@ def bootstrap_directories_and_auth():
             {"create": {"auth": auth_config}},
             "c_auth"
         ]])
-        print(f"    Created Authentication Singleton pointing to OIDC Directory ({oidc_dir_id}).")
+        print(f"    Created Authentication Singleton pointing to LDAP Directory ({ldap_dir_id}).")
     else:
         jmap_call([[
             "x:Authentication/set",
             {"update": {"singleton": auth_config}},
             "c_auth"
         ]])
-        print(f"    Updated Authentication Singleton (directoryId={oidc_dir_id}, defaultUserRoleIds=[b]).")
+        print(f"    Updated Authentication Singleton (directoryId={ldap_dir_id}, defaultUserRoleIds=[b]).")
 
 
 def sync_user_roles():

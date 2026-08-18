@@ -283,13 +283,13 @@ validate-nexus: ## Validate Sonatype Nexus OSS LDAP authentication, RBAC, and Do
 	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/validate_nexus_iam.py
 
 .PHONY: bootstrap-forgejo
-bootstrap-forgejo: ## Configure Forgejo Git with Authentik LDAP, multi-tenant orgs, repos and webhooks
-	@echo -e "${GREEN}==> Bootstrapping Forgejo Git Server IAM & Multi-Tenancy...${NC}"
+bootstrap-forgejo: ## Configure Forgejo Git with Keycloak Central OIDC, multi-tenant orgs, repos and webhooks
+	@echo -e "${GREEN}==> Bootstrapping Forgejo Git Server Keycloak OIDC & Multi-Tenancy...${NC}"
 	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/bootstrap_forgejo_iam.py
 
 .PHONY: validate-forgejo
-validate-forgejo: ## Validate Forgejo Git LDAP authentication, multi-tenant orgs, Smart HTTP and Tekton CI webhooks
-	@echo -e "${GREEN}==> Validating Forgejo Git Server LDAP IAM & Multi-Tenancy...${NC}"
+validate-forgejo: ## Validate Forgejo Git Keycloak OIDC authentication, multi-tenant orgs, Smart HTTP and Tekton CI webhooks
+	@echo -e "${GREEN}==> Validating Forgejo Git Server Keycloak OIDC IAM & Multi-Tenancy...${NC}"
 	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/validate_forgejo_iam.py
 
 .PHONY: bootstrap-backstage

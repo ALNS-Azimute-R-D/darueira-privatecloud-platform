@@ -32,7 +32,11 @@ The Darueira Private Cloud Platform requires a self-hosted, lightweight, and rob
 4. **Edge Ingress Routing via Apache APISIX**:
    - Expose Forgejo Web UI and HTTP Git via APISIX route `route-host-forgejo` at `https://git.darueira-corpshared.127.0.0.1.nip.io` (and alias `forgejo.*`).
 
-5. **Hybrid Push/Pull Mirroring Support**:
+5. **Identity Federation via Keycloak Central OIDC**:
+   - Integrate Forgejo authentication with **Keycloak Central IdP** (`darueira-platform-svcs` realm) via OAuth2/OpenID Connect (`keycloak-oidc`).
+   - Standardize single sign-on (SSO) with corporate tokens, RBAC administrator group mappings (`drr-platform-admins`), and tenant attribute claims.
+
+6. **Hybrid Push/Pull Mirroring Support**:
    - Allow internal repositories to optionally configure automated Git Push Mirroring to remote GitHub/GitLab accounts for off-site backup.
 
 ## Consequences

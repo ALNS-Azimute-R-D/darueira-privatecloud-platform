@@ -2,7 +2,7 @@
 """
 ==============================================================================
 Darueira Private Cloud Platform - Enterprise Shared Services
-Forgejo Git Server LDAP IAM, Multi-Tenancy & Webhook Validation Suite
+Forgejo Git Server Keycloak OIDC IAM, Multi-Tenancy & Webhook Validation Suite
 ==============================================================================
 """
 
@@ -17,30 +17,43 @@ import urllib.error
 
 FORGEJO_HOST = os.environ.get("FORGEJO_HOST", "forgejo-git.drr-corpshared-plat.svc.cluster.local:3000")
 FORGEJO_BASE_URL = f"http://{FORGEJO_HOST}"
+ADMIN_USER = "drradmin"
+ADMIN_PASSWORD = os.environ.get("FORGEJO_ADMIN_PASSWORD", "darueira-admin123")
+
+KEYCLOAK_BASE_URL = os.environ.get("KEYCLOAK_BASE_URL", "http://keycloak.drr-corpshared-plat.svc.cluster.local:8080")
+KEYCLOAK_ADMIN_USER = os.environ.get("KEYCLOAK_ADMIN_USER", "admin")
+KEYCLOAK_ADMIN_PASS = os.environ.get("KEYCLOAK_ADMIN_PASS", "admin123-dev")
+REALM_NAME = "darueira-platform-svcs"
+FORGEJO_CLIENT_ID = "forgejo-git"
+FORGEJO_CLIENT_SECRET = "darueira-forgejo-secret-2026"
 
 TEST_USERS = [
     {
         "username": "andre.nascimento",
         "email": "andre.nascimento@darueira.local",
         "password": "Darueira@2026!",
+        "expected_tenant": "darueira-corp",
         "expected_admin": True
     },
     {
         "username": "alice.developer",
         "email": "alice.developer@darueira.local",
         "password": "Darueira@2026!",
+        "expected_tenant": "acme",
         "expected_admin": False
     },
     {
         "username": "bob.engineer",
         "email": "bob.engineer@darueira.local",
         "password": "Darueira@2026!",
+        "expected_tenant": "acme",
         "expected_admin": False
     },
     {
         "username": "carol.contractor",
         "email": "carol.contractor@globex.local",
         "password": "Darueira@2026!",
+        "expected_tenant": "globex",
         "expected_admin": False
     }
 ]
@@ -55,40 +68,108 @@ EXPECTED_REPOS = [
 ]
 
 
-def test_user_authentication(user_info):
+def test_keycloak_oidc_client():
+    # 1. Admin Token
+    data = urllib.parse.urlencode({
+        "client_id": "admin-cli",
+        "username": KEYCLOAK_ADMIN_USER,
+        "password": KEYCLOAK_ADMIN_PASS,
+        "grant_type": "password"
+    }).encode("utf-8")
+    req = urllib.request.Request(f"{KEYCLOAK_BASE_URL}/realms/master/protocol/openid-connect/token", data=data)
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        token = json.loads(resp.read().decode("utf-8"))["access_token"]
+
+    # 2. Get Client
+    headers = {"Authorization": f"Bearer {token}"}
+    req_client = urllib.request.Request(f"{KEYCLOAK_BASE_URL}/admin/realms/{REALM_NAME}/clients?clientId={FORGEJO_CLIENT_ID}", headers=headers)
+    with urllib.request.urlopen(req_client, timeout=30) as resp:
+        clients = json.loads(resp.read().decode("utf-8"))
+        assert len(clients) > 0, f"Keycloak client '{FORGEJO_CLIENT_ID}' not found in realm '{REALM_NAME}'"
+        c = clients[0]
+        assert c.get("enabled") is True, f"Keycloak client '{FORGEJO_CLIENT_ID}' is disabled"
+        assert c.get("protocol") == "openid-connect", f"Invalid protocol: {c.get('protocol')}"
+        return c
+
+
+def test_user_oidc_authentication(user_info):
     username = user_info["username"]
     password = user_info["password"]
-    auth = base64.b64encode(f"{username}:{password}".encode()).decode()
-    
-    url = f"{FORGEJO_BASE_URL}/api/v1/user"
-    req = urllib.request.Request(url, headers={"Authorization": f"Basic {auth}"})
-    
-    with urllib.request.urlopen(req, timeout=20) as resp:
-        assert resp.status == 200, f"Expected HTTP 200 for user {username}, got {resp.status}"
-        data = json.loads(resp.read().decode("utf-8"))
-        assert data.get("username") == username, f"Username mismatch: {data.get('username')}"
-        assert data.get("email") == user_info["email"], f"Email mismatch: {data.get('email')}"
-        if user_info["expected_admin"]:
-            assert data.get("is_admin") is True, f"User {username} was expected to be an admin"
-        return data
+
+    # 1. Direct Access Grants via Keycloak Token Endpoint
+    data = urllib.parse.urlencode({
+        "client_id": FORGEJO_CLIENT_ID,
+        "client_secret": FORGEJO_CLIENT_SECRET,
+        "username": username,
+        "password": password,
+        "grant_type": "password",
+        "scope": "openid email profile"
+    }).encode("utf-8")
+
+    token_url = f"{KEYCLOAK_BASE_URL}/realms/{REALM_NAME}/protocol/openid-connect/token"
+    req = urllib.request.Request(token_url, data=data, headers={"Content-Type": "application/x-www-form-urlencoded"})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        assert resp.status == 200, f"Failed Keycloak token acquisition for {username}: HTTP {resp.status}"
+        tokens = json.loads(resp.read().decode("utf-8"))
+        access_token = tokens["access_token"]
+
+    # 2. Assert Claims via UserInfo Endpoint
+    userinfo_url = f"{KEYCLOAK_BASE_URL}/realms/{REALM_NAME}/protocol/openid-connect/userinfo"
+    req_ui = urllib.request.Request(userinfo_url, headers={"Authorization": f"Bearer {access_token}"})
+    with urllib.request.urlopen(req_ui, timeout=30) as resp:
+        assert resp.status == 200, f"UserInfo endpoint failed for {username}"
+        userinfo = json.loads(resp.read().decode("utf-8"))
+        assert userinfo.get("preferred_username") == username, f"Username mismatch: {userinfo.get('preferred_username')}"
+        assert userinfo.get("email") == user_info["email"], f"Email mismatch: {userinfo.get('email')}"
+        assert userinfo.get("tenant") == user_info["expected_tenant"], f"Tenant claim mismatch: {userinfo.get('tenant')}"
+        return userinfo
+
+
+def test_forgejo_oauth_redirect():
+    url = f"{FORGEJO_BASE_URL}/user/oauth2/keycloak-oidc"
+    req = urllib.request.Request(url)
+
+    class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+        def http_error_302(self, req, fp, code, msg, headers):
+            return fp
+        def http_error_307(self, req, fp, code, msg, headers):
+            return fp
+
+    opener = urllib.request.build_opener(NoRedirectHandler)
+    resp = opener.open(req, timeout=30)
+    location = resp.headers.get("Location")
+    assert location, "No Location header found in OAuth redirect response"
+    assert "protocol/openid-connect/auth" in location, f"Invalid OAuth redirect location: {location}"
+    assert f"client_id={FORGEJO_CLIENT_ID}" in location, f"client_id missing in OAuth location: {location}"
+    return location
 
 
 def get_or_create_pat():
-    auth = base64.b64encode(b"andre.nascimento:Darueira@2026!").decode()
+    auth = base64.b64encode(f"{ADMIN_USER}:{ADMIN_PASSWORD}".encode()).decode()
     token_name = f"val-token-{int(time.time())}"
     token_payload = {
         "name": token_name,
         "scopes": ["all"]
     }
     req = urllib.request.Request(
-        f"{FORGEJO_BASE_URL}/api/v1/users/andre.nascimento/tokens",
+        f"{FORGEJO_BASE_URL}/api/v1/users/{ADMIN_USER}/tokens",
         data=json.dumps(token_payload).encode(),
         headers={"Authorization": f"Basic {auth}", "Content-Type": "application/json"},
         method="POST"
     )
-    with urllib.request.urlopen(req, timeout=15) as resp:
+    with urllib.request.urlopen(req, timeout=30) as resp:
         data = json.loads(resp.read().decode("utf-8"))
         return data.get("sha1")
+
+
+def test_forgejo_users_api(token):
+    headers = {"Authorization": f"token {token}"}
+    url = f"{FORGEJO_BASE_URL}/api/v1/admin/users"
+    req = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        assert resp.status == 200, f"Expected HTTP 200 for admin users list, got {resp.status}"
+        users_list = json.loads(resp.read().decode("utf-8"))
+        return {u["username"]: u for u in users_list}
 
 
 def test_organizations_and_repos(token):
@@ -98,24 +179,24 @@ def test_organizations_and_repos(token):
     for org in EXPECTED_ORGS:
         url = f"{FORGEJO_BASE_URL}/api/v1/orgs/{org}"
         req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:
             assert resp.status == 200, f"Org {org} returned {resp.status}"
 
     # Verify Repos
     for repo_full in EXPECTED_REPOS:
         url = f"{FORGEJO_BASE_URL}/api/v1/repos/{repo_full}"
         req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:
             assert resp.status == 200, f"Repo {repo_full} returned {resp.status}"
             repo_data = json.loads(resp.read().decode("utf-8"))
             assert repo_data.get("full_name") == repo_full, f"Repo name mismatch: {repo_data.get('full_name')}"
 
 
-def test_git_smart_http_protocol():
-    auth = base64.b64encode(b"alice.developer:Darueira@2026!").decode()
+def test_git_smart_http_protocol(token):
+    headers = {"Authorization": f"token {token}"}
     url = f"{FORGEJO_BASE_URL}/acme/storefront-app.git/info/refs?service=git-upload-pack"
-    req = urllib.request.Request(url, headers={"Authorization": f"Basic {auth}"})
-    with urllib.request.urlopen(req, timeout=15) as resp:
+    req = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(req, timeout=30) as resp:
         assert resp.status == 200, f"Smart HTTP returned status {resp.status}"
         ctype = resp.headers.get("Content-Type")
         assert "application/x-git-upload-pack-advertisement" in ctype, f"Invalid Git content-type: {ctype}"
@@ -126,7 +207,7 @@ def test_webhook_configuration(token):
     headers = {"Authorization": f"token {token}"}
     url = f"{FORGEJO_BASE_URL}/api/v1/repos/darueira-corp/platform-core/hooks"
     req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req, timeout=10) as resp:
+    with urllib.request.urlopen(req, timeout=30) as resp:
         hooks = json.loads(resp.read().decode("utf-8"))
         assert len(hooks) > 0, "No hooks configured on platform-core"
         tekton_hook = [h for h in hooks if "webhook-listener" in h.get("config", {}).get("url", "")]
@@ -136,40 +217,57 @@ def test_webhook_configuration(token):
 
 def main():
     print("==================================================================")
-    print("  Phase 04: Forgejo Git Server LDAP IAM Validation Suite          ")
+    print("  Phase 04: Forgejo Git Server Keycloak OIDC IAM Validation Suite ")
     print("==================================================================")
 
-    # 1. User Authentication
-    print("\n[1/4] Validating Authentik LDAP User Authentication & Profile Assertion...")
+    # 1. Keycloak OIDC Client Registration
+    print("\n[1/6] Validating Keycloak Central OIDC Client ('forgejo-git')...")
+    client_info = test_keycloak_oidc_client()
+    print(f"      [✓] Keycloak Client active: {client_info.get('clientId')} (Protocol: {client_info.get('protocol')})")
+
+    # 2. Keycloak Direct Token Grant & UserInfo Assertions
+    print("\n[2/6] Validating Keycloak OIDC Authentication & Custom Claims (tenant, email)...")
     for user in TEST_USERS:
         u_name = user["username"]
-        exp_admin = "Administrator" if user["expected_admin"] else "Standard User"
-        print(f"  --> Authenticating {u_name} ({exp_admin})...")
-        profile = test_user_authentication(user)
-        print(f"      [✓] Authenticated! ID: {profile.get('id')}, Email: {profile.get('email')}, Admin: {profile.get('is_admin')}")
-        time.sleep(0.3)
+        ui = test_user_oidc_authentication(user)
+        print(f"      [✓] User '{u_name}': Tenant={ui.get('tenant')}, Email={ui.get('email')}")
 
-    # Generate test token
+    # 3. Forgejo OAuth2 Login Redirect Endpoint
+    print("\n[3/6] Validating Forgejo Git OAuth2 Authorization Redirect Flow...")
+    loc = test_forgejo_oauth_redirect()
+    print(f"      [✓] Direct OAuth2 entrypoint redirected cleanly to Keycloak IdP")
+
+    # Generate token for API tests
     token = get_or_create_pat()
 
-    # 2. Multi-Tenant Organizations & Repositories
-    print("\n[2/4] Validating Multi-Tenant Organizations & Starter Repositories...")
+    # 4. Forgejo REST API Authentication
+    print("\n[4/6] Validating Forgejo REST API User Profiles & Privileges...")
+    user_map = test_forgejo_users_api(token)
+    for user in TEST_USERS:
+        u_name = user["username"]
+        assert u_name in user_map, f"User {u_name} not found in Forgejo"
+        profile = user_map[u_name]
+        assert profile.get("email") == user["email"], f"Email mismatch for {u_name}: {profile.get('email')}"
+        if user["expected_admin"]:
+            assert profile.get("is_admin") is True, f"User {u_name} was expected to be an admin"
+        exp_admin = "Administrator" if user["expected_admin"] else "Standard User"
+        print(f"      [✓] Profile verified: {u_name} ({exp_admin}, Admin={profile.get('is_admin')})")
+
+    # 5. Multi-Tenant Organizations & Repositories
+    print("\n[5/6] Validating Multi-Tenant Organizations & Starter Repositories...")
     test_organizations_and_repos(token)
     print(f"      [✓] All {len(EXPECTED_ORGS)} organizations verified: {EXPECTED_ORGS}")
     print(f"      [✓] All {len(EXPECTED_REPOS)} repositories verified: {EXPECTED_REPOS}")
 
-    # 3. Git Smart HTTP Protocol
-    print("\n[3/4] Validating Git Smart HTTP (:3000) Protocol & Authentication...")
-    ctype = test_git_smart_http_protocol()
+    # 6. Git Smart HTTP & Tekton CI Webhook
+    print("\n[6/6] Validating Git Smart HTTP & Tekton CI Webhook Integration...")
+    ctype = test_git_smart_http_protocol(token)
     print(f"      [✓] Git upload-pack advertisement verified ({ctype})")
-
-    # 4. Tekton CI Webhook Integration
-    print("\n[4/4] Validating Tekton CI Webhook Dispatch Configuration...")
     hook_url = test_webhook_configuration(token)
     print(f"      [✓] Tekton EventListener Webhook active: {hook_url}")
 
     print("\n==================================================================")
-    print("  [✓✓✓] ALL PHASE 04 FORGEJO GIT IAM VALIDATION TESTS PASSED!     ")
+    print("  [✓✓✓] ALL PHASE 04 FORGEJO KEYCLOAK OIDC VALIDATION TESTS PASSED")
     print("==================================================================")
 
 

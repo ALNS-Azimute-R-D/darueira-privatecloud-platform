@@ -437,6 +437,88 @@ def bootstrap():
         kc.request(f"admin/realms/{REALM_NAME}/clients/{st_id}", method="PUT", data=st_payload)
         print(f"    Updated client '{STALWART_WEBUI_CLIENT_ID}'.")
 
+    # 7. Forgejo Git OIDC Client
+    FORGEJO_CLIENT_ID = "forgejo-git"
+    FORGEJO_CLIENT_SECRET = "darueira-forgejo-secret-2026"
+    print(f"--> Configuring Forgejo Git OIDC Client ({FORGEJO_CLIENT_ID})...")
+    fj_clients = kc.request(f"admin/realms/{REALM_NAME}/clients?clientId={FORGEJO_CLIENT_ID}") or []
+    fj_payload = {
+        "clientId": FORGEJO_CLIENT_ID,
+        "name": "Forgejo Git Server",
+        "description": "Internal Git Repository Manager with Keycloak OIDC Authentication",
+        "protocol": "openid-connect",
+        "enabled": True,
+        "publicClient": False,
+        "clientAuthenticatorType": "client-secret",
+        "secret": FORGEJO_CLIENT_SECRET,
+        "standardFlowEnabled": True,
+        "directAccessGrantsEnabled": True,
+        "serviceAccountsEnabled": True,
+        "fullScopeAllowed": True,
+        "redirectUris": [
+            "https://git.darueira-corpshared.127.0.0.1.nip.io/*",
+            "https://git.darueira-corpshared.127.0.0.1.nip.io:9443/*",
+            "http://git.darueira-corpshared.127.0.0.1.nip.io:9080/*",
+            "https://git.darueira-corpshared.127.0.0.1.nip.io/user/oauth2/keycloak-oidc/callback",
+            "https://git.darueira-corpshared.127.0.0.1.nip.io:9443/user/oauth2/keycloak-oidc/callback",
+            "http://git.darueira-corpshared.127.0.0.1.nip.io:9080/user/oauth2/keycloak-oidc/callback",
+            "http://localhost:*/*",
+            "*"
+        ],
+        "webOrigins": ["*"],
+        "protocolMappers": [
+            {
+                "name": "email-claim",
+                "protocol": "openid-connect",
+                "protocolMapper": "oidc-usermodel-attribute-mapper",
+                "consentRequired": False,
+                "config": {
+                    "user.attribute": "email",
+                    "claim.name": "email",
+                    "jsonType.label": "String",
+                    "id.token.claim": "true",
+                    "access.token.claim": "true",
+                    "userinfo.token.claim": "true"
+                }
+            },
+            {
+                "name": "groups-claim",
+                "protocol": "openid-connect",
+                "protocolMapper": "oidc-group-membership-mapper",
+                "consentRequired": False,
+                "config": {
+                    "claim.name": "groups",
+                    "full.path": "false",
+                    "id.token.claim": "true",
+                    "access.token.claim": "true",
+                    "userinfo.token.claim": "true"
+                }
+            },
+            {
+                "name": "tenant-claim",
+                "protocol": "openid-connect",
+                "protocolMapper": "oidc-usermodel-attribute-mapper",
+                "consentRequired": False,
+                "config": {
+                    "user.attribute": "tenant",
+                    "claim.name": "tenant",
+                    "jsonType.label": "String",
+                    "id.token.claim": "true",
+                    "access.token.claim": "true",
+                    "userinfo.token.claim": "true"
+                }
+            }
+        ]
+    }
+    if not fj_clients:
+        kc.request(f"admin/realms/{REALM_NAME}/clients", method="POST", data=fj_payload)
+        print(f"    Created client '{FORGEJO_CLIENT_ID}'.")
+    else:
+        fj_id = fj_clients[0]["id"]
+        fj_payload["id"] = fj_id
+        kc.request(f"admin/realms/{REALM_NAME}/clients/{fj_id}", method="PUT", data=fj_payload)
+        print(f"    Updated client '{FORGEJO_CLIENT_ID}'.")
+
     print("\n[✓] Keycloak Central IAM Federation bootstrap completed successfully!")
 
 

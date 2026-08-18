@@ -251,15 +251,26 @@ bootstrap-authentik: ## Seed corporate users, groups, and LDAP provider into Aut
 	@echo -e "${GREEN}==> Bootstrapping Authentik Corporate Directory (HR/AD)...${NC}"
 	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/bootstrap_authentik_directory.py
 
+.PHONY: bootstrap-stalwart
+bootstrap-stalwart: ## Configure Stalwart Mail Server with Authentik LDAP Directory and Keycloak OIDC
+	@echo -e "${GREEN}==> Bootstrapping Stalwart Mail Server IAM & OIDC Federation...${NC}"
+	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/bootstrap_stalwart_iam.py
+
 .PHONY: bootstrap-iam
-bootstrap-iam: bootstrap-authentik ## Bootstrap Authentik LDAP Directory and Keycloak IAM Federation & Clients
+bootstrap-iam: bootstrap-authentik ## Bootstrap Authentik LDAP Directory, Keycloak IAM Federation, and Stalwart Mail
 	@echo -e "${GREEN}==> Bootstrapping Keycloak Realm, User Federation, and OIDC/SAML Clients...${NC}"
 	bash scripts/bootstrap_keycloak_iam.sh
+	@$(MAKE) bootstrap-stalwart
 
 .PHONY: validate-iam
 validate-iam: ## Run end-to-end authentication and token claims assertions for corporate users
 	@echo -e "${GREEN}==> Validating IAM Federation & Keycloak OIDC Authentication...${NC}"
 	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/validate_iam_federation.py
+
+.PHONY: validate-stalwart
+validate-stalwart: ## Validate Stalwart Mail integration with Keycloak OIDC, JMAP mailboxes, and IMAP/SMTP flows
+	@echo -e "${GREEN}==> Validating Stalwart Mail Server OIDC, JMAP, and IMAP4rev2/SMTP flows...${NC}"
+	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/validate_stalwart_iam.py
 
 .PHONY: clean
 clean: ## Clean build artifacts and temporary files

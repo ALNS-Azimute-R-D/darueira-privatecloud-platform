@@ -292,6 +292,16 @@ validate-forgejo: ## Validate Forgejo Git LDAP authentication, multi-tenant orgs
 	@echo -e "${GREEN}==> Validating Forgejo Git Server LDAP IAM & Multi-Tenancy...${NC}"
 	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/validate_forgejo_iam.py
 
+.PHONY: bootstrap-backstage
+bootstrap-backstage: ## Configure Spotify Backstage IDP with Keycloak OIDC Client and corporate roles
+	@echo -e "${GREEN}==> Bootstrapping Spotify Backstage IDP & Keycloak OIDC...${NC}"
+	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/bootstrap_backstage_iam.py
+
+.PHONY: validate-backstage
+validate-backstage: ## Validate Spotify Backstage IDP OIDC authentication, Catalog Entities, and Software Templates
+	@echo -e "${GREEN}==> Validating Spotify Backstage IDP OIDC & Software Templates...${NC}"
+	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/validate_backstage_iam.py
+
 .PHONY: clean
 clean: ## Clean build artifacts and temporary files
 	@echo -e "${YELLOW}==> Cleaning workspace artifacts...${NC}"

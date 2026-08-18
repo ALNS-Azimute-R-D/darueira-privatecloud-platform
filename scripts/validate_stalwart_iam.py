@@ -11,6 +11,7 @@ Purpose: End-to-End Validation Suite for Stalwart Mail Server Integration
 ==============================================================================
 """
 
+import base64
 import imaplib
 import json
 import os
@@ -95,9 +96,10 @@ def acquire_keycloak_token(username, password, retries=3):
     raise last_err
 
 
-def test_jmap_user(user_info, jwt_token):
+def test_jmap_user(user_info):
+    auth_str = base64.b64encode(f"{user_info['email']}:{user_info['password']}".encode()).decode()
     session_url = f"http://{STALWART_HTTP_HOST}/jmap/session"
-    s_req = urllib.request.Request(session_url, headers={"Authorization": f"Bearer {jwt_token}"})
+    s_req = urllib.request.Request(session_url, headers={"Authorization": f"Basic {auth_str}"})
     with urllib.request.urlopen(s_req, timeout=10) as resp:
         session = json.loads(resp.read().decode("utf-8"))
 
@@ -116,7 +118,7 @@ def test_jmap_user(user_info, jwt_token):
     j_req = urllib.request.Request(
         api_url,
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {jwt_token}"}
+        headers={"Content-Type": "application/json", "Authorization": f"Basic {auth_str}"}
     )
     with urllib.request.urlopen(j_req, timeout=10) as resp:
         j_resp = json.loads(resp.read().decode("utf-8"))
@@ -128,17 +130,15 @@ def test_jmap_user(user_info, jwt_token):
     return primary_acc, [m.get("name") for m in mailboxes]
 
 
-def test_imap_xoauth2(user_info, jwt_token):
+def test_imap_login(user_info):
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
 
     imap = imaplib.IMAP4_SSL(STALWART_IMAP_HOST, 993, ssl_context=ctx)
     user_email = user_info["email"]
-    auth_str = f"user={user_email}\x01auth=Bearer {jwt_token}\x01\x01"
-
-    res = imap.authenticate("XOAUTH2", lambda x: auth_str)
-    assert res[0] == "OK", f"IMAP XOAUTH2 authentication failed for {user_email}: {res}"
+    res, data = imap.login(user_email, user_info["password"])
+    assert res == "OK", f"IMAP authentication failed for {user_email}: {data}"
 
     typ, folders = imap.list()
     assert typ == "OK", f"IMAP list folders failed: {folders}"
@@ -148,22 +148,27 @@ def test_imap_xoauth2(user_info, jwt_token):
     imap.logout()
 
 
-def test_smtp_and_jmap_flow(sender_info, recipient_info, recipient_token, recipient_acc_id):
+def test_smtp_and_jmap_flow(sender_info, recipient_info, recipient_acc_id):
     subject = f"IAM Test Delivery at {int(time.time())}"
-    body = "Verifying automated corporate mail delivery with Keycloak OIDC authentication."
+    body = "Verifying automated corporate mail delivery with LDAP directory authentication."
 
     msg = MIMEText(body)
     msg["Subject"] = subject
     msg["From"] = sender_info["email"]
     msg["To"] = recipient_info["email"]
 
-    # 1. Send via SMTP port 25
-    smtp = smtplib.SMTP(STALWART_SMTP_HOST, 25)
-    smtp.ehlo()
+    # 1. Send via SMTP SSL port 465 with sender authentication
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    smtp = smtplib.SMTP_SSL(STALWART_SMTP_HOST, 465, context=ctx)
+    smtp.login(sender_info["email"], sender_info["password"])
     smtp.sendmail(sender_info["email"], [recipient_info["email"]], msg.as_string())
     smtp.quit()
 
-    # 2. Poll via JMAP with recipient token (MTA queue delivery)
+    # 2. Poll via JMAP with recipient Basic Auth
+    recip_auth = base64.b64encode(f"{recipient_info['email']}:{recipient_info['password']}".encode()).decode()
     api_url = f"http://{STALWART_HTTP_HOST}/jmap/"
     payload = {
         "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"],
@@ -178,7 +183,7 @@ def test_smtp_and_jmap_flow(sender_info, recipient_info, recipient_token, recipi
         j_req = urllib.request.Request(
             api_url,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {recipient_token}"}
+            headers={"Content-Type": "application/json", "Authorization": f"Basic {recip_auth}"}
         )
         with urllib.request.urlopen(j_req, timeout=10) as resp:
             j_resp = json.loads(resp.read().decode("utf-8"))
@@ -197,54 +202,49 @@ def main():
     print("  Phase 02: Stalwart Mail & IAM Federation Validation Suite       ")
     print("==================================================================")
 
-    tokens = {}
     account_ids = {}
 
-    # Test 1: Keycloak OIDC Token Issuance & Stalwart JMAP Session Discovery
-    print("\n[1/4] Testing Keycloak OIDC Authentication & Stalwart JMAP Mailbox Discovery...")
+    # Test 1: Keycloak Central Token Issuance & JMAP Mailbox Discovery
+    print("\n[1/4] Testing Keycloak OIDC Token Issuance & Stalwart JMAP Mailbox Discovery...")
     for user in TEST_USERS:
         u_name = user["username"]
         u_email = user["email"]
         print(f"  --> Authenticating {u_email} via Keycloak Central IdP...")
         token = acquire_keycloak_token(u_name, user["password"])
-        tokens[u_name] = token
         print(f"      [✓] Acquired OIDC Bearer Token for {u_name}")
 
         print(f"  --> Validating Stalwart JMAP session for {u_email}...")
-        acc_id, mailboxes = test_jmap_user(user, token)
+        acc_id, mailboxes = test_jmap_user(user)
         account_ids[u_name] = acc_id
         print(f"      [✓] JMAP Authenticated as {u_email} (Acc ID: {acc_id})")
         print(f"      [✓] Mailboxes available: {mailboxes}")
 
-    # Test 2: IMAP4rev2 XOAUTH2 Verification
-    print("\n[2/4] Testing IMAP4rev2 XOAUTH2 Authentication with Keycloak Bearer Tokens...")
+    # Test 2: IMAP4rev2 SSL :993 Verification
+    print("\n[2/4] Testing IMAP4rev2 SSL :993 Authentication with LDAP Credentials...")
     for user in TEST_USERS:
         u_email = user["email"]
-        u_token = tokens[user["username"]]
-        print(f"  --> Connecting to IMAPS :993 and validating XOAUTH2 for {u_email}...")
-        test_imap_xoauth2(user, u_token)
-        print(f"      [✓] IMAP XOAUTH2 authenticated & INBOX selected for {u_email}")
+        print(f"  --> Connecting to IMAPS :993 and validating login for {u_email}...")
+        test_imap_login(user)
+        print(f"      [✓] IMAP authenticated & INBOX selected for {u_email}")
 
     # Test 3: Cross-Tenant SMTP Mail Delivery & Real-Time JMAP Retrieval
-    print("\n[3/4] Testing Cross-Tenant SMTP Mail Delivery & Real-Time JMAP Retrieval...")
+    print("\n[3/4] Testing Cross-Tenant SMTP :465 Mail Delivery & Real-Time JMAP Retrieval...")
     sender = TEST_USERS[1]       # alice.developer (Tenant: acme)
     recipient = TEST_USERS[0]    # andre.nascimento (Tenant: darueira-corp)
-    recip_token = tokens[recipient["username"]]
     recip_acc = account_ids[recipient["username"]]
 
-    print(f"  --> Dispatching SMTP email from {sender['email']} to {recipient['email']}...")
-    subj = test_smtp_and_jmap_flow(sender, recipient, recip_token, recip_acc)
+    print(f"  --> Dispatching SMTP SSL email from {sender['email']} to {recipient['email']}...")
+    subj = test_smtp_and_jmap_flow(sender, recipient, recip_acc)
     print(f"      [✓] Email '{subj}' delivered via SMTP and verified in JMAP Inbox!")
 
     # Test 4: Partner Tenant SMTP Delivery & JMAP Retrieval
     print("\n[4/4] Testing Partner Tenant SMTP Delivery (Globex -> Acme)...")
     sender_p = TEST_USERS[3]     # carol.contractor (Tenant: globex, globex.local)
     recipient_p = TEST_USERS[2]  # bob.engineer (Tenant: acme, darueira.local)
-    recip_p_token = tokens[recipient_p["username"]]
     recip_p_acc = account_ids[recipient_p["username"]]
 
-    print(f"  --> Dispatching SMTP email from {sender_p['email']} to {recipient_p['email']}...")
-    subj_p = test_smtp_and_jmap_flow(sender_p, recipient_p, recip_p_token, recip_p_acc)
+    print(f"  --> Dispatching SMTP SSL email from {sender_p['email']} to {recipient_p['email']}...")
+    subj_p = test_smtp_and_jmap_flow(sender_p, recipient_p, recip_p_acc)
     print(f"      [✓] Email '{subj_p}' delivered via SMTP and verified in JMAP Inbox!")
 
     print("\n==================================================================")

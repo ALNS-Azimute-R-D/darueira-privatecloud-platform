@@ -179,8 +179,8 @@ def bootstrap_directories_and_auth():
                             "secret": LDAP_BIND_SECRET
                         },
                         "bindAuthentication": True,
-                        "filterLogin": "(|(&(objectClass=inetOrgPerson)(mail=?))(&(objectClass=inetOrgPerson)(cn=?)))",
-                        "filterMailbox": "(|(&(objectClass=inetOrgPerson)(|(mail=?)(cn=?)))(&(objectClass=groupOfNames)(mail=?)))",
+                        "filterLogin": "(|(mail=?)(cn=?)(sAMAccountName=?))",
+                        "filterMailbox": "(|(mail=?)(cn=?)(sAMAccountName=?))",
                         "useTls": False,
                         "allowInvalidCerts": True,
                         "timeout": 15000
@@ -206,8 +206,8 @@ def bootstrap_directories_and_auth():
                             "secret": LDAP_BIND_SECRET
                         },
                         "bindAuthentication": True,
-                        "filterLogin": "(|(&(objectClass=inetOrgPerson)(mail=?))(&(objectClass=inetOrgPerson)(cn=?)))",
-                        "filterMailbox": "(|(&(objectClass=inetOrgPerson)(|(mail=?)(cn=?)))(&(objectClass=groupOfNames)(mail=?)))",
+                        "filterLogin": "(|(mail=?)(cn=?)(sAMAccountName=?))",
+                        "filterMailbox": "(|(mail=?)(cn=?)(sAMAccountName=?))",
                         "useTls": False,
                         "allowInvalidCerts": True,
                         "timeout": 15000

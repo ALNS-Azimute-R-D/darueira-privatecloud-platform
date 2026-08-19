@@ -42,9 +42,9 @@ spec:
             - name: GF_SECURITY_ADMIN_PASSWORD
               value: "Darueira@2026!"
             - name: GF_SERVER_ROOT_URL
-              value: "https://grafana.darueira-corpshared.127.0.0.1.nip.io"
+              value: "https://grafana.darueira-corpshared.127.0.0.1.nip.io/"
             - name: GF_USERS_ALLOW_SIGN_UP
-              value: "false"
+              value: "true"
             - name: GF_AUTH_ANONYMOUS_ENABLED
               value: "false"
             - name: GF_AUTH_DISABLE_LOGIN_FORM
@@ -64,21 +64,23 @@ spec:
             - name: GF_AUTH_GENERIC_OAUTH_AUTH_URL
               value: "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs/protocol/openid-connect/auth"
             - name: GF_AUTH_GENERIC_OAUTH_TOKEN_URL
-              value: "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs/protocol/openid-connect/token"
+              value: "http://keycloak.drr-corpshared-plat.svc.cluster.local:8080/realms/darueira-platform-svcs/protocol/openid-connect/token"
             - name: GF_AUTH_GENERIC_OAUTH_API_URL
-              value: "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs/protocol/openid-connect/userinfo"
+              value: "http://keycloak.drr-corpshared-plat.svc.cluster.local:8080/realms/darueira-platform-svcs/protocol/openid-connect/userinfo"
             - name: GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH
               value: "contains(groups[*], 'role-platform-architect') && 'Admin' || contains(groups[*], 'role-tenant-architect') && 'Admin' || contains(groups[*], 'role-lead-developer') && 'Editor' || 'Viewer'"
             - name: GF_AUTH_GENERIC_OAUTH_TLS_SKIP_VERIFY_INSECURE
               value: "true"
             - name: GF_AUTH_GENERIC_OAUTH_USE_PKCE
-              value: "true"
+              value: "false"
             - name: GF_SECURITY_ALLOW_EMBEDDING
               value: "true"
             - name: GF_SECURITY_CONTENT_SECURITY_POLICY
               value: "false"
+            - name: GF_SECURITY_COOKIE_SECURE
+              value: "true"
             - name: GF_SECURITY_COOKIE_SAMESITE
-              value: "none"
+              value: "lax"
             - name: GF_USERS_VIEWERS_CAN_EDIT
               value: "true"
           resources:

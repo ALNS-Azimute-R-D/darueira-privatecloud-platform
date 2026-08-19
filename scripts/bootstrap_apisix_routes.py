@@ -335,7 +335,24 @@ ROUTES = [
             "nodes": {"opensearch-dashboards.drr-corpshared-obs.svc.cluster.local:5601": 1},
             "type": "roundrobin"
         },
-        "plugins": {"prometheus": {}}
+        "plugins": {
+            "prometheus": {},
+            "openid-connect": {
+                "client_id": "darueira-platform-generic-oidc",
+                "client_secret": "darueira-oidc-secret-key-2026",
+                "discovery": "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs/.well-known/openid-configuration",
+                "redirect_uri": "https://opensearch.darueira-corpshared.127.0.0.1.nip.io/callback",
+                "scope": "openid profile email",
+                "ssl_verify": False,
+                "bearer_only": False,
+                "realm": "darueira-platform-svcs",
+                "logout_path": "/logout",
+                "post_logout_redirect_uri": "https://opensearch.darueira-corpshared.127.0.0.1.nip.io/",
+                "session": {
+                    "secret": "darueira-opensearch-session-secret-2026"
+                }
+            }
+        }
     },
     {
         "id": "route-host-prometheus",
@@ -373,7 +390,24 @@ ROUTES = [
             "nodes": {"jaeger.drr-corpshared-obs.svc.cluster.local:16686": 1},
             "type": "roundrobin"
         },
-        "plugins": {"prometheus": {}}
+        "plugins": {
+            "prometheus": {},
+            "openid-connect": {
+                "client_id": "darueira-platform-generic-oidc",
+                "client_secret": "darueira-oidc-secret-key-2026",
+                "discovery": "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs/.well-known/openid-configuration",
+                "redirect_uri": "https://jaeger.darueira-corpshared.127.0.0.1.nip.io/callback",
+                "scope": "openid profile email",
+                "ssl_verify": False,
+                "bearer_only": False,
+                "realm": "darueira-platform-svcs",
+                "logout_path": "/logout",
+                "post_logout_redirect_uri": "https://jaeger.darueira-corpshared.127.0.0.1.nip.io/",
+                "session": {
+                    "secret": "darueira-jaeger-session-secret-2026"
+                }
+            }
+        }
     },
     {
         "id": "route-host-openfga",

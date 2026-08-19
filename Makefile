@@ -406,6 +406,40 @@ validate-argocd: ## Validate ArgoCD server, AppProjects governance, ApplicationS
 	kill $$PF_ARGO 2>/dev/null || true; \
 	exit $$EXIT_CODE
 
+.PHONY: bootstrap-obs
+bootstrap-obs: bootstrap-observability ## Alias for bootstrap-observability
+
+.PHONY: bootstrap-observability
+bootstrap-observability: ## Bootstrap OpenSearch, Fluent Bit, Prometheus, Grafana, Jaeger and Keycloak OIDC
+	@echo -e "${GREEN}==> Bootstrapping Unified Observability & Telemetry Engine...${NC}"
+	python3 scripts/bootstrap_observability.py
+
+.PHONY: validate-obs
+validate-obs: validate-observability ## Alias for validate-observability
+
+.PHONY: validate-observability
+validate-observability: ## Validate OpenSearch, Fluent Bit, Prometheus, Grafana, Jaeger and Keycloak OIDC
+	@echo -e "${GREEN}==> Validating Unified Observability & Telemetry Suite...${NC}"
+	@$(KUBECTL) port-forward -n drr-corpshared-obs svc/opensearch 9200:9200 >/dev/null 2>&1 & PF1=$$!; \
+	$(KUBECTL) port-forward -n drr-corpshared-obs svc/opensearch-dashboards 5601:5601 >/dev/null 2>&1 & PF2=$$!; \
+	$(KUBECTL) port-forward -n drr-corpshared-obs svc/prometheus 9090:9090 >/dev/null 2>&1 & PF3=$$!; \
+	$(KUBECTL) port-forward -n drr-corpshared-obs svc/grafana 3000:3000 >/dev/null 2>&1 & PF4=$$!; \
+	$(KUBECTL) port-forward -n drr-corpshared-obs svc/jaeger 16686:16686 >/dev/null 2>&1 & PF5=$$!; \
+	$(KUBECTL) port-forward -n drr-corpshared-obs svc/otel-collector 13133:13133 >/dev/null 2>&1 & PF6=$$!; \
+	$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway 9081:80 >/dev/null 2>&1 & PF7=$$!; \
+	sleep 3; \
+	OPENSEARCH_HOST="127.0.0.1:9200" \
+	OPENSEARCH_DASHBOARDS_HOST="127.0.0.1:5601" \
+	PROMETHEUS_HOST="127.0.0.1:9090" \
+	GRAFANA_HOST="127.0.0.1:3000" \
+	JAEGER_HOST="127.0.0.1:16686" \
+	OTEL_HOST="127.0.0.1:13133" \
+	APISIX_HTTP_HOST="127.0.0.1:9081" \
+	python3 scripts/validate_observability.py; \
+	EXIT_CODE=$$?; \
+	kill $$PF1 $$PF2 $$PF3 $$PF4 $$PF5 $$PF6 $$PF7 2>/dev/null || true; \
+	exit $$EXIT_CODE
+
 .PHONY: clean
 clean: ## Clean build artifacts and temporary files
 	@echo -e "${YELLOW}==> Cleaning workspace artifacts...${NC}"

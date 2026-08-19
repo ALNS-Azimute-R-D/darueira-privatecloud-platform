@@ -252,9 +252,9 @@ data:
   oidc.config: |
     name: Keycloak Central IAM
     issuer: https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs
-    clientID: argocd
+    clientID: darueira-platform-generic-oidc
     clientSecret: $oidc.keycloak.clientSecret
-    requestedScopes: ["openid", "profile", "email", "groups"]
+    requestedScopes: ["openid", "profile", "email"]
     rootCA: |
       -----BEGIN CERTIFICATE-----
       MIIFzTCCA7WgAwIBAgIUbuH/y41PLab1Yzf2008NjB63X9kwDQYJKoZIhvcNAQEL
@@ -411,7 +411,7 @@ data:
   admin.password: JDJhJDEwJGZuUk1JZ2taVW45L01lMmhMdFpYZC55UzFMTVA2aGZYZllqQTBBd2F5bWxZOThkOHdoUDhP
   admin.passwordMtime: MjAyNi0wMS0wMVQwMDowMDowMFo=
   server.secretkey: ZGFydWVpcmEtYXJnb2NkLXNlY3JldC1rZXktMjAyNg==
-  oidc.keycloak.clientSecret: ZGFydWVpcmEtYXJnb2NkLXNlY3JldC0yMDI2
+  oidc.keycloak.clientSecret: ZGFydWVpcmEtb2lkYy1zZWNyZXQta2V5LTIwMjY=
 ---
 apiVersion: apps/v1
 kind: Deployment

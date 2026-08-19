@@ -40,7 +40,13 @@ spec:
       script: |
         #!/usr/bin/env sh
         set -eu
-        cd $(workspaces.source.path)/source/$(params.source-subpath)
+        TARGET_DIR="$(workspaces.source.path)/source/$(params.source-subpath)"
+        if [ -d "$TARGET_DIR" ]; then
+          cd "$TARGET_DIR"
+        else
+          echo "==> Subpath $(params.source-subpath) not found. Operating from repository root."
+          cd "$(workspaces.source.path)/source"
+        fi
         echo "==> Building runtime: $(params.runtime) in $(pwd)..."
         case "$(params.runtime)" in
           golang)

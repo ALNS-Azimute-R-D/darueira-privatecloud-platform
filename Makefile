@@ -374,6 +374,22 @@ validate-brokers: ## Validate Kafka event streaming, Kafbat UI, RabbitMQ AMQP ro
 	kill $$PF_RMQ $$PF_KAFBAT 2>/dev/null || true; \
 	exit $$EXIT_CODE
 
+.PHONY: bootstrap-tekton
+bootstrap-tekton: ## Bootstrap Tekton CI/CD pipelines, tasks, PSS security configurations and triggers
+	@echo -e "${GREEN}==> Bootstrapping Tekton CI/CD & Golden Path Pipelines...${NC}"
+	python3 scripts/bootstrap_tekton_pipelines.py
+
+.PHONY: validate-tekton
+validate-tekton: ## Validate Tekton pipelines controller, Forgejo webhook trigger, Kaniko build and ArgoCD sync
+	@echo -e "${GREEN}==> Validating Tekton CI/CD & Golden Path Pipelines Suite...${NC}"
+	@$(KUBECTL) port-forward -n drr-corpshared-mgmt svc/el-forgejo-webhook-listener 8086:8080 >/dev/null 2>&1 & \
+	PF_EL=$$!; \
+	sleep 2; \
+	EVENTLISTENER_HOST="127.0.0.1:8086" python3 scripts/validate_tekton_pipelines.py; \
+	EXIT_CODE=$$?; \
+	kill $$PF_EL 2>/dev/null || true; \
+	exit $$EXIT_CODE
+
 .PHONY: clean
 clean: ## Clean build artifacts and temporary files
 	@echo -e "${YELLOW}==> Cleaning workspace artifacts...${NC}"

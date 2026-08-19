@@ -13,9 +13,9 @@ spec:
     name: standard-ci-cd-pipeline
   params:
     - name: git-url
-      value: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/drr-admin/darueira-privatecloud-platform.git"
+      value: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/darueira-corp/platform-core.git"
     - name: git-revision
-      value: "master"
+      value: "main"
     - name: runtime
       value: "golang"
     - name: source-subpath

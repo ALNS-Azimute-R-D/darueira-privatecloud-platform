@@ -11,11 +11,11 @@ spec:
   params:
     - name: git-url
       type: string
-      default: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/drr-admin/darueira-privatecloud-platform.git"
+      default: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/darueira-corp/platform-core.git"
       description: "Git repository repository URL"
     - name: git-revision
       type: string
-      default: "master"
+      default: "main"
       description: "Git revision, branch or commit SHA"
     - name: runtime
       type: string

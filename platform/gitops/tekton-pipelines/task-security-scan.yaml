@@ -37,6 +37,9 @@ spec:
         #!/usr/bin/env sh
         set -eu
         TARGET_DIR="$(workspaces.source.path)/source/$(params.source-subpath)"
+        if [ ! -d "$TARGET_DIR" ]; then
+          TARGET_DIR="$(workspaces.source.path)/source"
+        fi
         echo "==> Running Trivy Security Vulnerability & SAST scan on: $TARGET_DIR..."
         trivy fs --severity "$(params.severity)" --exit-code 0 "$TARGET_DIR" || true
         echo "==> Security audit completed. Zero blocking policy violations found."

@@ -390,6 +390,22 @@ validate-tekton: ## Validate Tekton pipelines controller, Forgejo webhook trigge
 	kill $$PF_EL 2>/dev/null || true; \
 	exit $$EXIT_CODE
 
+.PHONY: bootstrap-argocd
+bootstrap-argocd: ## Bootstrap ArgoCD GitOps engine, AppProjects, ApplicationSets and Forgejo manifests
+	@echo -e "${GREEN}==> Bootstrapping ArgoCD GitOps Engine & ApplicationSets...${NC}"
+	python3 scripts/bootstrap_argocd_gitops.py
+
+.PHONY: validate-argocd
+validate-argocd: ## Validate ArgoCD server, AppProjects governance, ApplicationSets and continuous GitOps sync
+	@echo -e "${GREEN}==> Validating ArgoCD GitOps Engine & ApplicationSets Suite...${NC}"
+	@$(KUBECTL) port-forward -n drr-corpshared-mgmt svc/argocd-server 8087:80 >/dev/null 2>&1 & \
+	PF_ARGO=$$!; \
+	sleep 2; \
+	ARGOCD_HOST="127.0.0.1:8087" python3 scripts/validate_argocd_gitops.py; \
+	EXIT_CODE=$$?; \
+	kill $$PF_ARGO 2>/dev/null || true; \
+	exit $$EXIT_CODE
+
 .PHONY: clean
 clean: ## Clean build artifacts and temporary files
 	@echo -e "${YELLOW}==> Cleaning workspace artifacts...${NC}"

@@ -38,8 +38,8 @@ spec:
     spec:
       project: darueira-tenants
       source:
-        repoURL: "https://github.com/dexterity/darueira-privatecloud-platform.git"
-        targetRevision: HEAD
+        repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/darueira-corp/platform-core.git"
+        targetRevision: main
         path: "platform/kustomize/base/tnt-tenant-base"
       destination:
         server: "https://kubernetes.default.svc"

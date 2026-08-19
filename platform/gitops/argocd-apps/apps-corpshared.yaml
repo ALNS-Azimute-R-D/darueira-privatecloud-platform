@@ -8,8 +8,8 @@ metadata:
 spec:
   project: darueira-enterprise-shared
   source:
-    repoURL: "https://github.com/dexterity/darueira-privatecloud-platform.git"
-    targetRevision: HEAD
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/darueira-corp/platform-core.git"
+    targetRevision: main
     path: "platform/kustomize/base/corpshared-secr-internal"
   destination:
     server: "https://kubernetes.default.svc"
@@ -31,8 +31,8 @@ metadata:
 spec:
   project: darueira-enterprise-shared
   source:
-    repoURL: "https://github.com/dexterity/darueira-privatecloud-platform.git"
-    targetRevision: HEAD
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/darueira-corp/platform-core.git"
+    targetRevision: main
     path: "platform/kustomize/base/corpshared-plat"
   destination:
     server: "https://kubernetes.default.svc"
@@ -54,8 +54,8 @@ metadata:
 spec:
   project: darueira-enterprise-shared
   source:
-    repoURL: "https://github.com/dexterity/darueira-privatecloud-platform.git"
-    targetRevision: HEAD
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/darueira-corp/platform-core.git"
+    targetRevision: main
     path: "platform/kustomize/base/corpshared-obs"
   destination:
     server: "https://kubernetes.default.svc"
@@ -77,8 +77,8 @@ metadata:
 spec:
   project: darueira-enterprise-shared
   source:
-    repoURL: "https://github.com/dexterity/darueira-privatecloud-platform.git"
-    targetRevision: HEAD
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/darueira-corp/platform-core.git"
+    targetRevision: main
     path: "platform/kustomize/base/corpshared-mgmt"
   destination:
     server: "https://kubernetes.default.svc"

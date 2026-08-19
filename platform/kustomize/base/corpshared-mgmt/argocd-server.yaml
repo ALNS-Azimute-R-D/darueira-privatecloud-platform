@@ -56,8 +56,8 @@ rules:
     resources: ["secrets", "configmaps", "events"]
     verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
   - apiGroups: ["argoproj.io"]
-    resources: ["applications", "applicationsets", "appprojects"]
-    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+    resources: ["*"]
+    verbs: ["*"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -211,7 +211,7 @@ metadata:
     darueira.io/tier: enterprise-shared
 rules:
   - apiGroups: ["argoproj.io"]
-    resources: ["applications", "applicationsets", "appprojects"]
+    resources: ["*"]
     verbs: ["*"]
   - apiGroups: [""]
     resources: ["secrets", "configmaps", "events", "namespaces"]
@@ -250,8 +250,14 @@ data:
   url: "https://argocd.darueira-corpshared.127.0.0.1.nip.io"
   application.instanceLabelKey: "argocd.argoproj.io/instance"
   repositories: |
-    - url: http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/drr-admin/darueira-privatecloud-platform.git
-      name: darueira-forgejo-platform
+    - url: http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/darueira-corp/platform-core.git
+      name: darueira-corp-platform-core
+      type: git
+    - url: http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/acme/storefront-app.git
+      name: acme-storefront-repo
+      type: git
+    - url: http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/globex/security-audit.git
+      name: globex-security-repo
       type: git
     - url: https://github.com/dexterity/darueira-privatecloud-platform.git
       name: darueira-github-upstream
@@ -319,7 +325,7 @@ metadata:
 type: Opaque
 data:
   # dev-password bcrypt hash
-  admin.password: JDJiJDEyJGw2RG5HMW5RbHZUWWNkLjZTdDF2UU9sT3RPNmNUY3VRNnB5Lkgxbk9tbjYzSnFwWHZ3TmN5
+  admin.password: JDJhJDEwJGZuUk1JZ2taVW45L01lMmhMdFpYZC55UzFMTVA2aGZYZllqQTBBd2F5bWxZOThkOHdoUDhP
   admin.passwordMtime: MjAyNi0wMS0wMVQwMDowMDowMFo=
   server.secretkey: ZGFydWVpcmEtYXJnb2NkLXNlY3JldC1rZXktMjAyNg==
 ---

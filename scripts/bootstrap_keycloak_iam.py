@@ -519,6 +519,72 @@ def bootstrap():
         kc.request(f"admin/realms/{REALM_NAME}/clients/{fj_id}", method="PUT", data=fj_payload)
         print(f"    Updated client '{FORGEJO_CLIENT_ID}'.")
 
+    # 8. ArgoCD GitOps OIDC Client
+    ARGOCD_CLIENT_ID = "argocd"
+    ARGOCD_CLIENT_SECRET = "darueira-argocd-secret-2026"
+    print(f"--> Configuring ArgoCD GitOps OIDC Client ({ARGOCD_CLIENT_ID})...")
+    argo_clients = kc.request(f"admin/realms/{REALM_NAME}/clients?clientId={ARGOCD_CLIENT_ID}") or []
+    argo_payload = {
+        "clientId": ARGOCD_CLIENT_ID,
+        "name": "ArgoCD Continuous Delivery",
+        "description": "GitOps Continuous Delivery Platform with Keycloak OIDC Authentication",
+        "protocol": "openid-connect",
+        "enabled": True,
+        "publicClient": False,
+        "clientAuthenticatorType": "client-secret",
+        "secret": ARGOCD_CLIENT_SECRET,
+        "standardFlowEnabled": True,
+        "directAccessGrantsEnabled": True,
+        "serviceAccountsEnabled": True,
+        "fullScopeAllowed": True,
+        "redirectUris": [
+            "https://argocd.darueira-corpshared.127.0.0.1.nip.io/auth/callback",
+            "https://argocd.darueira-corpshared.127.0.0.1.nip.io:9443/auth/callback",
+            "http://argocd.darueira-corpshared.127.0.0.1.nip.io:9080/auth/callback",
+            "https://argocd.darueira-corpshared.local/auth/callback",
+            "http://localhost:*/*",
+            "*"
+        ],
+        "webOrigins": ["*"],
+        "protocolMappers": [
+            {
+                "name": "groups-claim",
+                "protocol": "openid-connect",
+                "protocolMapper": "oidc-group-membership-mapper",
+                "consentRequired": False,
+                "config": {
+                    "claim.name": "groups",
+                    "full.path": "false",
+                    "id.token.claim": "true",
+                    "access.token.claim": "true",
+                    "userinfo.token.claim": "true"
+                }
+            },
+            {
+                "name": "email-claim",
+                "protocol": "openid-connect",
+                "protocolMapper": "oidc-usermodel-attribute-mapper",
+                "consentRequired": False,
+                "config": {
+                    "user.attribute": "email",
+                    "claim.name": "email",
+                    "jsonType.label": "String",
+                    "id.token.claim": "true",
+                    "access.token.claim": "true",
+                    "userinfo.token.claim": "true"
+                }
+            }
+        ]
+    }
+    if not argo_clients:
+        kc.request(f"admin/realms/{REALM_NAME}/clients", method="POST", data=argo_payload)
+        print(f"    Created client '{ARGOCD_CLIENT_ID}'.")
+    else:
+        argo_id = argo_clients[0]["id"]
+        argo_payload["id"] = argo_id
+        kc.request(f"admin/realms/{REALM_NAME}/clients/{argo_id}", method="PUT", data=argo_payload)
+        print(f"    Updated client '{ARGOCD_CLIENT_ID}'.")
+
     print("\n[✓] Keycloak Central IAM Federation bootstrap completed successfully!")
 
 

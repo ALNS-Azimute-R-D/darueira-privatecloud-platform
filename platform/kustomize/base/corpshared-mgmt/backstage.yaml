@@ -12,8 +12,21 @@ data:
       title: Darueira Developer Portal
       baseUrl: https://backstage.darueira-corpshared.127.0.0.1.nip.io
 
-    organization:
-      name: Darueira Private Cloud Platform
+    signInPage: oidc
+
+    auth:
+      environment: production
+      session:
+        secret: "darueira-backstage-session-secret-2026-very-secure"
+      providers:
+        oidc:
+          production:
+            metadataUrl: https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs/.well-known/openid-configuration
+            clientId: backstage-portal
+            clientSecret: darueira-backstage-secret-2026
+            callbackUrl: https://backstage.darueira-corpshared.127.0.0.1.nip.io/api/auth/oidc/handler/frame
+            prompt: auto
+            scope: 'openid profile email'
 
     backend:
       baseUrl: https://backstage.darueira-corpshared.127.0.0.1.nip.io
@@ -883,6 +896,16 @@ spec:
               value: "change-me-in-openbao"
             - name: POSTGRES_DB
               value: "drr_backstage_db"
+            - name: AUTH_OIDC_CLIENT_ID
+              value: "backstage-portal"
+            - name: AUTH_OIDC_CLIENT_SECRET
+              value: "darueira-backstage-secret-2026"
+            - name: AUTH_OIDC_METADATA_URL
+              value: "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs/.well-known/openid-configuration"
+            - name: NODE_EXTRA_CA_CERTS
+              value: "/certs/darueira-ca.crt"
+            - name: NODE_TLS_REJECT_UNAUTHORIZED
+              value: "0"
           resources:
             requests:
               cpu: 200m
@@ -897,6 +920,9 @@ spec:
             - name: catalog-volume
               mountPath: /opt/catalog-entities/all.yaml
               subPath: all.yaml
+            - name: root-ca-volume
+              mountPath: /certs/darueira-ca.crt
+              subPath: darueira-ca.crt
       volumes:
         - name: config-volume
           configMap:
@@ -904,6 +930,54 @@ spec:
         - name: catalog-volume
           configMap:
             name: backstage-catalog-entities
+        - name: root-ca-volume
+          configMap:
+            name: backstage-root-ca
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backstage-root-ca
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: backstage
+    darueira.io/tier: enterprise-shared
+data:
+  darueira-ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIFzTCCA7WgAwIBAgIUbuH/y41PLab1Yzf2008NjB63X9kwDQYJKoZIhvcNAQEL
+    BQAwbjEkMCIGA1UEAwwbRGFydWVpcmEgRW50ZXJwcmlzZSBSb290IENBMSowKAYD
+    VQQKDCFEYXJ1ZWlyYSBFbnRlcnByaXNlIFByaXZhdGUgQ2xvdWQxGjAYBgNVBAsM
+    EVNlY3VyaXR5IFBsYXRmb3JtMB4XDTI2MDgxODE2MzMwMloXDTM2MDgxNTE2MzMw
+    MlowbjEkMCIGA1UEAwwbRGFydWVpcmEgRW50ZXJwcmlzZSBSb290IENBMSowKAYD
+    VQQKDCFEYXJ1ZWlyYSBFbnRlcnByaXNlIFByaXZhdGUgQ2xvdWQxGjAYBgNVBAsM
+    EVNlY3VyaXR5IFBsYXRmb3JtMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKC
+    AgEAif6ZZQ55XyIVNJjFVBCKr4vBB9RrRkGeR6qPmm3iXWoZQGkpjFeyKFDnChoI
+    aq7jwIcjDR2Gem0tZADPlBZRyJG79BdoM6SvGbHKYj+jRcP37CsqYtBMMYvKfL6l
+    iHtrsdm4YocAzDDzxwdW2BBDqKCXCCpu7cccy942/fgjCwwz/q7sQrp78gaArJKg
+    vQDTgOUiu08srpOYsdpp0q+UIHG8dD3n8tJsOUCSKVCGZDxiI/3qgoCEn3L6sENm
+    Ldk3dFpTfqNKJD2GfnNsfMEse/0VUwdPgBrSH7ky4I74jXFvwUVRKQgCLaeXZiN+
+    cBzskyYVFc41nZgKSuEicjZEyw+MBVmvhC9NBJ2OYIOiD0TLmPdQvoJ6IGeeBG4I
+    ycAeZzk14ioRC+gKPgmRSPaHsYmg75y5klOsI5C2Lf6N6G0y5ZUd3vJA+o6lBC1U
+    nAtMohiv6D7nbGYRn2aDH5tY74QDpjkrlZ+cvWP6wSpffb72QrzrVFj/nFV4Pe6V
+    fAX5W1cnkTgwBRX2PsOC2NN++O1u86nJhqXMj9nPbw2iNZSbBk1Ts5MgtcsEIjy5
+    Xh+F1Yfi1iV/Jpfi/0w4UHlzfMtmjecNOiSvfigI5FoYR1D6UtcCU7s67l/qlu+6
+    SXPssdQk3r+HE8EciFk+e76DGaKf9mm/X99LmKq8ZsL70J0CAwEAAaNjMGEwHwYD
+    VR0jBBgwFoAU+XEMPJ8r7FT+ybC5LdFnJbrCRWgwDwYDVR0TAQH/BAUwAwEB/zAO
+    BgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFPlxDDyfK+xU/smwuS3RZyW6wkVoMA0G
+    CSqGSIb3DQEBCwUAA4ICAQBvjDQwJRJ+53/88bHQszxGmlk0m0Sx9wdhmxdx2MA/
+    7Xn3505AZh3NImQ0RRYUQw35T8K5rh5YS1XmqEe0LQYgZl0M4/2Z0Ys1fhkFU8Lf
+    0g4ULPv13+pkHOPf/NOpTEUwgtdwMNhMx3bav3ljQkzPE7oDaYX7OHzs7zprrUpH
+    gT/FeKoTg0ts17IOODNCS0dXu+VrwjhKGgXsE0LrjWB3V2hdAQrD3TOX1kPxxuDl
+    WPOxlo5Uq0OF7Zcf+HqIeiNsRJ5XCVDZAkJNVBcLcyj5WEBLyRedqj/e5LrktFUQ
+    YQBqhKSwwKQvXCMZuvunXSUGOr1odw6n0n+mwxAQiL5KuuOTynWYOyITdWhXqOYt
+    v6oEEJddGVfxi6L64dKYggYvr73G8dyzoL5nl8tY67RFHFPa4VurVzNAX7AmAHcG
+    g12+H9HcTD932Waw8aNGOj1rteSyLRRJVUf0XK9BvParc8krajDMYjvBJyie0crA
+    7NAz1MJOUHORcfKG5IK3DGn3Bi3AaysGyU6lMh/438VtY3RSCTBnoXbEC7t+EsJs
+    iKklWx4gbd4vT/IAyohIKyjMEYAkV4yOxwoScXkh5PrtIYoCy+HB/jTYM/fHGBX/
+    huA6TyhCF+sCmynJoewNbo/0exgNqCFgQ9dDCZWM7Yn27bM/t4OWJf3jQQhf3UUR
+    4g==
+    -----END CERTIFICATE-----
 ---
 apiVersion: v1
 kind: Service

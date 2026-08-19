@@ -133,13 +133,33 @@ def test_backstage_scaffolder_templates():
         return templates
 
 
+def test_backstage_oidc_endpoint():
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            return None
+
+    opener = urllib.request.build_opener(NoRedirect)
+    url = f"{BACKSTAGE_BASE_URL}/api/auth/oidc/start?env=production"
+    req = urllib.request.Request(url)
+    try:
+        opener.open(req)
+        raise AssertionError("Expected HTTP 302 redirect from /api/auth/oidc/start")
+    except urllib.error.HTTPError as e:
+        assert e.code == 302, f"Expected HTTP 302, got {e.code}"
+        loc = e.headers.get("Location", "")
+        assert "keycloak" in loc, f"Expected Keycloak in redirect URL, got: {loc}"
+        assert "client_id=backstage-portal" in loc, f"Expected client_id=backstage-portal in redirect, got: {loc}"
+        assert "response_type=code" in loc, f"Expected response_type=code in redirect, got: {loc}"
+        return loc
+
+
 def main():
     print("==================================================================")
     print("  Phase 05: Spotify Backstage IDP & Keycloak OIDC Validation Suite")
     print("==================================================================")
 
     # 1. Keycloak OIDC Token Exchange for Backstage
-    print("\n[1/3] Validating Keycloak OIDC Direct Grant & Token Exchange for Backstage...")
+    print("\n[1/4] Validating Keycloak OIDC Direct Grant & Token Exchange for Backstage...")
     for user in TEST_USERS:
         u_name = user["username"]
         role = user["expected_role"]
@@ -148,8 +168,13 @@ def main():
         _, claims = test_keycloak_oidc_token(user)
         print(f"      [✓] OIDC Token Issued: Subject={claims.get('sub')}, Email={claims.get('email')}")
 
-    # 2. Backstage Catalog Entities Health
-    print("\n[2/3] Validating Backstage Catalog Entities API & Multi-Tier Topology...")
+    # 2. Backstage OIDC Auth Endpoint Redirect
+    print("\n[2/4] Validating Backstage /api/auth/oidc/start Redirection to Keycloak...")
+    redirect_loc = test_backstage_oidc_endpoint()
+    print("      [✓] Backstage OIDC Auth Flow initialized -> 302 Redirect to Keycloak Central IAM")
+
+    # 3. Backstage Catalog Entities Health
+    print("\n[3/4] Validating Backstage Catalog Entities API & Multi-Tier Topology...")
     entities = test_backstage_catalog_entities()
     kinds = {}
     for e in entities:
@@ -159,8 +184,8 @@ def main():
     for k, v in sorted(kinds.items()):
         print(f"          - {k:15}: {v:2} active items")
 
-    # 3. Scaffolder Software Templates
-    print("\n[3/3] Validating Scaffolder Golden Path Software Templates...")
+    # 4. Scaffolder Software Templates
+    print("\n[4/4] Validating Scaffolder Golden Path Software Templates...")
     templates = test_backstage_scaffolder_templates()
     print(f"      [✓] All {len(templates)} golden path software templates verified:")
     for t in templates:

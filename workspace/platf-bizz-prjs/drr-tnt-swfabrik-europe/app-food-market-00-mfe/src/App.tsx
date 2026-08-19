@@ -4,6 +4,28 @@ import { BackendCard } from './components/BackendCard';
 import { BackendServiceConfig } from './types/market';
 import { Layers, ShieldCheck, Cpu, Database, Network, GitBranch } from 'lucide-react';
 
+const isGateway = typeof window !== 'undefined' && (
+  window.location.hostname.includes('nip.io') ||
+  window.location.hostname.includes('swfabrik') ||
+  window.location.port === '80' ||
+  window.location.port === ''
+);
+
+const getServiceUrls = (num: number, port: number, swaggerPath: string) => {
+  if (isGateway) {
+    return {
+      endpoint: `/api/food0${num}/food-tradings`,
+      streamUrl: `/api/food0${num}/food-tradings/stream`,
+      swaggerUrl: `http://api.food0${num}.swfabrik-europe.127.0.0.1.nip.io${swaggerPath}`
+    };
+  }
+  return {
+    endpoint: `http://localhost:${port}/api/food-tradings`,
+    streamUrl: `http://localhost:${port}/api/food-tradings/stream`,
+    swaggerUrl: `http://localhost:${port}${swaggerPath}`
+  };
+};
+
 const BACKEND_SERVICES: BackendServiceConfig[] = [
   // Column 1 (Services 01, 02, 03)
   {
@@ -16,9 +38,7 @@ const BACKEND_SERVICES: BackendServiceConfig[] = [
     marketId: 'MKT-EU-01-JAVA',
     schema: 'schm01',
     port: 8081,
-    endpoint: 'http://localhost:8081/api/food-tradings',
-    streamUrl: 'http://localhost:8081/api/food-tradings/stream',
-    swaggerUrl: 'http://localhost:8081/swagger-ui.html',
+    ...getServiceUrls(1, 8081, '/swagger-ui.html'),
     sampleItem: 'Spanish Extra Virgin Olive Oil 5L',
     samplePrice: 38.5,
     sampleTrader: 'Andalucia Cooperative SL',
@@ -33,9 +53,7 @@ const BACKEND_SERVICES: BackendServiceConfig[] = [
     marketId: 'MKT-EU-02-QUARKUS',
     schema: 'schm02',
     port: 8082,
-    endpoint: 'http://localhost:8082/api/food-tradings',
-    streamUrl: 'http://localhost:8082/api/food-tradings/stream',
-    swaggerUrl: 'http://localhost:8082/q/swagger-ui',
+    ...getServiceUrls(2, 8082, '/q/swagger-ui'),
     sampleItem: 'Italian Parmigiano Reggiano DOP 24M',
     samplePrice: 65.0,
     sampleTrader: 'Emilia Foods Italia',
@@ -50,9 +68,7 @@ const BACKEND_SERVICES: BackendServiceConfig[] = [
     marketId: 'MKT-EU-03-GOLANG',
     schema: 'schm03',
     port: 8083,
-    endpoint: 'http://localhost:8083/api/food-tradings',
-    streamUrl: 'http://localhost:8083/api/food-tradings/stream',
-    swaggerUrl: 'http://localhost:8083/swagger-ui',
+    ...getServiceUrls(3, 8083, '/swagger-ui'),
     sampleItem: 'German Black Forest Ham 5kg',
     samplePrice: 48.0,
     sampleTrader: 'Bavaria Meats GmbH',
@@ -69,9 +85,7 @@ const BACKEND_SERVICES: BackendServiceConfig[] = [
     marketId: 'MKT-EU-04-PYTHON',
     schema: 'schm04',
     port: 8084,
-    endpoint: 'http://localhost:8084/api/food-tradings',
-    streamUrl: 'http://localhost:8084/api/food-tradings/stream',
-    swaggerUrl: 'http://localhost:8084/docs',
+    ...getServiceUrls(4, 8084, '/docs'),
     sampleItem: 'French Brie de Meaux AOP',
     samplePrice: 35.5,
     sampleTrader: 'Fromagerie de Paris',
@@ -86,9 +100,7 @@ const BACKEND_SERVICES: BackendServiceConfig[] = [
     marketId: 'MKT-EU-05-NESTJS',
     schema: 'schm05',
     port: 8085,
-    endpoint: 'http://localhost:8085/api/food-tradings',
-    streamUrl: 'http://localhost:8085/api/food-tradings/stream',
-    swaggerUrl: 'http://localhost:8085/swagger-ui',
+    ...getServiceUrls(5, 8085, '/swagger-ui'),
     sampleItem: 'Belgian Chocolate Pralines Box 1kg',
     samplePrice: 22.5,
     sampleTrader: 'Brussels Master Chocolatiers',
@@ -103,9 +115,7 @@ const BACKEND_SERVICES: BackendServiceConfig[] = [
     marketId: 'MKT-EU-06-DOTNET',
     schema: 'schm06',
     port: 8086,
-    endpoint: 'http://localhost:8086/api/food-tradings',
-    streamUrl: 'http://localhost:8086/api/food-tradings/stream',
-    swaggerUrl: 'http://localhost:8086/swagger-ui',
+    ...getServiceUrls(6, 8086, '/swagger-ui'),
     sampleItem: 'Spanish Jamon Iberico de Bellota 7kg',
     samplePrice: 280.0,
     sampleTrader: 'Jabugo Dehesa Espana',

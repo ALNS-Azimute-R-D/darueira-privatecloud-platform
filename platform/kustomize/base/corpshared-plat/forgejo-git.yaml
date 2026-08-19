@@ -25,6 +25,24 @@ spec:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        - name: cert-bundler
+          image: codeberg.org/forgejo/forgejo:10-rootless
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          command:
+            - sh
+            - -c
+            - "cat /etc/ssl/certs/ca-certificates.crt /etc/ssl/custom/ca.crt > /etc/ssl/merged/ca-certificates.crt"
+          volumeMounts:
+            - name: ca-cert
+              mountPath: /etc/ssl/custom
+            - name: merged-certs
+              mountPath: /etc/ssl/merged
       containers:
         - name: forgejo
           image: codeberg.org/forgejo/forgejo:10-rootless
@@ -76,6 +94,10 @@ spec:
               value: "false"
             - name: FORGEJO__service__REQUIRE_SIGNIN_VIEW
               value: "false"
+            - name: SSL_CERT_FILE
+              value: "/etc/ssl/merged/ca-certificates.crt"
+            - name: SSL_CERT_DIR
+              value: "/etc/ssl/certs"
           resources:
             requests:
               cpu: 100m
@@ -88,12 +110,19 @@ spec:
               mountPath: /var/lib/gitea
             - name: forgejo-config
               mountPath: /etc/gitea
+            - name: merged-certs
+              mountPath: /etc/ssl/merged
       volumes:
         - name: forgejo-data
           persistentVolumeClaim:
             claimName: forgejo-git-pvc
         - name: forgejo-config
           emptyDir: {}
+        - name: merged-certs
+          emptyDir: {}
+        - name: ca-cert
+          secret:
+            secretName: darueira-wildcard-tls
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

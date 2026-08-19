@@ -77,6 +77,8 @@ spec:
               value: "darueira-oidc-secret-key-2026"
             - name: MINIO_IDENTITY_OPENID_CLAIM_NAME
               value: "policy"
+            - name: MINIO_IDENTITY_OPENID_ROLE_POLICY
+              value: "consoleAdmin"
             - name: MINIO_IDENTITY_OPENID_SCOPES
               value: "openid,profile,email"
             - name: MINIO_IDENTITY_OPENID_REDIRECT_URI

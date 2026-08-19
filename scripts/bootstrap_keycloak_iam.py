@@ -352,6 +352,20 @@ def bootstrap():
                     "access.token.claim": "true",
                     "userinfo.token.claim": "true"
                 }
+            },
+            {
+                "name": "minio-policy-claim",
+                "protocol": "openid-connect",
+                "protocolMapper": "oidc-hardcoded-claim-mapper",
+                "consentRequired": False,
+                "config": {
+                    "claim.name": "policy",
+                    "claim.value": "consoleAdmin",
+                    "jsonType.label": "String",
+                    "id.token.claim": "true",
+                    "access.token.claim": "true",
+                    "userinfo.token.claim": "true"
+                }
             }
         ]
     }

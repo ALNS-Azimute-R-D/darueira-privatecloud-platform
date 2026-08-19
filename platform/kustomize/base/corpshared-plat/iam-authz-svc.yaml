@@ -45,6 +45,8 @@ spec:
               value: "http://keycloak.drr-corpshared-plat.svc.cluster.local:8080"
             - name: OPENFGA_API_URL
               value: "http://openfga.drr-corpshared-plat.svc.cluster.local:8080"
+            - name: OPENFGA_STORE_ID
+              value: "01M0CCDC4DZ1PT8JKHMFGSV752"
           resources:
             requests:
               cpu: 50m

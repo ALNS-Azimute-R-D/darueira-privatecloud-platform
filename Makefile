@@ -334,6 +334,22 @@ validate-spire: ## Validate SPIRE Workload Identity, SVID tokens, OpenBao PKI, S
 	kill $$PF_PID 2>/dev/null || true; \
 	exit $$EXIT_CODE
 
+.PHONY: bootstrap-sidecars
+bootstrap-sidecars: ## Deploy Envoy PEP and OPA PDP sidecar ConfigMaps and protected tenant workloads
+	@echo -e "${GREEN}==> Bootstrapping Zero Trust Envoy PEP & OPA PDP Sidecars...${NC}"
+	python3 scripts/bootstrap_envoy_opa_sidecars.py
+
+.PHONY: validate-sidecars
+validate-sidecars: ## Validate Envoy PEP ingress interception, OPA ext_authz PDP policies, and ReBAC enforcement
+	@echo -e "${GREEN}==> Validating Zero Trust Envoy PEP & OPA PDP Interception Suite...${NC}"
+	@$(KUBECTL) port-forward -n drr-tnt-acme svc/acme-storefront-app 8003:8000 >/dev/null 2>&1 & \
+	PF_PID=$$!; \
+	sleep 2; \
+	ENVOY_BASE_URL="http://127.0.0.1:8003" python3 scripts/validate_envoy_opa_sidecars.py; \
+	EXIT_CODE=$$?; \
+	kill $$PF_PID 2>/dev/null || true; \
+	exit $$EXIT_CODE
+
 .PHONY: clean
 clean: ## Clean build artifacts and temporary files
 	@echo -e "${YELLOW}==> Cleaning workspace artifacts...${NC}"

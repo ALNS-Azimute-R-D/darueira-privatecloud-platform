@@ -23,6 +23,10 @@ allow if {
     startswith(object.get(input.attributes.source, "principal", ""), "spiffe://darueira.local/")
 }
 
+allow if {
+    startswith(object.get(input.attributes.request.http.headers, "x-spiffe-principal", ""), "spiffe://darueira.local/")
+}
+
 # 4. Extract user identity
 user_id := uid if {
     uid := input.attributes.request.http.headers["x-user-id"]
@@ -82,12 +86,16 @@ allow if {
     user_id in ["admin", "admin-root", "system:admin"]
 }
 
+decision_header := "allow" if {
+    allow
+} else := "deny"
+
 # 10. Structured Response for Envoy ExtAuthz Filter
 response := {
     "allowed": allow,
     "headers": {
         "x-auth-user": user_id,
-        "x-auth-decision": "allow" if allow else "deny",
+        "x-auth-decision": decision_header,
         "x-auth-enforcer": "darueira-pep-envoy-opa"
     }
 }

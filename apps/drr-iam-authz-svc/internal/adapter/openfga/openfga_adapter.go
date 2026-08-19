@@ -2,8 +2,11 @@ package openfga
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"sync"
+	"time"
 
 	"github.com/dexterity/darueira/apps/drr-iam-authz-svc/internal/domain"
 	"github.com/openfga/go-sdk/client"
@@ -22,6 +25,31 @@ type OpenFGAAdapter struct {
 func NewOpenFGAAdapter(apiUrl string, storeID string, modelID string) (*OpenFGAAdapter, error) {
 	var fgaClient *client.OpenFgaClient
 	var err error
+
+	if apiUrl != "" && storeID == "" {
+		httpClient := &http.Client{Timeout: 3 * time.Second}
+		resp, err := httpClient.Get(apiUrl + "/stores")
+		if err == nil && resp.StatusCode == http.StatusOK {
+			var storesResp struct {
+				Stores []struct {
+					ID   string `json:"id"`
+					Name string `json:"name"`
+				} `json:"stores"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&storesResp); err == nil {
+				for _, s := range storesResp.Stores {
+					if s.Name == "darueira-rebac-store" {
+						storeID = s.ID
+						break
+					}
+				}
+				if storeID == "" && len(storesResp.Stores) > 0 {
+					storeID = storesResp.Stores[0].ID
+				}
+			}
+			_ = resp.Body.Close()
+		}
+	}
 
 	if apiUrl != "" && storeID != "" {
 		cfg := &client.ClientConfiguration{

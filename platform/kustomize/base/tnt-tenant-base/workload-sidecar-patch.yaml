@@ -63,7 +63,7 @@ spec:
             - "--set=plugins.envoy_ext_authz_grpc.addr=127.0.0.1:9191"
             - "--set=plugins.envoy_ext_authz_grpc.path=envoy/authz/allow"
             - "--set=decision_logs.console=true"
-            - "/policies"
+            - "/policies/envoy_authz.rego"
           ports:
             - name: opa-grpc
               containerPort: 9191

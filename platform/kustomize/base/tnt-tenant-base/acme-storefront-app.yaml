@@ -1,0 +1,200 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: acme-storefront-app
+  labels:
+    app.kubernetes.io/name: acme-storefront-app
+    darueira.io/tier: tenant-workload
+    darueira.io/tenant: acme
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: acme-storefront-app
+  labels:
+    app.kubernetes.io/name: acme-storefront-app
+    app.kubernetes.io/component: e-commerce-storefront
+    darueira.io/tier: tenant-workload
+    darueira.io/tenant: acme
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: acme-storefront-app
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: acme-storefront-app
+        app.kubernetes.io/component: e-commerce-storefront
+        darueira.io/tier: tenant-workload
+        darueira.io/tenant: acme
+    spec:
+      serviceAccountName: acme-storefront-app
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        # 1. Main Business Application Container (Listens on 127.0.0.1:8080)
+        - name: app
+          image: python:3.12-alpine
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          command:
+            - python3
+            - -c
+            - |
+              import http.server, socketserver, json
+
+              class Handler(http.server.BaseHTTPRequestHandler):
+                  def log_message(self, format, *args):
+                      pass
+                  def do_GET(self):
+                      if self.path in ['/healthz', '/readyz', '/livez']:
+                          self.send_response(200)
+                          self.send_header('Content-Type', 'application/json')
+                          self.end_headers()
+                          self.wfile.write(b'{"status":"UP","service":"acme-storefront-app"}')
+                      elif self.path == '/metrics':
+                          self.send_response(200)
+                          self.send_header('Content-Type', 'text/plain')
+                          self.end_headers()
+                          self.wfile.write(b'# HELP acme_orders_total Total storefront orders\nacme_orders_total 42\n')
+                      elif self.path == '/api/v1/orders':
+                          self.send_response(200)
+                          self.send_header('Content-Type', 'application/json')
+                          self.end_headers()
+                          self.wfile.write(b'{"tenant":"acme","orders":[{"id":"ord-101","status":"shipped","amount":250.00}]}')
+                      else:
+                          self.send_response(200)
+                          self.send_header('Content-Type', 'application/json')
+                          self.end_headers()
+                          self.wfile.write(b'{"tenant":"acme","storefront":"ACME Superstore","status":"ONLINE"}')
+
+                  def do_POST(self):
+                      self.send_response(201)
+                      self.send_header('Content-Type', 'application/json')
+                      self.end_headers()
+                      self.wfile.write(b'{"status":"created","order_id":"ord-102"}')
+
+              with socketserver.TCPServer(('127.0.0.1', 8080), Handler) as httpd:
+                  httpd.serve_forever()
+          ports:
+            - containerPort: 8080
+              name: app-local
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+
+        # 2. Envoy PEP Ingress Interception Sidecar (Listens on 0.0.0.0:8000)
+        - name: envoy-pep
+          image: envoyproxy/envoy:v1.30-latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          command:
+            - envoy
+            - -c
+            - /etc/envoy/envoy.yaml
+            - --service-cluster
+            - acme-storefront-pep
+          ports:
+            - containerPort: 8000
+              name: envoy-ingress
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: envoy-config-vol
+              mountPath: /etc/envoy
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+
+        # 3. OPA PDP Policy Decision Point Sidecar (Listens on 127.0.0.1:9191 gRPC, 127.0.0.1:8181 HTTP)
+        - name: opa-pdp
+          image: openpolicyagent/opa:0.65.0-envoy-rootless
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          args:
+            - "run"
+            - "--server"
+            - "--addr=127.0.0.1:8181"
+            - "--diagnostic-addr=127.0.0.1:8282"
+            - "--set=plugins.envoy_ext_authz_grpc.addr=127.0.0.1:9191"
+            - "--set=plugins.envoy_ext_authz_grpc.path=envoy/authz/allow"
+            - "--set=decision_logs.console=true"
+            - "/policies/envoy_authz.rego"
+          ports:
+            - name: opa-grpc
+              containerPort: 9191
+            - name: opa-http
+              containerPort: 8181
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: opa-policy-vol
+              mountPath: /policies
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: envoy-config-vol
+          configMap:
+            name: envoy-sidecar-config
+        - name: opa-policy-vol
+          configMap:
+            name: opa-policy-config
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: acme-storefront-app
+  labels:
+    app.kubernetes.io/name: acme-storefront-app
+    darueira.io/tier: tenant-workload
+    darueira.io/tenant: acme
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: acme-storefront-app
+  ports:
+    - name: http-ingress
+      port: 8000
+      targetPort: 8000

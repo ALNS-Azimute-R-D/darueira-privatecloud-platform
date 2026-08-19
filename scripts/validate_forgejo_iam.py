@@ -215,33 +215,70 @@ def test_webhook_configuration(token):
         return tekton_hook[0].get("config", {}).get("url")
 
 
+POSTGRES_HOST = os.environ.get("POSTGRES_HOST", "central-postgres.drr-corpshared-plat.svc.cluster.local")
+POSTGRES_PORT = int(os.environ.get("POSTGRES_PORT", "5432"))
+POSTGRES_DB = os.environ.get("POSTGRES_DB", "drr_git_db")
+POSTGRES_USER = os.environ.get("POSTGRES_USER", "drr_admin")
+POSTGRES_PASS = os.environ.get("POSTGRES_PASS", "change-me-in-openbao")
+
+
+def test_external_login_user_mappings():
+    import psycopg
+    conn = psycopg.connect(
+        host=POSTGRES_HOST,
+        port=POSTGRES_PORT,
+        dbname=POSTGRES_DB,
+        user=POSTGRES_USER,
+        password=POSTGRES_PASS
+    )
+    with conn.cursor() as cur:
+        cur.execute("SELECT u.name, e.external_id, e.provider, e.email FROM external_login_user e JOIN \"user\" u ON e.user_id = u.id;")
+        rows = cur.fetchall()
+        mapped_users = {r[0]: {"external_id": r[1], "provider": r[2], "email": r[3]} for r in rows}
+    conn.close()
+
+    for user in TEST_USERS:
+        u_name = user["username"]
+        assert u_name in mapped_users, f"User {u_name} is not linked in external_login_user table"
+        m = mapped_users[u_name]
+        assert m["provider"] == "openidConnect", f"Invalid provider for {u_name}: {m['provider']}"
+        assert m["external_id"], f"Missing external_id for {u_name}"
+    return mapped_users
+
+
 def main():
     print("==================================================================")
     print("  Phase 04: Forgejo Git Server Keycloak OIDC IAM Validation Suite ")
     print("==================================================================")
 
     # 1. Keycloak OIDC Client Registration
-    print("\n[1/6] Validating Keycloak Central OIDC Client ('forgejo-git')...")
+    print("\n[1/7] Validating Keycloak Central OIDC Client ('forgejo-git')...")
     client_info = test_keycloak_oidc_client()
     print(f"      [✓] Keycloak Client active: {client_info.get('clientId')} (Protocol: {client_info.get('protocol')})")
 
     # 2. Keycloak Direct Token Grant & UserInfo Assertions
-    print("\n[2/6] Validating Keycloak OIDC Authentication & Custom Claims (tenant, email)...")
+    print("\n[2/7] Validating Keycloak OIDC Authentication & Custom Claims (tenant, email)...")
     for user in TEST_USERS:
         u_name = user["username"]
         ui = test_user_oidc_authentication(user)
         print(f"      [✓] User '{u_name}': Tenant={ui.get('tenant')}, Email={ui.get('email')}")
 
     # 3. Forgejo OAuth2 Login Redirect Endpoint
-    print("\n[3/6] Validating Forgejo Git OAuth2 Authorization Redirect Flow...")
+    print("\n[3/7] Validating Forgejo Git OAuth2 Authorization Redirect Flow...")
     loc = test_forgejo_oauth_redirect()
     print(f"      [✓] Direct OAuth2 entrypoint redirected cleanly to Keycloak IdP")
+
+    # 4. External Login User Mappings in DB
+    print("\n[4/7] Validating Pre-Linked Keycloak OIDC External User Mappings in Database...")
+    mappings = test_external_login_user_mappings()
+    for u_name, data in mappings.items():
+        print(f"      [✓] User '{u_name}' mapped to Keycloak Sub: {data['external_id']}")
 
     # Generate token for API tests
     token = get_or_create_pat()
 
-    # 4. Forgejo REST API Authentication
-    print("\n[4/6] Validating Forgejo REST API User Profiles & Privileges...")
+    # 5. Forgejo REST API Authentication
+    print("\n[5/7] Validating Forgejo REST API User Profiles & Privileges...")
     user_map = test_forgejo_users_api(token)
     for user in TEST_USERS:
         u_name = user["username"]
@@ -253,14 +290,14 @@ def main():
         exp_admin = "Administrator" if user["expected_admin"] else "Standard User"
         print(f"      [✓] Profile verified: {u_name} ({exp_admin}, Admin={profile.get('is_admin')})")
 
-    # 5. Multi-Tenant Organizations & Repositories
-    print("\n[5/6] Validating Multi-Tenant Organizations & Starter Repositories...")
+    # 6. Multi-Tenant Organizations & Repositories
+    print("\n[6/7] Validating Multi-Tenant Organizations & Starter Repositories...")
     test_organizations_and_repos(token)
     print(f"      [✓] All {len(EXPECTED_ORGS)} organizations verified: {EXPECTED_ORGS}")
     print(f"      [✓] All {len(EXPECTED_REPOS)} repositories verified: {EXPECTED_REPOS}")
 
-    # 6. Git Smart HTTP & Tekton CI Webhook
-    print("\n[6/6] Validating Git Smart HTTP & Tekton CI Webhook Integration...")
+    # 7. Git Smart HTTP & Tekton CI Webhook
+    print("\n[7/7] Validating Git Smart HTTP & Tekton CI Webhook Integration...")
     ctype = test_git_smart_http_protocol(token)
     print(f"      [✓] Git upload-pack advertisement verified ({ctype})")
     hook_url = test_webhook_configuration(token)

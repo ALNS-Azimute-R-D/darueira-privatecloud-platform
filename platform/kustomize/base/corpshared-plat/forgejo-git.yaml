@@ -94,6 +94,14 @@ spec:
               value: "false"
             - name: FORGEJO__service__REQUIRE_SIGNIN_VIEW
               value: "false"
+            - name: FORGEJO__oauth2_client__ENABLE_AUTO_REGISTRATION
+              value: "true"
+            - name: FORGEJO__oauth2_client__ACCOUNT_LINKING
+              value: "auto"
+            - name: FORGEJO__oauth2_client__UPDATE_AVATAR
+              value: "true"
+            - name: FORGEJO__service__ENABLE_REVERSE_PROXY_AUTO_REGISTRATION
+              value: "true"
             - name: SSL_CERT_FILE
               value: "/etc/ssl/merged/ca-certificates.crt"
             - name: SSL_CERT_DIR

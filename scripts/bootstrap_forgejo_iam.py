@@ -283,6 +283,41 @@ def ensure_users_via_api(source_id):
         print(f"    [✓] User ready: {username:20} (Admin: {is_admin})")
 
 
+def link_keycloak_users_in_db(source_id):
+    print("--> Linking Keycloak OIDC User Sub IDs in PostgreSQL external_login_user...")
+    kc = KeycloakClient(KEYCLOAK_BASE_URL, KEYCLOAK_ADMIN_USER, KEYCLOAK_ADMIN_PASS)
+    kc_users = kc.request(f"admin/realms/{REALM_NAME}/users") or []
+    kc_map = {u["username"]: u for u in kc_users}
+
+    conn = psycopg.connect(
+        host=POSTGRES_HOST,
+        port=POSTGRES_PORT,
+        dbname=POSTGRES_DB,
+        user=POSTGRES_USER,
+        password=POSTGRES_PASS
+    )
+    with conn.cursor() as cur:
+        cur.execute("SELECT id, name, email FROM \"user\";")
+        db_users = cur.fetchall()
+
+        for u_id, u_name, u_email in db_users:
+            if u_name in kc_map:
+                kc_user = kc_map[u_name]
+                sub = kc_user["id"]
+                email = kc_user.get("email") or u_email
+                cur.execute("""
+                    INSERT INTO external_login_user (external_id, user_id, login_source_id, raw_data, provider, email, name)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (external_id, login_source_id)
+                    DO UPDATE SET user_id = EXCLUDED.user_id, email = EXCLUDED.email;
+                """, (sub, u_id, source_id, json.dumps(kc_user), "openidConnect", email, u_name))
+                cur.execute("UPDATE \"user\" SET login_type = 6, login_source = %s, login_name = %s WHERE id = %s;", (source_id, sub, u_id))
+                print(f"    [✓] Linked user '{u_name}' (ID: {u_id}) -> Keycloak Sub: {sub}")
+
+        conn.commit()
+    conn.close()
+
+
 def configure_orgs_and_repos():
     print("--> Provisioning Corporate Organizations, Teams & Repositories...")
     auth = base64.b64encode(f"{ADMIN_USER}:{ADMIN_PASSWORD}".encode()).decode()
@@ -399,7 +434,10 @@ def main():
     # 4. User Provisioning & Permissions
     ensure_users_via_api(source_id)
 
-    # 5. Organizations, Teams & Repositories
+    # 5. Link Keycloak OIDC Sub IDs in external_login_user table
+    link_keycloak_users_in_db(source_id)
+
+    # 6. Organizations, Teams & Repositories
     configure_orgs_and_repos()
 
     print("\n[✓] Forgejo Git Server Keycloak OIDC IAM bootstrap completed successfully!")

@@ -1,0 +1,34 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pr-swfabrik-europe-food-market-01-manual
+  namespace: drr-corpshared-plat
+  labels:
+    darueira.io/tenant: swfabrik-europe
+    darueira.io/project: marketplaces
+    darueira.io/service: food-market-01-service
+spec:
+  pipelineRef:
+    name: polyglot-ci-cd-pipeline
+  params:
+    - name: git-url
+      value: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
+    - name: git-revision
+      value: "main"
+    - name: image-reference
+      value: "localhost:8082/swfabrik-europe/food-market-01-service:latest"
+    - name: context-subpath
+      value: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/food-market-01-service"
+    - name: build-tool
+      value: "maven"
+    - name: target-environment
+      value: "dev"
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi

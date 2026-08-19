@@ -466,6 +466,35 @@ validate-platform-services: ## Validate drr-tenant-svc, drr-iam-authz-svc, drr-e
 	kill $$PF1 $$PF2 $$PF3 2>/dev/null || true; \
 	exit $$EXIT_CODE
 
+.PHONY: validate-mission-15
+validate-mission-15: ## Validate Mission #15: 6 polyglot microservices, 3 MFEs, multi-tenant DB schemas and RabbitMQ
+	@echo -e "${GREEN}==> Running Mission #15 Polyglot Multi-Tenant Validation Suite...${NC}"
+	python3 scripts/validate_mission_15.py
+
+.PHONY: port-forward-foodmarket
+port-forward-foodmarket: ## Port-forward European Food Marketplace Frontends & Backends on localhost (Host SPA :3000, Services :8081..:8086)
+	@echo -e "${GREEN}==> Exposing European Food Marketplace Frontends & Polyglot Microservices on localhost...${NC}"
+	@echo -e "${CYAN}  - Host Dashboard SPA:  http://localhost:3000${NC}"
+	@echo -e "${CYAN}  - React MFE 01:        http://localhost:3001${NC}"
+	@echo -e "${CYAN}  - Angular MFE 02:      http://localhost:3002${NC}"
+	@echo -e "${CYAN}  - Service 01 (Java):   http://localhost:8081/swagger-ui.html${NC}"
+	@echo -e "${CYAN}  - Service 02 (Kotlin): http://localhost:8082/q/swagger-ui${NC}"
+	@echo -e "${CYAN}  - Service 03 (Go):     http://localhost:8083/swagger-ui${NC}"
+	@echo -e "${CYAN}  - Service 04 (Python): http://localhost:8084/docs${NC}"
+	@echo -e "${CYAN}  - Service 05 (Node):   http://localhost:8085/swagger-ui${NC}"
+	@echo -e "${CYAN}  - Service 06 (.NET):   http://localhost:8086/swagger-ui${NC}"
+	@trap 'kill 0' EXIT; \
+	$(KUBECTL) port-forward -n drr-tnt-swfabrik-europe-marketplaces-dev svc/app-food-market-00-mfe 3000:80 & \
+	$(KUBECTL) port-forward -n drr-tnt-swfabrik-europe-marketplaces-dev svc/app-food-market-01-react 3001:80 & \
+	$(KUBECTL) port-forward -n drr-tnt-swfabrik-europe-marketplaces-dev svc/app-food-market-02-angular 3002:80 & \
+	$(KUBECTL) port-forward -n drr-tnt-swfabrik-europe-marketplaces-dev svc/food-market-01-service 8081:8081 & \
+	$(KUBECTL) port-forward -n drr-tnt-swfabrik-europe-marketplaces-dev svc/food-market-02-service 8082:8082 & \
+	$(KUBECTL) port-forward -n drr-tnt-swfabrik-europe-marketplaces-dev svc/food-market-03-service 8083:8083 & \
+	$(KUBECTL) port-forward -n drr-tnt-swfabrik-europe-marketplaces-dev svc/food-market-04-service 8084:8084 & \
+	$(KUBECTL) port-forward -n drr-tnt-swfabrik-europe-marketplaces-dev svc/food-market-05-service 8085:8085 & \
+	$(KUBECTL) port-forward -n drr-tnt-swfabrik-europe-marketplaces-dev svc/food-market-06-service 8086:8086 & \
+	wait
+
 .PHONY: clean
 clean: ## Clean build artifacts and temporary files
 	@echo -e "${YELLOW}==> Cleaning workspace artifacts...${NC}"

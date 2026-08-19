@@ -27,6 +27,9 @@ spec:
           - tenant: "globex"
             project: "logistics"
             env: "prod"
+          - tenant: "swfabrik-europe"
+            project: "marketplaces"
+            env: "dev"
   template:
     metadata:
       name: "tenant-{{tenant}}-{{project}}-{{env}}"

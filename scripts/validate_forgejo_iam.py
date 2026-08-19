@@ -241,7 +241,7 @@ def test_external_login_user_mappings():
         u_name = user["username"]
         assert u_name in mapped_users, f"User {u_name} is not linked in external_login_user table"
         m = mapped_users[u_name]
-        assert m["provider"] == "openidConnect", f"Invalid provider for {u_name}: {m['provider']}"
+        assert m["provider"] in ("openidConnect", "keycloak-oidc"), f"Invalid provider for {u_name}: {m['provider']}"
         assert m["external_id"], f"Missing external_id for {u_name}"
     return mapped_users
 

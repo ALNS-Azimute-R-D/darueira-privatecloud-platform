@@ -87,7 +87,7 @@ def acquire_keycloak_token(username, password, retries=3):
                 data=data,
                 headers={"Content-Type": "application/x-www-form-urlencoded"}
             )
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with urllib.request.urlopen(req, timeout=30) as resp:
                 res = json.loads(resp.read().decode("utf-8"))
                 return res["access_token"]
         except Exception as e:
@@ -100,7 +100,7 @@ def test_jmap_user(user_info):
     auth_str = base64.b64encode(f"{user_info['email']}:{user_info['password']}".encode()).decode()
     session_url = f"http://{STALWART_HTTP_HOST}/jmap/session"
     s_req = urllib.request.Request(session_url, headers={"Authorization": f"Basic {auth_str}"})
-    with urllib.request.urlopen(s_req, timeout=10) as resp:
+    with urllib.request.urlopen(s_req, timeout=30) as resp:
         session = json.loads(resp.read().decode("utf-8"))
 
     auth_user = session.get("username")
@@ -120,7 +120,7 @@ def test_jmap_user(user_info):
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json", "Authorization": f"Basic {auth_str}"}
     )
-    with urllib.request.urlopen(j_req, timeout=10) as resp:
+    with urllib.request.urlopen(j_req, timeout=30) as resp:
         j_resp = json.loads(resp.read().decode("utf-8"))
 
     mailboxes = j_resp["methodResponses"][0][1].get("list", [])

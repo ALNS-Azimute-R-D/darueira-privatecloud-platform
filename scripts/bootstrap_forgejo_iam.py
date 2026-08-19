@@ -199,7 +199,7 @@ def bootstrap_forgejo_oauth_in_db():
         "RequiredClaimName": "",
         "RequiredClaimValue": "",
         "GroupClaimName": "groups",
-        "AdminGroup": "drr-platform-admins",
+        "AdminGroup": "role-platform-architect",
         "GroupTeamMap": "",
         "GroupTeamMapRemoval": False,
         "RestrictedGroup": ""

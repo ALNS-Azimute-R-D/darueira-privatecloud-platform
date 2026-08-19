@@ -255,7 +255,41 @@ data:
     clientID: argocd
     clientSecret: $oidc.keycloak.clientSecret
     requestedScopes: ["openid", "profile", "email", "groups"]
-    insecureSkipVerify: true
+    rootCA: |
+      -----BEGIN CERTIFICATE-----
+      MIIFzTCCA7WgAwIBAgIUbuH/y41PLab1Yzf2008NjB63X9kwDQYJKoZIhvcNAQEL
+      BQAwbjEkMCIGA1UEAwwbRGFydWVpcmEgRW50ZXJwcmlzZSBSb290IENBMSowKAYD
+      VQQKDCFEYXJ1ZWlyYSBFbnRlcnByaXNlIFByaXZhdGUgQ2xvdWQxGjAYBgNVBAsM
+      EVNlY3VyaXR5IFBsYXRmb3JtMB4XDTI2MDgxODE2MzMwMloXDTM2MDgxNTE2MzMw
+      MlowbjEkMCIGA1UEAwwbRGFydWVpcmEgRW50ZXJwcmlzZSBSb290IENBMSowKAYD
+      VQQKDCFEYXJ1ZWlyYSBFbnRlcnByaXNlIFByaXZhdGUgQ2xvdWQxGjAYBgNVBAsM
+      EVNlY3VyaXR5IFBsYXRmb3JtMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKC
+      AgEAif6ZZQ55XyIVNJjFVBCKr4vBB9RrRkGeR6qPmm3iXWoZQGkpjFeyKFDnChoI
+      aq7jwIcjDR2Gem0tZADPlBZRyJG79BdoM6SvGbHKYj+jRcP37CsqYtBMMYvKfL6l
+      iHtrsdm4YocAzDDzxwdW2BBDqKCXCCpu7cccy942/fgjCwwz/q7sQrp78gaArJKg
+      vQDTgOUiu08srpOYsdpp0q+UIHG8dD3n8tJsOUCSKVCGZDxiI/3qgoCEn3L6sENm
+      Ldk3dFpTfqNKJD2GfnNsfMEse/0VUwdPgBrSH7ky4I74jXFvwUVRKQgCLaeXZiN+
+      cBzskyYVFc41nZgKSuEicjZEyw+MBVmvhC9NBJ2OYIOiD0TLmPdQvoJ6IGeeBG4I
+      ycAeZzk14ioRC+gKPgmRSPaHsYmg75y5klOsI5C2Lf6N6G0y5ZUd3vJA+o6lBC1U
+      nAtMohiv6D7nbGYRn2aDH5tY74QDpjkrlZ+cvWP6wSpffb72QrzrVFj/nFV4Pe6V
+      fAX5W1cnkTgwBRX2PsOC2NN++O1u86nJhqXMj9nPbw2iNZSbBk1Ts5MgtcsEIjy5
+      Xh+F1Yfi1iV/Jpfi/0w4UHlzfMtmjecNOiSvfigI5FoYR1D6UtcCU7s67l/qlu+6
+      SXPssdQk3r+HE8EciFk+e76DGaKf9mm/X99LmKq8ZsL70J0CAwEAAaNjMGEwHwYD
+      VR0jBBgwFoAU+XEMPJ8r7FT+ybC5LdFnJbrCRWgwDwYDVR0TAQH/BAUwAwEB/zAO
+      BgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFPlxDDyfK+xU/smwuS3RZyW6wkVoMA0G
+      CSqGSIb3DQEBCwUAA4ICAQBvjDQwJRJ+53/88bHQszxGmlk0m0Sx9wdhmxdx2MA/
+      7Xn3505AZh3NImQ0RRYUQw35T8K5rh5YS1XmqEe0LQYgZl0M4/2Z0Ys1fhkFU8Lf
+      0g4ULPv13+pkHOPf/NOpTEUwgtdwMNhMx3bav3ljQkzPE7oDaYX7OHzs7zprrUpH
+      gT/FeKoTg0ts17IOODNCS0dXu+VrwjhKGgXsE0LrjWB3V2hdAQrD3TOX1kPxxuDl
+      WPOxlo5Uq0OF7Zcf+HqIeiNsRJ5XCVDZAkJNVBcLcyj5WEBLyRedqj/e5LrktFUQ
+      YQBqhKSwwKQvXCMZuvunXSUGOr1odw6n0n+mwxAQiL5KuuOTynWYOyITdWhXqOYt
+      v6oEEJddGVfxi6L64dKYggYvr73G8dyzoL5nl8tY67RFHFPa4VurVzNAX7AmAHcG
+      g12+H9HcTD932Waw8aNGOj1rteSyLRRJVUf0XK9BvParc8krajDMYjvBJyie0crA
+      7NAz1MJOUHORcfKG5IK3DGn3Bi3AaysGyU6lMh/438VtY3RSCTBnoXbEC7t+EsJs
+      iKklWx4gbd4vT/IAyohIKyjMEYAkV4yOxwoScXkh5PrtIYoCy+HB/jTYM/fHGBX/
+      huA6TyhCF+sCmynJoewNbo/0exgNqCFgQ9dDCZWM7Yn27bM/t4OWJf3jQQhf3UUR
+      4g==
+      -----END CERTIFICATE-----
   repositories: |
     - url: http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/darueira-corp/platform-core.git
       name: darueira-corp-platform-core
@@ -315,6 +349,42 @@ metadata:
     app.kubernetes.io/name: argocd-tls-certs-cm
     app.kubernetes.io/part-of: argocd
     darueira.io/tier: enterprise-shared
+data:
+  keycloak.darueira-corpshared.127.0.0.1.nip.io: |
+    -----BEGIN CERTIFICATE-----
+    MIIFzTCCA7WgAwIBAgIUbuH/y41PLab1Yzf2008NjB63X9kwDQYJKoZIhvcNAQEL
+    BQAwbjEkMCIGA1UEAwwbRGFydWVpcmEgRW50ZXJwcmlzZSBSb290IENBMSowKAYD
+    VQQKDCFEYXJ1ZWlyYSBFbnRlcnByaXNlIFByaXZhdGUgQ2xvdWQxGjAYBgNVBAsM
+    EVNlY3VyaXR5IFBsYXRmb3JtMB4XDTI2MDgxODE2MzMwMloXDTM2MDgxNTE2MzMw
+    MlowbjEkMCIGA1UEAwwbRGFydWVpcmEgRW50ZXJwcmlzZSBSb290IENBMSowKAYD
+    VQQKDCFEYXJ1ZWlyYSBFbnRlcnByaXNlIFByaXZhdGUgQ2xvdWQxGjAYBgNVBAsM
+    EVNlY3VyaXR5IFBsYXRmb3JtMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKC
+    AgEAif6ZZQ55XyIVNJjFVBCKr4vBB9RrRkGeR6qPmm3iXWoZQGkpjFeyKFDnChoI
+    aq7jwIcjDR2Gem0tZADPlBZRyJG79BdoM6SvGbHKYj+jRcP37CsqYtBMMYvKfL6l
+    iHtrsdm4YocAzDDzxwdW2BBDqKCXCCpu7cccy942/fgjCwwz/q7sQrp78gaArJKg
+    vQDTgOUiu08srpOYsdpp0q+UIHG8dD3n8tJsOUCSKVCGZDxiI/3qgoCEn3L6sENm
+    Ldk3dFpTfqNKJD2GfnNsfMEse/0VUwdPgBrSH7ky4I74jXFvwUVRKQgCLaeXZiN+
+    cBzskyYVFc41nZgKSuEicjZEyw+MBVmvhC9NBJ2OYIOiD0TLmPdQvoJ6IGeeBG4I
+    ycAeZzk14ioRC+gKPgmRSPaHsYmg75y5klOsI5C2Lf6N6G0y5ZUd3vJA+o6lBC1U
+    nAtMohiv6D7nbGYRn2aDH5tY74QDpjkrlZ+cvWP6wSpffb72QrzrVFj/nFV4Pe6V
+    fAX5W1cnkTgwBRX2PsOC2NN++O1u86nJhqXMj9nPbw2iNZSbBk1Ts5MgtcsEIjy5
+    Xh+F1Yfi1iV/Jpfi/0w4UHlzfMtmjecNOiSvfigI5FoYR1D6UtcCU7s67l/qlu+6
+    SXPssdQk3r+HE8EciFk+e76DGaKf9mm/X99LmKq8ZsL70J0CAwEAAaNjMGEwHwYD
+    VR0jBBgwFoAU+XEMPJ8r7FT+ybC5LdFnJbrCRWgwDwYDVR0TAQH/BAUwAwEB/zAO
+    BgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFPlxDDyfK+xU/smwuS3RZyW6wkVoMA0G
+    CSqGSIb3DQEBCwUAA4ICAQBvjDQwJRJ+53/88bHQszxGmlk0m0Sx9wdhmxdx2MA/
+    7Xn3505AZh3NImQ0RRYUQw35T8K5rh5YS1XmqEe0LQYgZl0M4/2Z0Ys1fhkFU8Lf
+    0g4ULPv13+pkHOPf/NOpTEUwgtdwMNhMx3bav3ljQkzPE7oDaYX7OHzs7zprrUpH
+    gT/FeKoTg0ts17IOODNCS0dXu+VrwjhKGgXsE0LrjWB3V2hdAQrD3TOX1kPxxuDl
+    WPOxlo5Uq0OF7Zcf+HqIeiNsRJ5XCVDZAkJNVBcLcyj5WEBLyRedqj/e5LrktFUQ
+    YQBqhKSwwKQvXCMZuvunXSUGOr1odw6n0n+mwxAQiL5KuuOTynWYOyITdWhXqOYt
+    v6oEEJddGVfxi6L64dKYggYvr73G8dyzoL5nl8tY67RFHFPa4VurVzNAX7AmAHcG
+    g12+H9HcTD932Waw8aNGOj1rteSyLRRJVUf0XK9BvParc8krajDMYjvBJyie0crA
+    7NAz1MJOUHORcfKG5IK3DGn3Bi3AaysGyU6lMh/438VtY3RSCTBnoXbEC7t+EsJs
+    iKklWx4gbd4vT/IAyohIKyjMEYAkV4yOxwoScXkh5PrtIYoCy+HB/jTYM/fHGBX/
+    huA6TyhCF+sCmynJoewNbo/0exgNqCFgQ9dDCZWM7Yn27bM/t4OWJf3jQQhf3UUR
+    4g==
+    -----END CERTIFICATE-----
 ---
 apiVersion: v1
 kind: ConfigMap

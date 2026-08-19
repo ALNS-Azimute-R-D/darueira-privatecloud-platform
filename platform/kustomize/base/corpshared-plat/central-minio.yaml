@@ -66,7 +66,27 @@ spec:
             - name: MINIO_ROOT_USER
               value: "minioadmin"
             - name: MINIO_ROOT_PASSWORD
-              value: "minioadmin-change-me"
+              value: "Darueira@2026!"
+            - name: MINIO_BROWSER_REDIRECT_URL
+              value: "https://minio.darueira-corpshared.127.0.0.1.nip.io"
+            - name: MINIO_IDENTITY_OPENID_CONFIG_URL
+              value: "http://keycloak.drr-corpshared-plat.svc.cluster.local:8080/realms/darueira-platform-svcs/.well-known/openid-configuration"
+            - name: MINIO_IDENTITY_OPENID_CLIENT_ID
+              value: "darueira-platform-generic-oidc"
+            - name: MINIO_IDENTITY_OPENID_CLIENT_SECRET
+              value: "darueira-oidc-secret-key-2026"
+            - name: MINIO_IDENTITY_OPENID_CLAIM_NAME
+              value: "policy"
+            - name: MINIO_IDENTITY_OPENID_SCOPES
+              value: "openid,profile,email"
+            - name: MINIO_IDENTITY_OPENID_REDIRECT_URI
+              value: "https://minio.darueira-corpshared.127.0.0.1.nip.io/oauth_callback"
+            - name: MINIO_IDENTITY_OPENID_DISPLAY_NAME
+              value: "Keycloak Central IAM"
+            - name: SSL_CERT_FILE
+              value: "/certs/CAs/darueira-ca.crt"
+            - name: SSL_CERT_DIR
+              value: "/certs/CAs"
           resources:
             requests:
               cpu: 200m
@@ -77,6 +97,9 @@ spec:
           volumeMounts:
             - name: minio-data
               mountPath: /data
+            - name: darueira-tls-ca
+              mountPath: /certs/CAs/darueira-ca.crt
+              subPath: darueira-ca.crt
         - name: bucket-provisioner
           image: minio/mc:RELEASE.2024-05-09T17-04-24Z
           imagePullPolicy: IfNotPresent
@@ -96,7 +119,7 @@ spec:
             - -c
             - |
               echo "Waiting for Central MinIO server..."
-              until /usr/bin/mc alias set local http://127.0.0.1:9000 minioadmin minioadmin-change-me; do
+              until /usr/bin/mc alias set local http://127.0.0.1:9000 minioadmin 'Darueira@2026!'; do
                 sleep 2
               done
               echo "Central MinIO ready. Ensuring standard corporate buckets exist..."
@@ -105,19 +128,32 @@ spec:
               /usr/bin/mc mb -p local/drr-corp-artifacts || true
               /usr/bin/mc mb -p local/drr-corp-mail-storage || true
               /usr/bin/mc mb -p local/drr-corp-logs-archive || true
-              echo "Corporate buckets successfully verified!"
+              echo "Configuring OpenID policy attachments..."
+              /usr/bin/mc admin policy attach local consoleAdmin --group "role-platform-architect" || true
+              /usr/bin/mc admin policy attach local consoleAdmin --group "role-tenant-architect" || true
+              /usr/bin/mc admin policy attach local readwrite --group "role-lead-developer" || true
+              /usr/bin/mc admin policy attach local readonly --group "role-developer" || true
+              /usr/bin/mc admin policy attach local consoleAdmin --user "andre.nascimento@darueira.local" || true
+              /usr/bin/mc admin policy attach local consoleAdmin --user "admin-root" || true
+              echo "Corporate buckets and OpenID RBAC successfully verified!"
               tail -f /dev/null
           resources:
             requests:
               cpu: 50m
-              memory: 32Mi
-            limits:
-              cpu: 100m
               memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
       volumes:
         - name: minio-data
           persistentVolumeClaim:
             claimName: central-minio-pvc
+        - name: darueira-tls-ca
+          secret:
+            secretName: darueira-wildcard-tls
+            items:
+              - key: ca.crt
+                path: darueira-ca.crt
 ---
 apiVersion: v1
 kind: Service

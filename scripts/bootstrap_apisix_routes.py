@@ -292,6 +292,8 @@ ROUTES = [
             "minio.darueira-corpshared.192.168.178.84.nip.io",
             "minio.darueira-corpshared.127.0.0.1.sslip.io",
             "minio.darueira-corpshared.local",
+            "minio-corp.darueira-corpshared.127.0.0.1.nip.io",
+            "minio-corp.darueira-corpshared.local",
             "s3.darueira-corpshared.127.0.0.1.nip.io",
             "s3.darueira-corpshared.local"
         ],

@@ -350,6 +350,30 @@ validate-sidecars: ## Validate Envoy PEP ingress interception, OPA ext_authz PDP
 	kill $$PF_PID 2>/dev/null || true; \
 	exit $$EXIT_CODE
 
+.PHONY: bootstrap-brokers
+bootstrap-brokers: ## Bootstrap Kafka topics, RabbitMQ VHosts, multi-tenant users, exchanges and queues
+	@echo -e "${GREEN}==> Bootstrapping Enterprise Message Brokers (Kafka & RabbitMQ)...${NC}"
+	@$(KUBECTL) port-forward -n drr-corpshared-plat svc/message-broker-rabbitmq 15672:15672 >/dev/null 2>&1 & \
+	PF_RMQ=$$!; \
+	sleep 2; \
+	RABBITMQ_HOST="127.0.0.1:15672" python3 scripts/bootstrap_message_brokers.py; \
+	EXIT_CODE=$$?; \
+	kill $$PF_RMQ 2>/dev/null || true; \
+	exit $$EXIT_CODE
+
+.PHONY: validate-brokers
+validate-brokers: ## Validate Kafka event streaming, Kafbat UI, RabbitMQ AMQP routing, and multi-tenant VHost isolation
+	@echo -e "${GREEN}==> Validating Enterprise Message Brokers Suite (Kafka & RabbitMQ)...${NC}"
+	@$(KUBECTL) port-forward -n drr-corpshared-plat svc/message-broker-rabbitmq 15672:15672 >/dev/null 2>&1 & \
+	PF_RMQ=$$!; \
+	$(KUBECTL) port-forward -n drr-corpshared-plat svc/message-broker-kafka 8085:8080 >/dev/null 2>&1 & \
+	PF_KAFBAT=$$!; \
+	sleep 2; \
+	RABBITMQ_HOST="127.0.0.1:15672" KAFBAT_HOST="127.0.0.1:8085" python3 scripts/validate_message_brokers.py; \
+	EXIT_CODE=$$?; \
+	kill $$PF_RMQ $$PF_KAFBAT 2>/dev/null || true; \
+	exit $$EXIT_CODE
+
 .PHONY: clean
 clean: ## Clean build artifacts and temporary files
 	@echo -e "${YELLOW}==> Cleaning workspace artifacts...${NC}"

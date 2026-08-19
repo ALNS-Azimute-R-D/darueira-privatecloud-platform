@@ -1,0 +1,41 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: food-market-01-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://central-postgres.drr-corpshared-plat.svc.cluster.local:5432/drr_tnt_bizapps_db?currentSchema=schm01}
+    username: ${SPRING_DATASOURCE_USERNAME:drr_admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:change-me-in-openbao}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        default_schema: schm01
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:message-broker-rabbitmq.drr-corpshared-plat.svc.cluster.local}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:drr_admin}
+    password: ${SPRING_RABBITMQ_PASSWORD:darueira-admin123}
+    virtual-host: ${SPRING_RABBITMQ_VHOST:/}
+
+app:
+  market-id: ${APP_MARKET_ID:MKT-EU-01-SPRING}
+  rabbitmq:
+    topic: ${APP_RABBITMQ_TOPIC:marketplace.foodtrading.topic}
+    queue: ${APP_RABBITMQ_QUEUE:marketplace.foodtrading.queue01}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha

@@ -1,0 +1,162 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: darueira-operator
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: darueira-operator
+    darueira.io/tier: enterprise-shared
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: darueira-operator-role
+  labels:
+    app.kubernetes.io/name: darueira-operator
+rules:
+  - apiGroups:
+      - "darueira.io"
+    resources:
+      - "tenants"
+      - "tenants/status"
+      - "tenants/finalizers"
+      - "projects"
+      - "projects/status"
+      - "projects/finalizers"
+      - "environments"
+      - "environments/status"
+      - "environments/finalizers"
+    verbs:
+      - "get"
+      - "list"
+      - "watch"
+      - "create"
+      - "update"
+      - "patch"
+      - "delete"
+  - apiGroups:
+      - ""
+    resources:
+      - "namespaces"
+      - "configmaps"
+      - "secrets"
+      - "services"
+      - "resourcequotas"
+      - "limitranges"
+      - "events"
+    verbs:
+      - "get"
+      - "list"
+      - "watch"
+      - "create"
+      - "update"
+      - "patch"
+      - "delete"
+  - apiGroups:
+      - "cilium.io"
+    resources:
+      - "ciliumnetworkpolicies"
+    verbs:
+      - "get"
+      - "list"
+      - "watch"
+      - "create"
+      - "update"
+      - "patch"
+      - "delete"
+  - apiGroups:
+      - "coordination.k8s.io"
+    resources:
+      - "leases"
+    verbs:
+      - "get"
+      - "list"
+      - "watch"
+      - "create"
+      - "update"
+      - "patch"
+      - "delete"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: darueira-operator-rolebinding
+  labels:
+    app.kubernetes.io/name: darueira-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: darueira-operator-role
+subjects:
+  - kind: ServiceAccount
+    name: darueira-operator
+    namespace: drr-corpshared-mgmt
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: darueira-operator
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/name: darueira-operator
+    app.kubernetes.io/component: kubernetes-operator
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: darueira-operator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: darueira-operator
+        darueira.io/tier: enterprise-shared
+    spec:
+      serviceAccountName: darueira-operator
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: manager
+          image: localhost:8082/darueira-operator:v1alpha1
+          imagePullPolicy: IfNotPresent
+          command:
+            - /app/darueira-operator
+          args:
+            - --leader-elect=false
+            - --health-probe-bind-address=:8081
+            - --metrics-bind-address=:8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 8080
+              name: metrics
+            - containerPort: 8081
+              name: healthz
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 5

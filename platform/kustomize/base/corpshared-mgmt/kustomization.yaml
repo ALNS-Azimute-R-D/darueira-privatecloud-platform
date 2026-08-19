@@ -10,3 +10,4 @@ resources:
   - argocd-server.yaml
   - tekton-pipeline-engine.yaml
   - env-orchestrator-svc.yaml
+  - darueira-operator.yaml

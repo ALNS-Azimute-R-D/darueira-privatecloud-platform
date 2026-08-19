@@ -440,6 +440,32 @@ validate-observability: ## Validate OpenSearch, Fluent Bit, Prometheus, Grafana,
 	kill $$PF1 $$PF2 $$PF3 $$PF4 $$PF5 $$PF6 $$PF7 2>/dev/null || true; \
 	exit $$EXIT_CODE
 
+.PHONY: bootstrap-services
+bootstrap-services: bootstrap-platform-services ## Alias for bootstrap-platform-services
+
+.PHONY: bootstrap-platform-services
+bootstrap-platform-services: ## Bootstrap drr-tenant-svc, drr-iam-authz-svc, drr-env-orchestrator-svc and darueira-operator
+	@echo -e "${GREEN}==> Bootstrapping Core Platform Microservices & Kubernetes Operator...${NC}"
+	python3 scripts/bootstrap_platform_services.py
+
+.PHONY: validate-services
+validate-services: validate-platform-services ## Alias for validate-platform-services
+
+.PHONY: validate-platform-services
+validate-platform-services: ## Validate drr-tenant-svc, drr-iam-authz-svc, drr-env-orchestrator-svc, darueira-operator and CLI
+	@echo -e "${GREEN}==> Validating Core Platform Microservices & Operator Suite...${NC}"
+	@$(KUBECTL) port-forward -n drr-corpshared-plat svc/drr-iam-authz-svc 8080:8080 >/dev/null 2>&1 & PF1=$$!; \
+	$(KUBECTL) port-forward -n drr-corpshared-plat svc/drr-tenant-svc 8081:8081 >/dev/null 2>&1 & PF2=$$!; \
+	$(KUBECTL) port-forward -n drr-corpshared-mgmt svc/drr-env-orchestrator-svc 8082:8082 >/dev/null 2>&1 & PF3=$$!; \
+	sleep 2; \
+	AUTHZ_SVC_HOST="127.0.0.1:8080" \
+	TENANT_SVC_HOST="127.0.0.1:8081" \
+	ENV_ORCH_SVC_HOST="127.0.0.1:8082" \
+	python3 scripts/validate_platform_services.py; \
+	EXIT_CODE=$$?; \
+	kill $$PF1 $$PF2 $$PF3 2>/dev/null || true; \
+	exit $$EXIT_CODE
+
 .PHONY: clean
 clean: ## Clean build artifacts and temporary files
 	@echo -e "${YELLOW}==> Cleaning workspace artifacts...${NC}"

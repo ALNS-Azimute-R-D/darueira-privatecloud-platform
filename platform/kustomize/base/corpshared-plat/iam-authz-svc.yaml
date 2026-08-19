@@ -47,6 +47,8 @@ spec:
               value: "http://openfga.drr-corpshared-plat.svc.cluster.local:8080"
             - name: OPENFGA_STORE_ID
               value: "01M0CCDC4DZ1PT8JKHMFGSV752"
+            - name: OPENFGA_MODEL_ID
+              value: "01M0CCDC4MCZDMFXFGXHSYJ3FH"
           resources:
             requests:
               cpu: 50m

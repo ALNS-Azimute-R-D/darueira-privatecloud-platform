@@ -312,6 +312,28 @@ validate-openfga: ## Validate OpenFGA ReBAC engine, relationship checks, and cro
 	@echo -e "${GREEN}==> Validating OpenFGA ReBAC & Zero Trust Authorization Suite...${NC}"
 	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/validate_openfga_rebac.py
 
+.PHONY: bootstrap-spire
+bootstrap-spire: ## Configure SPIRE Workload Registrations and OpenBao PKI, SPIFFE Auth & Dynamic Secrets
+	@echo -e "${GREEN}==> Bootstrapping SPIRE Workload Identity & OpenBao Dynamic Secrets...${NC}"
+	@$(KUBECTL) port-forward -n drr-corpshared-secr-internal svc/openbao-master 8200:8200 >/dev/null 2>&1 & \
+	PF_PID=$$!; \
+	sleep 2; \
+	OPENBAO_HOST="127.0.0.1:8200" python3 scripts/bootstrap_spire_openbao.py; \
+	EXIT_CODE=$$?; \
+	kill $$PF_PID 2>/dev/null || true; \
+	exit $$EXIT_CODE
+
+.PHONY: validate-spire
+validate-spire: ## Validate SPIRE Workload Identity, SVID tokens, OpenBao PKI, SPIFFE Auth and Dynamic Secrets
+	@echo -e "${GREEN}==> Validating SPIRE Workload Identity & OpenBao Dynamic Secrets...${NC}"
+	@$(KUBECTL) port-forward -n drr-corpshared-secr-internal svc/openbao-master 8200:8200 >/dev/null 2>&1 & \
+	PF_PID=$$!; \
+	sleep 2; \
+	OPENBAO_HOST="127.0.0.1:8200" python3 scripts/validate_spire_openbao.py; \
+	EXIT_CODE=$$?; \
+	kill $$PF_PID 2>/dev/null || true; \
+	exit $$EXIT_CODE
+
 .PHONY: clean
 clean: ## Clean build artifacts and temporary files
 	@echo -e "${YELLOW}==> Cleaning workspace artifacts...${NC}"

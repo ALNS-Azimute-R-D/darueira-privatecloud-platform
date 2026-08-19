@@ -17,6 +17,12 @@ SSL_PAYLOAD = {
         "*.darueira-corpshared.local",
         "*.darueira-tnt-acme.127.0.0.1.nip.io",
         "*.darueira-tnt-acme.local",
+        "*.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+        "*.darueira-tnt-swfabrik-europe.192.168.178.84.nip.io",
+        "*.darueira-tnt-swfabrik-europe.local",
+        "*.swfabrik-europe.127.0.0.1.nip.io",
+        "*.swfabrik-europe.192.168.178.84.nip.io",
+        "*.swfabrik-europe.local",
         "*.127.0.0.1.nip.io",
         "*.local",
         "localhost"
@@ -582,6 +588,144 @@ ROUTES = [
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}
+    },
+    {
+        "id": "route-host-swfabrik-europe-dashboard",
+        "name": "Food Market Host Dashboard SPA",
+        "desc": "European Food Marketplace Host Dashboard (React 19 / Vite / Tailwind)",
+        "uri": "/*",
+        "hosts": [
+            "foodmarket.swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.swfabrik-europe.local",
+            "marketplaces.swfabrik-europe.127.0.0.1.nip.io",
+            "marketplaces.swfabrik-europe.local"
+        ],
+        "upstream": {
+            "nodes": {"app-food-market-00-mfe.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:80": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {"prometheus": {}}
+    },
+    {
+        "id": "route-host-swfabrik-europe-mfe-react",
+        "name": "Food Market React MFE 01",
+        "desc": "React 19 Microfrontend Component Widget",
+        "uri": "/*",
+        "hosts": [
+            "react-mfe.swfabrik-europe.127.0.0.1.nip.io",
+            "mfe01.swfabrik-europe.127.0.0.1.nip.io"
+        ],
+        "upstream": {
+            "nodes": {"app-food-market-01-react.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:80": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {"prometheus": {}}
+    },
+    {
+        "id": "route-host-swfabrik-europe-mfe-angular",
+        "name": "Food Market Angular MFE 02",
+        "desc": "Angular Custom Element Microfrontend Widget",
+        "uri": "/*",
+        "hosts": [
+            "angular-mfe.swfabrik-europe.127.0.0.1.nip.io",
+            "mfe02.swfabrik-europe.127.0.0.1.nip.io"
+        ],
+        "upstream": {
+            "nodes": {"app-food-market-02-angular.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:80": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {"prometheus": {}}
+    },
+    {
+        "id": "route-host-swfabrik-europe-service01",
+        "name": "Food Market 01 Service (Java / Spring)",
+        "desc": "Java 25 / Spring Boot 3.4 Hexagonal Architecture Backend",
+        "uri": "/*",
+        "hosts": [
+            "api.food01.swfabrik-europe.127.0.0.1.nip.io",
+            "java-market.swfabrik-europe.127.0.0.1.nip.io"
+        ],
+        "upstream": {
+            "nodes": {"food-market-01-service.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:8081": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {"prometheus": {}}
+    },
+    {
+        "id": "route-host-swfabrik-europe-service02",
+        "name": "Food Market 02 Service (Kotlin / Quarkus)",
+        "desc": "Kotlin 2.1 / Quarkus 3.17 Hexagonal Architecture Backend",
+        "uri": "/*",
+        "hosts": [
+            "api.food02.swfabrik-europe.127.0.0.1.nip.io",
+            "kotlin-market.swfabrik-europe.127.0.0.1.nip.io"
+        ],
+        "upstream": {
+            "nodes": {"food-market-02-service.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:8082": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {"prometheus": {}}
+    },
+    {
+        "id": "route-host-swfabrik-europe-service03",
+        "name": "Food Market 03 Service (Go / Gin)",
+        "desc": "Go 1.23 / Gin Hexagonal Architecture Backend",
+        "uri": "/*",
+        "hosts": [
+            "api.food03.swfabrik-europe.127.0.0.1.nip.io",
+            "go-market.swfabrik-europe.127.0.0.1.nip.io"
+        ],
+        "upstream": {
+            "nodes": {"food-market-03-service.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:8083": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {"prometheus": {}}
+    },
+    {
+        "id": "route-host-swfabrik-europe-service04",
+        "name": "Food Market 04 Service (Python / FastAPI)",
+        "desc": "Python 3.12 / FastAPI Hexagonal Architecture Backend",
+        "uri": "/*",
+        "hosts": [
+            "api.food04.swfabrik-europe.127.0.0.1.nip.io",
+            "python-market.swfabrik-europe.127.0.0.1.nip.io"
+        ],
+        "upstream": {
+            "nodes": {"food-market-04-service.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:8084": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {"prometheus": {}}
+    },
+    {
+        "id": "route-host-swfabrik-europe-service05",
+        "name": "Food Market 05 Service (TypeScript / NestJS)",
+        "desc": "TypeScript / NestJS 10 Hexagonal Architecture Backend",
+        "uri": "/*",
+        "hosts": [
+            "api.food05.swfabrik-europe.127.0.0.1.nip.io",
+            "node-market.swfabrik-europe.127.0.0.1.nip.io"
+        ],
+        "upstream": {
+            "nodes": {"food-market-05-service.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:8085": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {"prometheus": {}}
+    },
+    {
+        "id": "route-host-swfabrik-europe-service06",
+        "name": "Food Market 06 Service (.NET 8 / C#)",
+        "desc": ".NET 8 / C# Hexagonal Architecture Backend",
+        "uri": "/*",
+        "hosts": [
+            "api.food06.swfabrik-europe.127.0.0.1.nip.io",
+            "dotnet-market.swfabrik-europe.127.0.0.1.nip.io"
+        ],
+        "upstream": {
+            "nodes": {"food-market-06-service.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:8086": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {"prometheus": {}}
     }
 ]
 
@@ -614,6 +758,12 @@ def get_ssl_payload():
                 "*.darueira-corpshared.local",
                 "*.darueira-tnt-acme.127.0.0.1.nip.io",
                 "*.darueira-tnt-acme.local",
+                "*.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+                "*.darueira-tnt-swfabrik-europe.192.168.178.84.nip.io",
+                "*.darueira-tnt-swfabrik-europe.local",
+                "*.swfabrik-europe.127.0.0.1.nip.io",
+                "*.swfabrik-europe.192.168.178.84.nip.io",
+                "*.swfabrik-europe.local",
                 "*.127.0.0.1.nip.io",
                 "*.local",
                 "localhost"

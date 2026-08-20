@@ -72,14 +72,17 @@ spec:
         echo "==> Resolving ArgoCD Application target for: $APP_NAME..."
         if kubectl get application "$APP_NAME" -n drr-corpshared-mgmt >/dev/null 2>&1; then
           TARGET_APP="$APP_NAME"
+        elif kubectl get application "${APP_NAME%-service}" -n drr-corpshared-mgmt >/dev/null 2>&1; then
+          TARGET_APP="${APP_NAME%-service}"
         else
           case "$APP_NAME" in
             *-app-food-market-00-mfe) TARGET_APP="${APP_NAME%-app-food-market-00-mfe}-app-host-mfe" ;;
             *-app-food-market-01-react) TARGET_APP="${APP_NAME%-app-food-market-01-react}-app-react-01" ;;
             *-app-food-market-02-angular) TARGET_APP="${APP_NAME%-app-food-market-02-angular}-app-angular-02" ;;
             *)
-              CLEAN_NAME="${APP_NAME#swfabrik-europe-}"
-              TARGET_APP=$(kubectl get applications -n drr-corpshared-mgmt -o jsonpath="{.items[*].metadata.name}" | tr " " "\n" | grep -i "$CLEAN_NAME" | head -n 1 || true)
+              BASE_NAME="${APP_NAME#swfabrik-europe-}"
+              BASE_NAME="${BASE_NAME%-service}"
+              TARGET_APP=$(kubectl get applications -n drr-corpshared-mgmt -o jsonpath="{.items[*].metadata.name}" | tr " " "\n" | grep -i "$BASE_NAME" | head -n 1 || true)
               ;;
           esac
         fi

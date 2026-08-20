@@ -20,7 +20,7 @@ import urllib.error
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
-TENANT_WORKSPACE = os.path.join(PROJECT_ROOT, "workspace", "platf-bizz-prjs", "drr-tnt-swfabrik-europe")
+TENANT_WORKSPACE = os.path.join(PROJECT_ROOT, "apps", "examples", "tenant-xpto")
 GITOPS_APPS_FILE = os.path.join(PROJECT_ROOT, "platform", "gitops", "argocd-apps", "apps-swfabrik-europe.yaml")
 TEKTON_DIR = os.path.join(PROJECT_ROOT, "platform", "gitops", "tekton-pipelines")
 

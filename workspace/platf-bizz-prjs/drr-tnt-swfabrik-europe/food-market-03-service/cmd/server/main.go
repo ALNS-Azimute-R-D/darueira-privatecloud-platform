@@ -11,10 +11,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/darueira/foodmarket/service03/internal/adapter/in/messaging"
+	inMessaging "github.com/darueira/foodmarket/service03/internal/adapter/in/messaging"
 	"github.com/darueira/foodmarket/service03/internal/adapter/in/rest"
-	"github.com/darueira/foodmarket/service03/internal/adapter/out/persistence"
 	outMessaging "github.com/darueira/foodmarket/service03/internal/adapter/out/messaging"
+	"github.com/darueira/foodmarket/service03/internal/adapter/out/persistence"
 	"github.com/darueira/foodmarket/service03/internal/adapter/out/sse"
 	"github.com/darueira/foodmarket/service03/internal/application"
 	"github.com/gin-gonic/gin"
@@ -68,19 +68,16 @@ func main() {
 	}
 
 	// 2. Outbound Adapters
-	pgAdapter := persistence.NewPostgresFoodTradingAdapter(db)
-	sseBroadcaster := sse.NewSseBroadcaster()
-	rmqPublisher := rmqout.NewRabbitMQPublisher(amqpURI, rmqTopic)
-	if err := rmqPublisher.Connect(); err != nil {
-		log.Printf("[Go 03] Warning connecting to RabbitMQ publisher: %v", err)
-	}
+	pgAdapter := persistence.NewPostgresAdapter(db)
+	sseBroadcaster := sse.NewBroadcaster()
+	rmqPublisher := outMessaging.NewRabbitMQPublisher(amqpURI, rmqTopic)
 	defer rmqPublisher.Close()
 
 	// 3. Application Service
 	appService := application.NewFoodTradingService(pgAdapter, rmqPublisher, sseBroadcaster, marketID)
 
 	// 4. Inbound Consumer
-	consumer := rmqin.NewRabbitMQConsumer(amqpURI, rmqTopic, rmqQueue, appService)
+	consumer := inMessaging.NewRabbitMQConsumer(amqpURI, rmqTopic, rmqQueue, appService)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	consumer.Start(ctx)

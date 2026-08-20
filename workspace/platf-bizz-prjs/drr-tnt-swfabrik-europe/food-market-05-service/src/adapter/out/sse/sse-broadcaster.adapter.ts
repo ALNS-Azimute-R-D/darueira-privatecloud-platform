@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Observable, Subject } from 'rxjs';
+import { Observable, Subject, merge, of, interval } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { FoodTrading } from '../../../domain/food-trading.entity';
 import { FoodTradingSseBroadcasterPort } from '../../../port/out/sse-broadcaster.port';
@@ -11,12 +11,24 @@ export class SseBroadcasterAdapter implements FoodTradingSseBroadcasterPort {
 
   stream(): Observable<any> {
     this.logger.log(`[NestJS 05] SSE client connected`);
-    return this.subject.asObservable().pipe(
+    const init$ = of({
+      type: 'INIT',
+      data: 'Connected to Food Trading Live SSE Stream (Service 05 - NestJS)',
+    });
+    const pings$ = interval(10000).pipe(
+      map(() => ({
+        type: 'ping',
+        data: 'heartbeat',
+      })),
+    );
+    const events$ = this.subject.asObservable().pipe(
       map((trading) => ({
         type: 'FOOD_TRADING_EVENT',
         data: trading,
       })),
     );
+
+    return merge(init$, merge(pings$, events$));
   }
 
   broadcast(trading: FoodTrading): void {

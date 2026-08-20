@@ -77,17 +77,28 @@ def get_router(use_case: FoodTradingUseCase, sse_broadcaster: SseBroadcaster) ->
                     "data": json.dumps({"message": "Connected to Food Trading Live SSE Stream (Service 04 - Python/FastAPI)"}),
                 }
                 while True:
-                    trading: FoodTrading = await q.get()
-                    resp = FoodTradingResponse.from_domain(trading)
-                    yield {
-                        "event": "FOOD_TRADING_EVENT",
-                        "data": resp.model_dump_json(),
-                    }
+                    try:
+                        trading: FoodTrading = await asyncio.wait_for(q.get(), timeout=10.0)
+                        resp = FoodTradingResponse.from_domain(trading)
+                        yield {
+                            "event": "FOOD_TRADING_EVENT",
+                            "data": resp.model_dump_json(),
+                        }
+                    except asyncio.TimeoutError:
+                        yield {
+                            "comment": "ping"
+                        }
             except asyncio.CancelledError:
                 pass
             finally:
                 await sse_broadcaster.unsubscribe(q)
 
-        return EventSourceResponse(event_generator())
+        return EventSourceResponse(
+            event_generator(),
+            headers={
+                "Cache-Control": "no-cache, no-transform",
+                "X-Accel-Buffering": "no",
+            }
+        )
 
     return router

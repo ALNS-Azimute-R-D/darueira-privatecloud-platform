@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/darueira/foodmarket/service03/internal/domain"
 	"github.com/darueira/foodmarket/service03/internal/port"
@@ -69,8 +70,9 @@ func (h *FoodTradingHandler) ListTradings(c *gin.Context) {
 
 func (h *FoodTradingHandler) StreamTradings(c *gin.Context) {
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
-	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Cache-Control", "no-cache, no-transform")
 	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("X-Accel-Buffering", "no")
 	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 
 	ch := h.useCase.SubscribeStream()
@@ -80,10 +82,16 @@ func (h *FoodTradingHandler) StreamTradings(c *gin.Context) {
 	c.SSEvent("INIT", "Connected to Food Trading Live SSE Stream (Service 03 - Go/Gin)")
 	c.Writer.Flush()
 
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
 	c.Stream(func(w io.Writer) bool {
 		select {
 		case <-c.Request.Context().Done():
 			return false
+		case <-ticker.C:
+			fmt.Fprintf(w, ": ping\n\n")
+			return true
 		case trading, ok := <-ch:
 			if !ok {
 				return false

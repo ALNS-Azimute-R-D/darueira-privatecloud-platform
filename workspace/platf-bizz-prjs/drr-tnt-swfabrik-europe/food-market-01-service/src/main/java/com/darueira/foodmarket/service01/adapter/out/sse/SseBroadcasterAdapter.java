@@ -68,4 +68,17 @@ public class SseBroadcasterAdapter implements FoodTradingSseBroadcasterPort {
         }
         emitters.removeAll(deadEmitters);
     }
+
+    @org.springframework.scheduling.annotation.Scheduled(fixedRate = 10000)
+    public void sendHeartbeat() {
+        List<SseEmitter> dead = new CopyOnWriteArrayList<>();
+        for (SseEmitter emitter : emitters) {
+            try {
+                emitter.send(SseEmitter.event().comment("ping"));
+            } catch (Exception e) {
+                dead.add(emitter);
+            }
+        }
+        emitters.removeAll(dead);
+    }
 }

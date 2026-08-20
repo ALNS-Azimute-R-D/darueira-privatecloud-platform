@@ -735,18 +735,33 @@ ROUTES = [
         "uri": "/api/food01/*",
         "hosts": [
             "foodmarket.swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.swfabrik-europe.192.168.178.84.nip.io",
             "foodmarket.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
             "foodmarket.swfabrik-europe.local",
             "marketplaces.swfabrik-europe.127.0.0.1.nip.io",
-            "marketplaces.swfabrik-europe.local"
+            "marketplaces.swfabrik-europe.local",
+            "swfabrik-europe.127.0.0.1.nip.io",
+            "swfabrik-europe.192.168.178.84.nip.io",
+            "swfabrik-europe.local",
+            "localhost",
+            "127.0.0.1"
         ],
         "upstream": {
             "nodes": {"food-market-01-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8081": 1},
-            "type": "roundrobin"
+            "type": "roundrobin",
+            "timeout": {"connect": 6, "send": 3600, "read": 3600}
         },
         "plugins": {
             "proxy-rewrite": {
                 "regex_uri": ["^/api/food01/(.*)", "/api/$1"]
+            },
+            "response-rewrite": {
+                "headers": {
+                    "set": {
+                        "X-Accel-Buffering": "no",
+                        "Cache-Control": "no-cache, no-transform"
+                    }
+                }
             },
             "cors": {},
             "prometheus": {}
@@ -759,18 +774,33 @@ ROUTES = [
         "uri": "/api/food02/*",
         "hosts": [
             "foodmarket.swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.swfabrik-europe.192.168.178.84.nip.io",
             "foodmarket.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
             "foodmarket.swfabrik-europe.local",
             "marketplaces.swfabrik-europe.127.0.0.1.nip.io",
-            "marketplaces.swfabrik-europe.local"
+            "marketplaces.swfabrik-europe.local",
+            "swfabrik-europe.127.0.0.1.nip.io",
+            "swfabrik-europe.192.168.178.84.nip.io",
+            "swfabrik-europe.local",
+            "localhost",
+            "127.0.0.1"
         ],
         "upstream": {
             "nodes": {"food-market-02-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8082": 1},
-            "type": "roundrobin"
+            "type": "roundrobin",
+            "timeout": {"connect": 6, "send": 3600, "read": 3600}
         },
         "plugins": {
             "proxy-rewrite": {
                 "regex_uri": ["^/api/food02/(.*)", "/api/$1"]
+            },
+            "response-rewrite": {
+                "headers": {
+                    "set": {
+                        "X-Accel-Buffering": "no",
+                        "Cache-Control": "no-cache, no-transform"
+                    }
+                }
             },
             "cors": {},
             "prometheus": {}
@@ -783,18 +813,33 @@ ROUTES = [
         "uri": "/api/food03/*",
         "hosts": [
             "foodmarket.swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.swfabrik-europe.192.168.178.84.nip.io",
             "foodmarket.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
             "foodmarket.swfabrik-europe.local",
             "marketplaces.swfabrik-europe.127.0.0.1.nip.io",
-            "marketplaces.swfabrik-europe.local"
+            "marketplaces.swfabrik-europe.local",
+            "swfabrik-europe.127.0.0.1.nip.io",
+            "swfabrik-europe.192.168.178.84.nip.io",
+            "swfabrik-europe.local",
+            "localhost",
+            "127.0.0.1"
         ],
         "upstream": {
             "nodes": {"food-market-03-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8083": 1},
-            "type": "roundrobin"
+            "type": "roundrobin",
+            "timeout": {"connect": 6, "send": 3600, "read": 3600}
         },
         "plugins": {
             "proxy-rewrite": {
                 "regex_uri": ["^/api/food03/(.*)", "/api/$1"]
+            },
+            "response-rewrite": {
+                "headers": {
+                    "set": {
+                        "X-Accel-Buffering": "no",
+                        "Cache-Control": "no-cache, no-transform"
+                    }
+                }
             },
             "cors": {},
             "prometheus": {}
@@ -807,18 +852,33 @@ ROUTES = [
         "uri": "/api/food04/*",
         "hosts": [
             "foodmarket.swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.swfabrik-europe.192.168.178.84.nip.io",
             "foodmarket.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
             "foodmarket.swfabrik-europe.local",
             "marketplaces.swfabrik-europe.127.0.0.1.nip.io",
-            "marketplaces.swfabrik-europe.local"
+            "marketplaces.swfabrik-europe.local",
+            "swfabrik-europe.127.0.0.1.nip.io",
+            "swfabrik-europe.192.168.178.84.nip.io",
+            "swfabrik-europe.local",
+            "localhost",
+            "127.0.0.1"
         ],
         "upstream": {
             "nodes": {"food-market-04-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8084": 1},
-            "type": "roundrobin"
+            "type": "roundrobin",
+            "timeout": {"connect": 6, "send": 3600, "read": 3600}
         },
         "plugins": {
             "proxy-rewrite": {
                 "regex_uri": ["^/api/food04/(.*)", "/api/$1"]
+            },
+            "response-rewrite": {
+                "headers": {
+                    "set": {
+                        "X-Accel-Buffering": "no",
+                        "Cache-Control": "no-cache, no-transform"
+                    }
+                }
             },
             "cors": {},
             "prometheus": {}
@@ -831,18 +891,33 @@ ROUTES = [
         "uri": "/api/food05/*",
         "hosts": [
             "foodmarket.swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.swfabrik-europe.192.168.178.84.nip.io",
             "foodmarket.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
             "foodmarket.swfabrik-europe.local",
             "marketplaces.swfabrik-europe.127.0.0.1.nip.io",
-            "marketplaces.swfabrik-europe.local"
+            "marketplaces.swfabrik-europe.local",
+            "swfabrik-europe.127.0.0.1.nip.io",
+            "swfabrik-europe.192.168.178.84.nip.io",
+            "swfabrik-europe.local",
+            "localhost",
+            "127.0.0.1"
         ],
         "upstream": {
             "nodes": {"food-market-05-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8085": 1},
-            "type": "roundrobin"
+            "type": "roundrobin",
+            "timeout": {"connect": 6, "send": 3600, "read": 3600}
         },
         "plugins": {
             "proxy-rewrite": {
                 "regex_uri": ["^/api/food05/(.*)", "/api/$1"]
+            },
+            "response-rewrite": {
+                "headers": {
+                    "set": {
+                        "X-Accel-Buffering": "no",
+                        "Cache-Control": "no-cache, no-transform"
+                    }
+                }
             },
             "cors": {},
             "prometheus": {}
@@ -855,18 +930,33 @@ ROUTES = [
         "uri": "/api/food06/*",
         "hosts": [
             "foodmarket.swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.swfabrik-europe.192.168.178.84.nip.io",
             "foodmarket.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
             "foodmarket.swfabrik-europe.local",
             "marketplaces.swfabrik-europe.127.0.0.1.nip.io",
-            "marketplaces.swfabrik-europe.local"
+            "marketplaces.swfabrik-europe.local",
+            "swfabrik-europe.127.0.0.1.nip.io",
+            "swfabrik-europe.192.168.178.84.nip.io",
+            "swfabrik-europe.local",
+            "localhost",
+            "127.0.0.1"
         ],
         "upstream": {
             "nodes": {"food-market-06-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8086": 1},
-            "type": "roundrobin"
+            "type": "roundrobin",
+            "timeout": {"connect": 6, "send": 3600, "read": 3600}
         },
         "plugins": {
             "proxy-rewrite": {
                 "regex_uri": ["^/api/food06/(.*)", "/api/$1"]
+            },
+            "response-rewrite": {
+                "headers": {
+                    "set": {
+                        "X-Accel-Buffering": "no",
+                        "Cache-Control": "no-cache, no-transform"
+                    }
+                }
             },
             "cors": {},
             "prometheus": {}

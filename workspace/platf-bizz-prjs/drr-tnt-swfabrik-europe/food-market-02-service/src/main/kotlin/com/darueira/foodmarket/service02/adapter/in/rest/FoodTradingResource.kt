@@ -10,6 +10,8 @@ import jakarta.ws.rs.core.Response
 import org.eclipse.microprofile.openapi.annotations.Operation
 import org.eclipse.microprofile.openapi.annotations.tags.Tag
 import org.jboss.resteasy.reactive.RestStreamElementType
+import java.math.BigDecimal
+import java.time.Instant
 
 @Path("/api/food-tradings")
 @ApplicationScoped
@@ -42,21 +44,41 @@ class FoodTradingResource(
     @GET
     @Path("/stream")
     @Produces(MediaType.SERVER_SENT_EVENTS)
+    @RestStreamElementType(MediaType.APPLICATION_JSON)
     @Operation(summary = "Stream Food Tradings", description = "F01.3: Real-Time Server-Sent Events (SSE) Stream from Quarkus Mutiny")
-    fun streamTradings(@jakarta.ws.rs.core.Context sse: jakarta.ws.rs.sse.Sse): Multi<jakarta.ws.rs.sse.OutboundSseEvent> {
-        val initEvent = sse.newEventBuilder()
-            .name("INIT")
-            .data("Connected to Food Trading Live SSE Stream (Service 02 - Kotlin/Quarkus)")
-            .build()
-
-        val dataStream = useCase.subscribeStream().map {
-            sse.newEventBuilder()
-                .name("FOOD_TRADING_EVENT")
-                .mediaType(MediaType.APPLICATION_JSON_TYPE)
-                .data(FoodTradingResponse.fromDomain(it))
-                .build()
-        }
-
-        return Multi.createFrom().item(initEvent).onCompletion().switchTo(dataStream)
+    fun streamTradings(): Multi<FoodTradingResponse> {
+        val initial = FoodTradingResponse(
+            id = 0,
+            tradingId = "INIT",
+            marketId = "MKT-EU-02-QUARKUS",
+            itemName = "Connected",
+            quantity = BigDecimal.ZERO,
+            unitPrice = BigDecimal.ZERO,
+            totalPrice = BigDecimal.ZERO,
+            traderName = "System",
+            status = "INIT",
+            createdAt = Instant.now()
+        )
+        val pings = Multi.createFrom().ticks().every(java.time.Duration.ofSeconds(10))
+            .map {
+                FoodTradingResponse(
+                    id = 0,
+                    tradingId = "PING",
+                    marketId = "MKT-EU-02-QUARKUS",
+                    itemName = "ping",
+                    quantity = BigDecimal.ZERO,
+                    unitPrice = BigDecimal.ZERO,
+                    totalPrice = BigDecimal.ZERO,
+                    traderName = "System",
+                    status = "PING",
+                    createdAt = Instant.now()
+                )
+            }
+        val dataEvents = useCase.subscribeStream().map { FoodTradingResponse.fromDomain(it) }
+        return Multi.createBy().merging().streams(
+            Multi.createFrom().item(initial),
+            pings,
+            dataEvents
+        )
     }
 }

@@ -53,18 +53,53 @@ public class FoodTradingController : ControllerBase
     public async Task StreamTradings(CancellationToken ct)
     {
         Response.Headers.Append("Content-Type", "text/event-stream");
-        Response.Headers.Append("Cache-Control", "no-cache");
+        Response.Headers.Append("Cache-Control", "no-cache, no-transform");
         Response.Headers.Append("Connection", "keep-alive");
+        Response.Headers.Append("X-Accel-Buffering", "no");
 
         // Send initial event
         await Response.WriteAsync("event: INIT\ndata: {\"message\":\"Connected to Food Trading Live SSE Stream (Service 06 - .NET 8 / C#)\"}\n\n", ct);
         await Response.Body.FlushAsync(ct);
 
-        await foreach (var trading in _useCase.SubscribeStreamAsync(ct))
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
+        var streamEnum = _useCase.SubscribeStreamAsync(ct).GetAsyncEnumerator(ct);
+
+        try
         {
-            var json = JsonSerializer.Serialize(FoodTradingResponse.FromDomain(trading));
-            await Response.WriteAsync($"event: FOOD_TRADING_EVENT\ndata: {json}\n\n", ct);
-            await Response.Body.FlushAsync(ct);
+            while (!ct.IsCancellationRequested)
+            {
+                var nextTask = streamEnum.MoveNextAsync().AsTask();
+                var timerTask = timer.WaitForNextTickAsync(ct).AsTask();
+
+                var completed = await Task.WhenAny(nextTask, timerTask);
+                if (completed == nextTask)
+                {
+                    if (await nextTask)
+                    {
+                        var trading = streamEnum.Current;
+                        var json = JsonSerializer.Serialize(FoodTradingResponse.FromDomain(trading));
+                        await Response.WriteAsync($"event: FOOD_TRADING_EVENT\ndata: {json}\n\n", ct);
+                        await Response.Body.FlushAsync(ct);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    await Response.WriteAsync(": ping\n\n", ct);
+                    await Response.Body.FlushAsync(ct);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Client disconnected gracefully
+        }
+        finally
+        {
+            await streamEnum.DisposeAsync();
         }
     }
 }

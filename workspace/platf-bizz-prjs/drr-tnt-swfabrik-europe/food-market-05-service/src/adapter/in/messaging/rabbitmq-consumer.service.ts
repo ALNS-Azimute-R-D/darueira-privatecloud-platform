@@ -8,7 +8,8 @@ export class RabbitmqConsumerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RabbitmqConsumerService.name);
   private connection: any;
   private channel: any;
-  private readonly queueName = process.env.APP_RABBITMQ_QUEUE || 'marketplace.foodtrading.queue01';
+  private readonly topicExchange = process.env.APP_RABBITMQ_TOPIC || 'marketplace.foodtrading.topic';
+  private readonly queueName = process.env.APP_RABBITMQ_QUEUE || 'marketplace.foodtrading.queue05';
   private running = true;
 
   constructor(
@@ -32,7 +33,9 @@ export class RabbitmqConsumerService implements OnModuleInit, OnModuleDestroy {
 
         this.connection = await amqp.connect(url);
         this.channel = await this.connection.createChannel();
+        await this.channel.assertExchange(this.topicExchange, 'topic', { durable: true });
         await this.channel.assertQueue(this.queueName, { durable: true });
+        await this.channel.bindQueue(this.queueName, this.topicExchange, '#');
 
         this.logger.log(`[NestJS 05] RabbitMQ Consumer listening on queue: ${this.queueName}`);
 

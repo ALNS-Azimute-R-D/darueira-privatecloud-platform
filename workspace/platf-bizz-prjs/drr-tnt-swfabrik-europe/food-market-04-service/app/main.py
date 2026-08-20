@@ -31,7 +31,7 @@ AMQP_URL = f"amqp://{RABBITMQ_USER}:{RABBITMQ_PASS}@{RABBITMQ_HOST}:{RABBITMQ_PO
 
 MARKET_ID = os.getenv("APP_MARKET_ID", "MKT-EU-04-PYTHON")
 TOPIC_EXCHANGE = os.getenv("APP_RABBITMQ_TOPIC", "marketplace.foodtrading.topic")
-QUEUE_NAME = os.getenv("APP_RABBITMQ_QUEUE", "marketplace.foodtrading.queue01")
+QUEUE_NAME = os.getenv("APP_RABBITMQ_QUEUE", "marketplace.foodtrading.queue04")
 
 app_state = {}
 
@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
     )
 
     # 4. Inbound Consumer
-    consumer = RabbitMQConsumer(AMQP_URL, QUEUE_NAME, service)
+    consumer = RabbitMQConsumer(AMQP_URL, TOPIC_EXCHANGE, QUEUE_NAME, service)
     consumer_task = asyncio.create_task(consumer.start())
 
     # 5. Attach router

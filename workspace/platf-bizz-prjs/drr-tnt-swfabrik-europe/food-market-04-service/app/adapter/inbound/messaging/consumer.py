@@ -10,8 +10,9 @@ from app.port.inbound import FoodTradingUseCase
 logger = logging.getLogger(__name__)
 
 class RabbitMQConsumer:
-    def __init__(self, amqp_url: str, queue_name: str, use_case: FoodTradingUseCase):
+    def __init__(self, amqp_url: str, topic_exchange: str, queue_name: str, use_case: FoodTradingUseCase):
         self.amqp_url = amqp_url
+        self.topic_exchange = topic_exchange
         self.queue_name = queue_name
         self.use_case = use_case
         self.running = True
@@ -22,7 +23,9 @@ class RabbitMQConsumer:
                 connection = await aio_pika.connect_robust(self.amqp_url)
                 channel = await connection.channel()
                 await channel.set_qos(prefetch_count=10)
+                exchange = await channel.declare_exchange(self.topic_exchange, aio_pika.ExchangeType.TOPIC, durable=True)
                 queue = await channel.declare_queue(self.queue_name, durable=True)
+                await queue.bind(exchange, routing_key="#")
 
                 logger.info(f"[Python 04] RabbitMQ Consumer listening on queue: {self.queue_name}")
 

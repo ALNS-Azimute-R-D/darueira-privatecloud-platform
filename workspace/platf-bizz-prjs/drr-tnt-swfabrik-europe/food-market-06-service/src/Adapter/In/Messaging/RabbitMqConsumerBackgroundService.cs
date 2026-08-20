@@ -27,7 +27,8 @@ public class RabbitMqConsumerBackgroundService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var queueName = _config["APP_RABBITMQ_QUEUE"] ?? "marketplace.foodtrading.queue01";
+        var topicExchange = _config["APP_RABBITMQ_TOPIC"] ?? "marketplace.foodtrading.topic";
+        var queueName = _config["APP_RABBITMQ_QUEUE"] ?? "marketplace.foodtrading.queue06";
         var host = _config["RABBITMQ_HOST"] ?? "message-broker-rabbitmq.drr-corpshared-plat.svc.cluster.local";
         var port = int.TryParse(_config["RABBITMQ_PORT"], out var p) ? p : 5672;
         var user = _config["RABBITMQ_USER"] ?? "drr_admin";
@@ -50,7 +51,9 @@ public class RabbitMqConsumerBackgroundService : BackgroundService
             {
                 _connection = factory.CreateConnection();
                 _channel = _connection.CreateModel();
+                _channel.ExchangeDeclare(exchange: topicExchange, type: ExchangeType.Topic, durable: true);
                 _channel.QueueDeclare(queue: queueName, durable: true, exclusive: false, autoDelete: false, arguments: null);
+                _channel.QueueBind(queue: queueName, exchange: topicExchange, routingKey: "#");
 
                 var consumer = new AsyncEventingBasicConsumer(_channel);
                 consumer.Received += async (model, ea) =>
@@ -59,35 +62,18 @@ public class RabbitMqConsumerBackgroundService : BackgroundService
                     {
                         var body = ea.Body.ToArray();
                         var message = Encoding.UTF8.GetString(body);
+                        _logger.LogInformation("[.NET 06] Consumed message from queue {Queue}: {Body}", queueName, message);
 
-                        using var doc = JsonDocument.Parse(message);
-                        var root = doc.RootElement;
-
-                        var tradingId = root.TryGetProperty("tradingId", out var tid) ? tid.GetString() : "";
-                        var marketId = root.TryGetProperty("marketId", out var mid) ? mid.GetString() : "";
-                        var itemName = root.TryGetProperty("itemName", out var iname) ? iname.GetString() : "";
-                        var traderName = root.TryGetProperty("traderName", out var tname) ? tname.GetString() : "";
-                        var qty = root.TryGetProperty("quantity", out var q) ? q.GetDecimal() : 0m;
-                        var price = root.TryGetProperty("unitPrice", out var pr) ? pr.GetDecimal() : 0m;
-                        var ts = root.TryGetProperty("timestamp", out var t) && t.TryGetDateTime(out var dt) ? dt : DateTime.UtcNow;
-
-                        _logger.LogInformation("[.NET 06] Consumed message from queue {Queue}: {TradingId}", queueName, tradingId);
-
-                        var tradingEvent = new FoodTradingEvent
+                        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                        var tradingEvent = JsonSerializer.Deserialize<FoodTradingEvent>(message, options);
+                        if (tradingEvent != null)
                         {
-                            TradingId = tradingId ?? "",
-                            MarketId = marketId ?? "",
-                            ItemName = itemName ?? "",
-                            TraderName = traderName ?? "",
-                            Quantity = qty,
-                            UnitPrice = price,
-                            TotalPrice = decimal.Round(qty * price, 2),
-                            Timestamp = ts
-                        };
+                            _logger.LogInformation("[.NET 06] Consumed message from queue {Queue}: {TradingId}", queueName, tradingEvent.TradingId);
 
-                        using var scope = _serviceProvider.CreateScope();
-                        var useCase = scope.ServiceProvider.GetRequiredService<IFoodTradingUseCase>();
-                        await useCase.ProcessIncomingEventAsync(tradingEvent, stoppingToken);
+                            using var scope = _serviceProvider.CreateScope();
+                            var useCase = scope.ServiceProvider.GetRequiredService<IFoodTradingUseCase>();
+                            await useCase.ProcessIncomingEventAsync(tradingEvent, stoppingToken);
+                        }
 
                         _channel.BasicAck(ea.DeliveryTag, false);
                     }

@@ -12,18 +12,20 @@ import (
 )
 
 type RabbitMQConsumer struct {
-	amqpURI   string
-	queueName string
-	useCase   port.FoodTradingUseCase
-	stopChan  chan struct{}
+	amqpURI       string
+	topicExchange string
+	queueName     string
+	useCase       port.FoodTradingUseCase
+	stopChan      chan struct{}
 }
 
-func NewRabbitMQConsumer(amqpURI, queueName string, useCase port.FoodTradingUseCase) *RabbitMQConsumer {
+func NewRabbitMQConsumer(amqpURI, topicExchange, queueName string, useCase port.FoodTradingUseCase) *RabbitMQConsumer {
 	return &RabbitMQConsumer{
-		amqpURI:   amqpURI,
-		queueName: queueName,
-		useCase:   useCase,
-		stopChan:  make(chan struct{}),
+		amqpURI:       amqpURI,
+		topicExchange: topicExchange,
+		queueName:     queueName,
+		useCase:       useCase,
+		stopChan:      make(chan struct{}),
 	}
 }
 
@@ -58,6 +60,18 @@ func (c *RabbitMQConsumer) run(ctx context.Context) error {
 	}
 	defer ch.Close()
 
+	if err := ch.ExchangeDeclare(
+		c.topicExchange,
+		"topic",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	); err != nil {
+		return err
+	}
+
 	_, err = ch.QueueDeclare(
 		c.queueName,
 		true,
@@ -67,6 +81,16 @@ func (c *RabbitMQConsumer) run(ctx context.Context) error {
 		nil,
 	)
 	if err != nil {
+		return err
+	}
+
+	if err := ch.QueueBind(
+		c.queueName,
+		"#",
+		c.topicExchange,
+		false,
+		nil,
+	); err != nil {
 		return err
 	}
 

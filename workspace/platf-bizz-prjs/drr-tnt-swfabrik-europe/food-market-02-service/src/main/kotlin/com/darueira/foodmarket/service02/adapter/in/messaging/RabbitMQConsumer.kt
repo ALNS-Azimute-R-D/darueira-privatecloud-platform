@@ -27,9 +27,9 @@ class RabbitMQConsumer(
     private val user: String,
     @ConfigProperty(name = "rabbitmq-password", defaultValue = "darueira-admin123")
     private val pass: String,
-    @ConfigProperty(name = "rabbitmq-virtual-host", defaultValue = "/")
-    private val vhost: String,
-    @ConfigProperty(name = "app.rabbitmq.queue", defaultValue = "marketplace.foodtrading.queue01")
+    @ConfigProperty(name = "app.rabbitmq.topic", defaultValue = "marketplace.foodtrading.topic")
+    private val topicExchange: String,
+    @ConfigProperty(name = "app.rabbitmq.queue", defaultValue = "marketplace.foodtrading.queue02")
     private val queueName: String
 ) {
 
@@ -57,7 +57,9 @@ class RabbitMQConsumer(
                 }
                 connection = factory.newConnection("quarkus-foodmarket-consumer")
                 channel = connection?.createChannel()
+                channel?.exchangeDeclare(topicExchange, "topic", true)
                 channel?.queueDeclare(queueName, true, false, false, null)
+                channel?.queueBind(queueName, topicExchange, "#")
 
                 val deliverCallback = DeliverCallback { _, delivery ->
                     val body = String(delivery.body, Charsets.UTF_8)

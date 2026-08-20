@@ -42,7 +42,7 @@ func main() {
 	rmqVHost := getEnv("RABBITMQ_VHOST", "/")
 	marketID := getEnv("APP_MARKET_ID", "MKT-EU-03-GOLANG")
 	rmqTopic := getEnv("APP_RABBITMQ_TOPIC", "marketplace.foodtrading.topic")
-	rmqQueue := getEnv("APP_RABBITMQ_QUEUE", "marketplace.foodtrading.queue01")
+	rmqQueue := getEnv("APP_RABBITMQ_QUEUE", "marketplace.foodtrading.queue03")
 
 	if rmqVHost == "/" {
 		rmqVHost = ""
@@ -67,27 +67,24 @@ func main() {
 		time.Sleep(1 * time.Second)
 	}
 
-	// 2. Initialize Hexagonal Adapters
-	postgresAdapter := persistence.NewPostgresAdapter(db)
-	sseBroadcaster := sse.NewBroadcaster()
-	rmqPublisher := outMessaging.NewRabbitMQPublisher(amqpURI, rmqTopic)
+	// 2. Outbound Adapters
+	pgAdapter := persistence.NewPostgresFoodTradingAdapter(db)
+	sseBroadcaster := sse.NewSseBroadcaster()
+	rmqPublisher := rmqout.NewRabbitMQPublisher(amqpURI, rmqTopic)
+	if err := rmqPublisher.Connect(); err != nil {
+		log.Printf("[Go 03] Warning connecting to RabbitMQ publisher: %v", err)
+	}
 	defer rmqPublisher.Close()
 
-	// 3. Initialize Application Service
-	appService := application.NewFoodTradingService(
-		postgresAdapter,
-		rmqPublisher,
-		sseBroadcaster,
-		marketID,
-	)
+	// 3. Application Service
+	appService := application.NewFoodTradingService(pgAdapter, rmqPublisher, sseBroadcaster, marketID)
 
-	// 4. Start RabbitMQ Inbound Consumer
+	// 4. Inbound Consumer
+	consumer := rmqin.NewRabbitMQConsumer(amqpURI, rmqTopic, rmqQueue, appService)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	rmqConsumer := messaging.NewRabbitMQConsumer(amqpURI, rmqQueue, appService)
-	rmqConsumer.Start(ctx)
-	defer rmqConsumer.Stop()
+	consumer.Start(ctx)
+	defer consumer.Stop()
 
 	// 5. Setup Gin Router
 	gin.SetMode(gin.ReleaseMode)

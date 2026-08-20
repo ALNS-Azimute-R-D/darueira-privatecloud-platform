@@ -44,6 +44,27 @@ RABBITMQ_USERS = [
 ]
 
 RABBITMQ_TOPOLOGY = [
+    # Default VHost (Multi-Tenant Shared Marketplaces)
+    {
+        "vhost": "/",
+        "exchanges": [{"name": "marketplace.foodtrading.topic", "type": "topic"}],
+        "queues": [
+            {"name": "marketplace.foodtrading.queue01"},
+            {"name": "marketplace.foodtrading.queue02"},
+            {"name": "marketplace.foodtrading.queue03"},
+            {"name": "marketplace.foodtrading.queue04"},
+            {"name": "marketplace.foodtrading.queue05"},
+            {"name": "marketplace.foodtrading.queue06"}
+        ],
+        "bindings": [
+            {"exchange": "marketplace.foodtrading.topic", "queue": "marketplace.foodtrading.queue01", "routing_key": "#"},
+            {"exchange": "marketplace.foodtrading.topic", "queue": "marketplace.foodtrading.queue02", "routing_key": "#"},
+            {"exchange": "marketplace.foodtrading.topic", "queue": "marketplace.foodtrading.queue03", "routing_key": "#"},
+            {"exchange": "marketplace.foodtrading.topic", "queue": "marketplace.foodtrading.queue04", "routing_key": "#"},
+            {"exchange": "marketplace.foodtrading.topic", "queue": "marketplace.foodtrading.queue05", "routing_key": "#"},
+            {"exchange": "marketplace.foodtrading.topic", "queue": "marketplace.foodtrading.queue06", "routing_key": "#"}
+        ]
+    },
     # Platform VHost
     {
         "vhost": "drr-platform",

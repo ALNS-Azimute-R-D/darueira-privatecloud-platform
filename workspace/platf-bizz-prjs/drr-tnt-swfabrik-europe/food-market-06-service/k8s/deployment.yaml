@@ -67,7 +67,7 @@ spec:
             - name: APP_RABBITMQ_TOPIC
               value: "marketplace.foodtrading.topic"
             - name: APP_RABBITMQ_QUEUE
-              value: "marketplace.foodtrading.queue01"
+              value: "marketplace.foodtrading.queue06"
           resources:
             requests:
               cpu: 50m

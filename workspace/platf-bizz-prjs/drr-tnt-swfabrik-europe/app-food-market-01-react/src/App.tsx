@@ -9,23 +9,23 @@ interface FoodTrading {
   status: string;
 }
 
+const baseUrl = typeof window !== 'undefined' && (
+  window.location.hostname.includes('nip.io') ||
+  window.location.hostname.includes('swfabrik') ||
+  window.location.port === '80' ||
+  window.location.port === ''
+) ? '/api/food01/food-tradings' : 'http://localhost:8081/api/food-tradings';
+
+const streamUrl = typeof window !== 'undefined' && (
+  window.location.hostname.includes('nip.io') ||
+  window.location.hostname.includes('swfabrik') ||
+  window.location.port === '80' ||
+  window.location.port === ''
+) ? '/api/food01/food-tradings/stream' : 'http://localhost:8081/api/food-tradings/stream';
+
 export function App() {
   const [items, setItems] = useState<FoodTrading[]>([]);
   const [liveMsg, setLiveMsg] = useState<string>('Connected');
-
-  const baseUrl = typeof window !== 'undefined' && (
-    window.location.hostname.includes('nip.io') ||
-    window.location.hostname.includes('swfabrik') ||
-    window.location.port === '80' ||
-    window.location.port === ''
-  ) ? '/api/food01/food-tradings' : 'http://localhost:8081/api/food-tradings';
-
-  const streamUrl = typeof window !== 'undefined' && (
-    window.location.hostname.includes('nip.io') ||
-    window.location.hostname.includes('swfabrik') ||
-    window.location.port === '80' ||
-    window.location.port === ''
-  ) ? '/api/food01/food-tradings/stream' : 'http://localhost:8081/api/food-tradings/stream';
 
   useEffect(() => {
     fetch(baseUrl)

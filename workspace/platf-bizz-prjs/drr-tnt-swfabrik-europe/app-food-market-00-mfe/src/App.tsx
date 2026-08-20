@@ -123,19 +123,14 @@ const BACKEND_SERVICES: BackendServiceConfig[] = [
 ];
 
 export function App() {
-  const [totalRefreshKey, setTotalRefreshKey] = useState<number>(0);
-  const [activeStreamMap, setActiveStreamMap] = useState<Record<string, boolean>>({});
-
   const col1Services = BACKEND_SERVICES.slice(0, 3);
   const col2Services = BACKEND_SERVICES.slice(3, 6);
-
-  const activeStreamCount = Object.values(activeStreamMap).filter(Boolean).length;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
       <Header
         totalTradings={6}
-        activeStreams={activeStreamCount}
+        activeStreams={6}
         totalMicroservices={BACKEND_SERVICES.length}
       />
 
@@ -181,10 +176,6 @@ export function App() {
               <BackendCard
                 key={svc.id}
                 config={svc}
-                onTradingAdded={() => setTotalRefreshKey((k) => k + 1)}
-                onStreamStateChange={(active) =>
-                  setActiveStreamMap((prev) => ({ ...prev, [svc.id]: active }))
-                }
               />
             ))}
           </div>
@@ -200,10 +191,6 @@ export function App() {
               <BackendCard
                 key={svc.id}
                 config={svc}
-                onTradingAdded={() => setTotalRefreshKey((k) => k + 1)}
-                onStreamStateChange={(active) =>
-                  setActiveStreamMap((prev) => ({ ...prev, [svc.id]: active }))
-                }
               />
             ))}
           </div>

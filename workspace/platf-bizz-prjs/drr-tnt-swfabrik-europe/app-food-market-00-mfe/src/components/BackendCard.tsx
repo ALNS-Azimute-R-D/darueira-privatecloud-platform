@@ -17,11 +17,9 @@ import {
 
 interface BackendCardProps {
   config: BackendServiceConfig;
-  onTradingAdded?: () => void;
-  onStreamStateChange?: (active: boolean) => void;
 }
 
-export const BackendCard: React.FC<BackendCardProps> = ({ config, onTradingAdded, onStreamStateChange }) => {
+export const BackendCard: React.FC<BackendCardProps> = ({ config }) => {
   const [tradings, setTradings] = useState<FoodTrading[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -41,7 +39,6 @@ export const BackendCard: React.FC<BackendCardProps> = ({ config, onTradingAdded
       setErrorMsg(null);
       const data = await fetchTradings(config.endpoint);
       setTradings(data || []);
-      if (onTradingAdded) onTradingAdded();
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to connect to microservice');
     } finally {
@@ -49,130 +46,66 @@ export const BackendCard: React.FC<BackendCardProps> = ({ config, onTradingAdded
     }
   };
 
-  // Connect SSE with Auto-Reconnect & Heartbeat Handling
   useEffect(() => {
-    let eventSource: EventSource | null = null;
-    let reconnectTimeout: any = null;
-    let isSubscribed = true;
-
-    const connect = () => {
-      if (!isSubscribed) return;
-      try {
-        eventSource = new EventSource(config.streamUrl);
-
-        eventSource.onopen = () => {
-          if (!isSubscribed) return;
-          setSseConnected(true);
-          if (onStreamStateChange) onStreamStateChange(true);
-        };
-
-        const handleIncomingEvent = (rawData: any) => {
-          try {
-            if (!rawData) return;
-            // Ignore heartbeats / pings
-            if (rawData === 'heartbeat' || rawData === 'ping' || rawData === ': ping') return;
-
-            let item: FoodTrading | null = null;
-            if (typeof rawData === 'string') {
-              if (rawData.trim().startsWith('{')) {
-                item = JSON.parse(rawData);
-              } else {
-                return;
-              }
-            } else if (typeof rawData === 'object') {
-              item = rawData;
-            }
-
-            if (item) {
-              const normalizedItem: FoodTrading = {
-                id: (item as any).id || (item as any).Id,
-                tradingId: (item as any).tradingId || (item as any).TradingId,
-                marketId: (item as any).marketId || (item as any).MarketId,
-                itemName: (item as any).itemName || (item as any).ItemName,
-                quantity: Number((item as any).quantity ?? (item as any).Quantity ?? 0),
-                unitPrice: Number((item as any).unitPrice ?? (item as any).UnitPrice ?? 0),
-                totalPrice: Number((item as any).totalPrice ?? (item as any).TotalPrice ?? 0),
-                traderName: (item as any).traderName || (item as any).TraderName || '',
-                status: (item as any).status || (item as any).Status || 'CONFIRMED',
-                createdAt: (item as any).createdAt || (item as any).CreatedAt || new Date().toISOString(),
-              };
-
-              if (normalizedItem.tradingId && normalizedItem.tradingId !== 'INIT' && normalizedItem.tradingId !== 'PING') {
-                setLatestSseEvent(`Live: ${normalizedItem.tradingId} (${normalizedItem.itemName || 'Trading'})`);
-                setTradings((prev) => {
-                  const existingIdx = prev.findIndex((p) => p.tradingId === normalizedItem.tradingId);
-                  if (existingIdx >= 0) {
-                    const updated = [...prev];
-                    updated[existingIdx] = { ...updated[existingIdx], ...normalizedItem };
-                    return updated;
-                  }
-                  return [normalizedItem, ...prev];
-                });
-                if (onTradingAdded) onTradingAdded();
-              }
-            }
-          } catch (err) {
-            console.error("Error processing SSE message:", err);
-          }
-        };
-
-        eventSource.addEventListener('INIT', (e: MessageEvent) => {
-          if (isSubscribed) {
-            setLatestSseEvent(`Connected`);
-          }
-        });
-
-        eventSource.addEventListener('FOOD_TRADING_EVENT', (e: MessageEvent) => {
-          handleIncomingEvent(e.data);
-        });
-
-        eventSource.addEventListener('message', (e: MessageEvent) => {
-          handleIncomingEvent(e.data);
-        });
-
-        eventSource.onmessage = (e: MessageEvent) => {
-          handleIncomingEvent(e.data);
-        };
-
-        eventSource.onerror = () => {
-          if (!isSubscribed) return;
-          setSseConnected(false);
-          if (onStreamStateChange) onStreamStateChange(false);
-          eventSource?.close();
-          // Auto-reconnect after 3 seconds
-          reconnectTimeout = setTimeout(() => {
-            if (isSubscribed) connect();
-          }, 3000);
-        };
-      } catch {
-        if (!isSubscribed) return;
-        setSseConnected(false);
-        if (onStreamStateChange) onStreamStateChange(false);
-        reconnectTimeout = setTimeout(() => {
-          if (isSubscribed) connect();
-        }, 3000);
-      }
-    };
-
-    connect();
-
-    // Initial data load
     loadData();
 
-    // Periodic safety poll every 15s to guarantee 100% data consistency
-    const pollInterval = setInterval(() => {
-      if (isSubscribed) loadData();
-    }, 15000);
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource(config.streamUrl);
+
+      es.onopen = () => {
+        setSseConnected(true);
+      };
+
+      const handleMsg = (rawData: any) => {
+        try {
+          if (!rawData) return;
+          if (typeof rawData === 'string' && !rawData.trim().startsWith('{')) return;
+          const parsed = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+          if (!parsed) return;
+
+          const item: FoodTrading = {
+            id: parsed.id || parsed.Id,
+            tradingId: parsed.tradingId || parsed.TradingId,
+            marketId: parsed.marketId || parsed.MarketId,
+            itemName: parsed.itemName || parsed.ItemName,
+            quantity: Number(parsed.quantity ?? parsed.Quantity ?? 0),
+            unitPrice: Number(parsed.unitPrice ?? parsed.UnitPrice ?? 0),
+            totalPrice: Number(parsed.totalPrice ?? parsed.TotalPrice ?? 0),
+            traderName: parsed.traderName || parsed.TraderName || '',
+            status: parsed.status || parsed.Status || 'CONFIRMED',
+            createdAt: parsed.createdAt || parsed.CreatedAt || new Date().toISOString(),
+          };
+
+          if (item.tradingId && item.tradingId !== 'INIT' && item.tradingId !== 'PING') {
+            setLatestSseEvent(`Live: ${item.tradingId} (${item.itemName || 'Trading'})`);
+            setTradings((prev) => {
+              const idx = prev.findIndex((p) => p.tradingId === item.tradingId);
+              if (idx >= 0) {
+                const copy = [...prev];
+                copy[idx] = { ...copy[idx], ...item };
+                return copy;
+              }
+              return [item, ...prev];
+            });
+          }
+        } catch {}
+      };
+
+      es.addEventListener('FOOD_TRADING_EVENT', (e) => handleMsg(e.data));
+      es.addEventListener('message', (e) => handleMsg(e.data));
+      es.onmessage = (e) => handleMsg(e.data);
+      es.addEventListener('INIT', () => setLatestSseEvent('Connected'));
+
+      es.onerror = () => {
+        setSseConnected(false);
+      };
+    } catch {
+      setSseConnected(false);
+    }
 
     return () => {
-      isSubscribed = false;
-      if (eventSource) {
-        eventSource.close();
-      }
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
-      }
-      clearInterval(pollInterval);
+      es?.close();
     };
   }, [config.endpoint, config.streamUrl]);
 
@@ -193,13 +126,25 @@ export const BackendCard: React.FC<BackendCardProps> = ({ config, onTradingAdded
         traderName,
       });
 
+      const normalizedCreated: FoodTrading = {
+        id: (created as any).id || (created as any).Id,
+        tradingId: (created as any).tradingId || (created as any).TradingId,
+        marketId: (created as any).marketId || (created as any).MarketId,
+        itemName: (created as any).itemName || (created as any).ItemName,
+        quantity: Number((created as any).quantity ?? (created as any).Quantity ?? quantity),
+        unitPrice: Number((created as any).unitPrice ?? (created as any).UnitPrice ?? unitPrice),
+        totalPrice: Number((created as any).totalPrice ?? (created as any).TotalPrice ?? (quantity * unitPrice)),
+        traderName: (created as any).traderName || (created as any).TraderName || traderName,
+        status: (created as any).status || (created as any).Status || 'CONFIRMED',
+        createdAt: (created as any).createdAt || (created as any).CreatedAt || new Date().toISOString(),
+      };
+
       setTradings((prev) => {
-        if (prev.some((p) => p.tradingId === created.tradingId)) return prev;
-        return [created, ...prev];
+        if (prev.some((p) => p.tradingId === normalizedCreated.tradingId)) return prev;
+        return [normalizedCreated, ...prev];
       });
 
-      setLatestSseEvent(`Created: ${created.tradingId}`);
-      if (onTradingAdded) onTradingAdded();
+      setLatestSseEvent(`Created: ${normalizedCreated.tradingId}`);
     } catch (err: any) {
       setErrorMsg(err.message || 'Submission error');
     } finally {

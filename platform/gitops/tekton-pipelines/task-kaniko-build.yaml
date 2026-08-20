@@ -41,7 +41,7 @@ spec:
         set -eu
         DOCKER_DIR="$(workspaces.source.path)/.docker"
         mkdir -p "$DOCKER_DIR"
-        AUTH_B64="$(echo -n 'admin:admin123' | base64 | tr -d '\n')"
+        AUTH_B64="$(echo -n 'admin:darueira-admin123' | base64 | tr -d '\n')"
         cat << EOF > "$DOCKER_DIR/config.json"
         {
           "auths": {

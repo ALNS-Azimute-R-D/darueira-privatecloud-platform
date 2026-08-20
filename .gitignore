@@ -19,3 +19,19 @@ Thumbs.db
 # Logs and local env
 *.log
 .env
+
+
+node_modules/
+**/node_modules/
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+
+# Build artifacts
+dist/
+package-lock.json
+**/package-lock.json
+
+

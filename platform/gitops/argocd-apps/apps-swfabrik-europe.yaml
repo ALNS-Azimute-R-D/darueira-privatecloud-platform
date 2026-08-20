@@ -12,7 +12,7 @@ spec:
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
     targetRevision: main
-    path: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/app-food-market-00-mfe/k8s"
+    path: "workspace/platf-bizz-apps/swfabrik-europe/app-food-market-00-mfe/k8s"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -35,7 +35,7 @@ spec:
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
     targetRevision: main
-    path: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/food-market-01-service/k8s"
+    path: "workspace/platf-bizz-apps/swfabrik-europe/food-market-01-service/k8s"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -58,7 +58,7 @@ spec:
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
     targetRevision: main
-    path: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/food-market-02-service/k8s"
+    path: "workspace/platf-bizz-apps/swfabrik-europe/food-market-02-service/k8s"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -81,7 +81,7 @@ spec:
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
     targetRevision: main
-    path: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/food-market-03-service/k8s"
+    path: "workspace/platf-bizz-apps/swfabrik-europe/food-market-03-service/k8s"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -104,7 +104,7 @@ spec:
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
     targetRevision: main
-    path: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/food-market-04-service/k8s"
+    path: "workspace/platf-bizz-apps/swfabrik-europe/food-market-04-service/k8s"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -127,7 +127,7 @@ spec:
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
     targetRevision: main
-    path: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/food-market-05-service/k8s"
+    path: "workspace/platf-bizz-apps/swfabrik-europe/food-market-05-service/k8s"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -150,7 +150,7 @@ spec:
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
     targetRevision: main
-    path: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/food-market-06-service/k8s"
+    path: "workspace/platf-bizz-apps/swfabrik-europe/food-market-06-service/k8s"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -173,7 +173,7 @@ spec:
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
     targetRevision: main
-    path: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/app-food-market-01-react/k8s"
+    path: "workspace/platf-bizz-apps/swfabrik-europe/app-food-market-01-react/k8s"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -196,7 +196,7 @@ spec:
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
     targetRevision: main
-    path: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/app-food-market-02-angular/k8s"
+    path: "workspace/platf-bizz-apps/swfabrik-europe/app-food-market-02-angular/k8s"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -219,7 +219,7 @@ spec:
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
     targetRevision: main
-    path: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/infra-k8s"
+    path: "workspace/platf-bizz-apps/swfabrik-europe/infra-k8s"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"

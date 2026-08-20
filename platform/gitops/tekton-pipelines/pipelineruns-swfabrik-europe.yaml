@@ -18,7 +18,7 @@ spec:
     - name: image-reference
       value: "localhost:8082/swfabrik-europe/food-market-01-service:latest"
     - name: context-subpath
-      value: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/food-market-01-service"
+      value: "workspace/platf-bizz-apps/swfabrik-europe/food-market-01-service"
     - name: build-tool
       value: "maven"
     - name: target-environment

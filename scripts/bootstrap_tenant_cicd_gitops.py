@@ -138,7 +138,7 @@ def push_code_to_forgejo():
 
     # 1. Push to marketplaces monorepo (preserving path structure for ArgoCD)
     with tempfile.TemporaryDirectory() as tmpdir:
-        dest_workspace = os.path.join(tmpdir, "workspace", "platf-bizz-prjs", "drr-tnt-swfabrik-europe")
+        dest_workspace = os.path.join(tmpdir, "workspace", "platf-bizz-apps", "swfabrik-europe")
         os.makedirs(os.path.dirname(dest_workspace), exist_ok=True)
         shutil.copytree(TENANT_WORKSPACE, dest_workspace, ignore=shutil.ignore_patterns("target", "node_modules", "dist", "bin", "obj", ".git"))
 

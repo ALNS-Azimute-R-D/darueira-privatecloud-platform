@@ -19,8 +19,8 @@ spec:
       description: "Git revision, branch or commit SHA"
     - name: runtime
       type: string
-      default: "golang"
-      description: "Polyglot runtime type (golang, gradle, maven, node)"
+      default: "auto"
+      description: "Polyglot runtime type (auto, node, golang, maven, gradle, python, dotnet)"
     - name: source-subpath
       type: string
       default: "."

@@ -40,6 +40,9 @@ spec:
         if [ ! -d "$TARGET_DIR" ]; then
           TARGET_DIR="$(workspaces.source.path)/source"
         fi
+        export HOME="$(workspaces.source.path)"
+        export TRIVY_CACHE_DIR="$(workspaces.source.path)/.trivycache"
+        mkdir -p "$TRIVY_CACHE_DIR"
         echo "==> Running Trivy Security Vulnerability & SAST scan on: $TARGET_DIR..."
-        trivy fs --severity "$(params.severity)" --exit-code 0 "$TARGET_DIR" || true
+        trivy fs --cache-dir "$TRIVY_CACHE_DIR" --severity "$(params.severity)" --exit-code 0 "$TARGET_DIR" || true
         echo "==> Security audit completed. Zero blocking policy violations found."

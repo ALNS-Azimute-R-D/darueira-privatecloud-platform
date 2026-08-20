@@ -14,6 +14,8 @@ spec:
       value: $(body.after)
     - name: repository-name
       value: $(body.repository.name)
+    - name: owner-name
+      value: $(body.repository.owner.username)
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerTemplate
@@ -31,6 +33,9 @@ spec:
       description: "Commit SHA or branch"
     - name: repository-name
       description: "Name of the Git repository"
+    - name: owner-name
+      description: "Owner organization or user of the Git repository"
+      default: "swfabrik-europe"
   resourcetemplates:
     - apiVersion: tekton.dev/v1beta1
       kind: PipelineRun
@@ -40,6 +45,7 @@ spec:
         labels:
           darueira.io/tier: enterprise-shared
           darueira.io/triggered-by: forgejo-webhook
+          darueira.io/tenant: $(tt.params.owner-name)
       spec:
         pipelineRef:
           name: standard-ci-cd-pipeline
@@ -49,7 +55,9 @@ spec:
           - name: git-revision
             value: $(tt.params.git-revision)
           - name: image-name
-            value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/darueira/$(tt.params.repository-name):$(tt.params.git-revision)"
+            value: "localhost:8082/$(tt.params.owner-name)/$(tt.params.repository-name):latest"
+          - name: argocd-app-name
+            value: "$(tt.params.owner-name)-$(tt.params.repository-name)"
         workspaces:
           - name: pipeline-workspace
             volumeClaimTemplate:

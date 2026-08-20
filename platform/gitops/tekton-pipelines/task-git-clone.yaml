@@ -39,9 +39,17 @@ spec:
       script: |
         #!/usr/bin/env sh
         set -eu
-        echo "==> Cloning $(params.url) at revision $(params.revision) (depth: $(params.depth))..."
-        git clone --depth "$(params.depth)" --branch "$(params.revision)" "$(params.url)" $(workspaces.output.path)/source || \
-        git clone --depth "$(params.depth)" "$(params.url)" $(workspaces.output.path)/source
+        export HOME="$(workspaces.output.path)"
+        export GIT_SSL_NO_VERIFY=true
+
+        TARGET_URL="$(params.url)"
+
+        # Map external gateway hostnames/IPs to the internal in-cluster service for low-latency, zero-SSL failure cloning
+        TARGET_URL="$(echo "$TARGET_URL" | sed -E 's|https?://[^/]+/|http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/|g')"
+
+        echo "==> Cloning $TARGET_URL at revision $(params.revision) (depth: $(params.depth))..."
+        git -c http.sslVerify=false clone --depth "$(params.depth)" --branch "$(params.revision)" "$TARGET_URL" $(workspaces.output.path)/source || \
+        git -c http.sslVerify=false clone --depth "$(params.depth)" "$TARGET_URL" $(workspaces.output.path)/source
         cd $(workspaces.output.path)/source
         git checkout "$(params.revision)" || true
         echo "==> Successfully cloned repository. Commit SHA: $(git rev-parse HEAD)"

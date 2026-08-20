@@ -32,10 +32,9 @@ spec:
             env: "dev"
   template:
     metadata:
-      name: "tenant-{{tenant}}-{{project}}-{{env}}"
+      name: "tenant-{{tenant}}-{{env}}"
       labels:
         darueira.io/tenant: "{{tenant}}"
-        darueira.io/project: "{{project}}"
         darueira.io/environment: "{{env}}"
         darueira.io/tier: "tenant-workload"
     spec:
@@ -46,7 +45,7 @@ spec:
         path: "platform/kustomize/base/tnt-tenant-base"
       destination:
         server: "https://kubernetes.default.svc"
-        namespace: "drr-tnt-{{tenant}}-{{project}}-{{env}}"
+        namespace: "drr-tnt-{{tenant}}-{{env}}"
       syncPolicy:
         automated:
           prune: true

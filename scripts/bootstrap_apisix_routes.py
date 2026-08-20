@@ -5,7 +5,7 @@ import urllib.error
 import ssl
 import time
 
-ADMIN_URL = os.environ.get("APISIX_ADMIN_URL", "http://127.0.0.1:9180/apisix/admin")
+ADMIN_URL = os.environ.get("APISIX_ADMIN_URL", "http://apisix-gateway.drr-corpshared-plat.svc.cluster.local:9180/apisix/admin")
 ADMIN_KEY = os.environ.get("APISIX_ADMIN_KEY", "edd1c9f034335f136f87ad84b625c8f1")
 
 # SSL Certificate definition
@@ -602,7 +602,7 @@ ROUTES = [
             "marketplaces.swfabrik-europe.local"
         ],
         "upstream": {
-            "nodes": {"app-food-market-00-mfe.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:80": 1},
+            "nodes": {"app-food-market-00-mfe.drr-tnt-swfabrik-europe-dev.svc.cluster.local:80": 1},
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}
@@ -617,7 +617,7 @@ ROUTES = [
             "mfe01.swfabrik-europe.127.0.0.1.nip.io"
         ],
         "upstream": {
-            "nodes": {"app-food-market-01-react.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:80": 1},
+            "nodes": {"app-food-market-01-react.drr-tnt-swfabrik-europe-dev.svc.cluster.local:80": 1},
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}
@@ -632,7 +632,7 @@ ROUTES = [
             "mfe02.swfabrik-europe.127.0.0.1.nip.io"
         ],
         "upstream": {
-            "nodes": {"app-food-market-02-angular.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:80": 1},
+            "nodes": {"app-food-market-02-angular.drr-tnt-swfabrik-europe-dev.svc.cluster.local:80": 1},
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}
@@ -647,7 +647,7 @@ ROUTES = [
             "java-market.swfabrik-europe.127.0.0.1.nip.io"
         ],
         "upstream": {
-            "nodes": {"food-market-01-service.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:8081": 1},
+            "nodes": {"food-market-01-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8081": 1},
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}
@@ -662,7 +662,7 @@ ROUTES = [
             "kotlin-market.swfabrik-europe.127.0.0.1.nip.io"
         ],
         "upstream": {
-            "nodes": {"food-market-02-service.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:8082": 1},
+            "nodes": {"food-market-02-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8082": 1},
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}
@@ -677,7 +677,7 @@ ROUTES = [
             "go-market.swfabrik-europe.127.0.0.1.nip.io"
         ],
         "upstream": {
-            "nodes": {"food-market-03-service.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:8083": 1},
+            "nodes": {"food-market-03-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8083": 1},
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}
@@ -692,7 +692,7 @@ ROUTES = [
             "python-market.swfabrik-europe.127.0.0.1.nip.io"
         ],
         "upstream": {
-            "nodes": {"food-market-04-service.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:8084": 1},
+            "nodes": {"food-market-04-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8084": 1},
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}
@@ -707,7 +707,7 @@ ROUTES = [
             "node-market.swfabrik-europe.127.0.0.1.nip.io"
         ],
         "upstream": {
-            "nodes": {"food-market-05-service.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:8085": 1},
+            "nodes": {"food-market-05-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8085": 1},
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}
@@ -722,10 +722,155 @@ ROUTES = [
             "dotnet-market.swfabrik-europe.127.0.0.1.nip.io"
         ],
         "upstream": {
-            "nodes": {"food-market-06-service.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:8086": 1},
+            "nodes": {"food-market-06-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8086": 1},
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}
+    },
+    # Path-based routing on main dashboard host (Port 80)
+    {
+        "id": "route-path-foodmarket-01",
+        "name": "Food Market 01 API Path",
+        "desc": "Path routing /api/food01/* to Java service",
+        "uri": "/api/food01/*",
+        "hosts": [
+            "foodmarket.swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.swfabrik-europe.local",
+            "marketplaces.swfabrik-europe.127.0.0.1.nip.io",
+            "marketplaces.swfabrik-europe.local"
+        ],
+        "upstream": {
+            "nodes": {"food-market-01-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8081": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {
+            "proxy-rewrite": {
+                "regex_uri": ["^/api/food01/(.*)", "/api/$1"]
+            },
+            "cors": {},
+            "prometheus": {}
+        }
+    },
+    {
+        "id": "route-path-foodmarket-02",
+        "name": "Food Market 02 API Path",
+        "desc": "Path routing /api/food02/* to Kotlin service",
+        "uri": "/api/food02/*",
+        "hosts": [
+            "foodmarket.swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.swfabrik-europe.local",
+            "marketplaces.swfabrik-europe.127.0.0.1.nip.io",
+            "marketplaces.swfabrik-europe.local"
+        ],
+        "upstream": {
+            "nodes": {"food-market-02-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8082": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {
+            "proxy-rewrite": {
+                "regex_uri": ["^/api/food02/(.*)", "/api/$1"]
+            },
+            "cors": {},
+            "prometheus": {}
+        }
+    },
+    {
+        "id": "route-path-foodmarket-03",
+        "name": "Food Market 03 API Path",
+        "desc": "Path routing /api/food03/* to Go service",
+        "uri": "/api/food03/*",
+        "hosts": [
+            "foodmarket.swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.swfabrik-europe.local",
+            "marketplaces.swfabrik-europe.127.0.0.1.nip.io",
+            "marketplaces.swfabrik-europe.local"
+        ],
+        "upstream": {
+            "nodes": {"food-market-03-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8083": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {
+            "proxy-rewrite": {
+                "regex_uri": ["^/api/food03/(.*)", "/api/$1"]
+            },
+            "cors": {},
+            "prometheus": {}
+        }
+    },
+    {
+        "id": "route-path-foodmarket-04",
+        "name": "Food Market 04 API Path",
+        "desc": "Path routing /api/food04/* to Python service",
+        "uri": "/api/food04/*",
+        "hosts": [
+            "foodmarket.swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.swfabrik-europe.local",
+            "marketplaces.swfabrik-europe.127.0.0.1.nip.io",
+            "marketplaces.swfabrik-europe.local"
+        ],
+        "upstream": {
+            "nodes": {"food-market-04-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8084": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {
+            "proxy-rewrite": {
+                "regex_uri": ["^/api/food04/(.*)", "/api/$1"]
+            },
+            "cors": {},
+            "prometheus": {}
+        }
+    },
+    {
+        "id": "route-path-foodmarket-05",
+        "name": "Food Market 05 API Path",
+        "desc": "Path routing /api/food05/* to NestJS service",
+        "uri": "/api/food05/*",
+        "hosts": [
+            "foodmarket.swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.swfabrik-europe.local",
+            "marketplaces.swfabrik-europe.127.0.0.1.nip.io",
+            "marketplaces.swfabrik-europe.local"
+        ],
+        "upstream": {
+            "nodes": {"food-market-05-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8085": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {
+            "proxy-rewrite": {
+                "regex_uri": ["^/api/food05/(.*)", "/api/$1"]
+            },
+            "cors": {},
+            "prometheus": {}
+        }
+    },
+    {
+        "id": "route-path-foodmarket-06",
+        "name": "Food Market 06 API Path",
+        "desc": "Path routing /api/food06/* to .NET service",
+        "uri": "/api/food06/*",
+        "hosts": [
+            "foodmarket.swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.swfabrik-europe.local",
+            "marketplaces.swfabrik-europe.127.0.0.1.nip.io",
+            "marketplaces.swfabrik-europe.local"
+        ],
+        "upstream": {
+            "nodes": {"food-market-06-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8086": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {
+            "proxy-rewrite": {
+                "regex_uri": ["^/api/food06/(.*)", "/api/$1"]
+            },
+            "cors": {},
+            "prometheus": {}
+        }
     }
 ]
 

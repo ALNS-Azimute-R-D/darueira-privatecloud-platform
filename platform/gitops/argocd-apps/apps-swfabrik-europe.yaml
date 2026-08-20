@@ -15,7 +15,7 @@ spec:
     path: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/app-food-market-00-mfe/k8s"
   destination:
     server: "https://kubernetes.default.svc"
-    namespace: "drr-tnt-swfabrik-europe-marketplaces-dev"
+    namespace: "drr-tnt-swfabrik-europe-dev"
   syncPolicy:
     automated:
       prune: true
@@ -38,7 +38,7 @@ spec:
     path: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/food-market-01-service/k8s"
   destination:
     server: "https://kubernetes.default.svc"
-    namespace: "drr-tnt-swfabrik-europe-marketplaces-dev"
+    namespace: "drr-tnt-swfabrik-europe-dev"
   syncPolicy:
     automated:
       prune: true
@@ -61,7 +61,7 @@ spec:
     path: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/food-market-02-service/k8s"
   destination:
     server: "https://kubernetes.default.svc"
-    namespace: "drr-tnt-swfabrik-europe-marketplaces-dev"
+    namespace: "drr-tnt-swfabrik-europe-dev"
   syncPolicy:
     automated:
       prune: true
@@ -84,7 +84,7 @@ spec:
     path: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/food-market-03-service/k8s"
   destination:
     server: "https://kubernetes.default.svc"
-    namespace: "drr-tnt-swfabrik-europe-marketplaces-dev"
+    namespace: "drr-tnt-swfabrik-europe-dev"
   syncPolicy:
     automated:
       prune: true
@@ -107,7 +107,7 @@ spec:
     path: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/food-market-04-service/k8s"
   destination:
     server: "https://kubernetes.default.svc"
-    namespace: "drr-tnt-swfabrik-europe-marketplaces-dev"
+    namespace: "drr-tnt-swfabrik-europe-dev"
   syncPolicy:
     automated:
       prune: true
@@ -130,7 +130,7 @@ spec:
     path: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/food-market-05-service/k8s"
   destination:
     server: "https://kubernetes.default.svc"
-    namespace: "drr-tnt-swfabrik-europe-marketplaces-dev"
+    namespace: "drr-tnt-swfabrik-europe-dev"
   syncPolicy:
     automated:
       prune: true
@@ -153,7 +153,7 @@ spec:
     path: "workspace/platf-bizz-prjs/drr-tnt-swfabrik-europe/food-market-06-service/k8s"
   destination:
     server: "https://kubernetes.default.svc"
-    namespace: "drr-tnt-swfabrik-europe-marketplaces-dev"
+    namespace: "drr-tnt-swfabrik-europe-dev"
   syncPolicy:
     automated:
       prune: true

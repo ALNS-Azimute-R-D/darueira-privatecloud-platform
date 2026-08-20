@@ -103,16 +103,23 @@ Following the MCCS / EDP / 50Hz trust domain separation model, the platform segr
 v
 +-----------------------------------------------------------------------------------+
 |                             TENANT ENVIRONMENT PLANE                              |
-|          Namespaces: drr-tnt-{tenant-id}-{project-id}-{env} (Dev, Staging, Prod)      |
+|               Namespaces: drr-tnt-{tenant-id}-{env} (Dev, Staging, Prod)          |
 +-----------------------------------------------------------------------------------+
 |  * Tenant Ingress & Edge: Apache APISIX DataPlane                                 |
-|  * Local IAM: Keycloak / Clavex (Federated via OIDC with Authentik Central)       |
-|  * Dynamic Secrets: OpenBao Tenant Mount (Authenticated via SPIFFE X.509 SVID)    |
-|  * Tenant Object Storage: MinIO (Dedicated buckets with tenant IAM policies)      |
-|  * Dedicated Data Stores: PostgreSQL (CloudNative-PG) & MongoDB                   |
-|  * Message Brokers: Apache Kafka (Strimzi) & RabbitMQ (VHost / Topic RBAC)       |
+|  * Dedicated Tenant IAM: Keycloak (Instance per Tenant/Env: drr_tnt_keycloak_db)  |
+|  * Dedicated Secrets: OpenBao Tenant (Per-Env instance & SPIFFE X.509 SVID)       |
+|  * Dedicated Tenant S3 Storage: MinIO (Dedicated per Tenant/Env)                  |
+|  * Dedicated Data Stores: PostgreSQL (drr_tnt_bizapps_db with schm01..N) & Mongo  |
+|  * Message Brokers: RabbitMQ (Topic / VHost isolation) & Kafka (Strimzi)          |
 |  * Workload Identity: SPIRE Agent (Injecting SVIDs into application pods)         |
 +-----------------------------------------------------------------------------------+
+
+### 4.0 Tenant Infrastructure & Storage Isolation Rules (ADR-0013)
+1. **Namespace Standard**: `drr-tnt-<Tenant Name>-<Environment>` (e.g. `drr-tnt-swfabrik-europe-dev`).
+2. **Project Environment Sharing**: A Tenant has default `dev` (and on-demand `stg`, `prd`). All Projects under a Tenant share the same Environments of that Tenant. Never create an Environment per Project.
+3. **Dedicated Baseline Services per Environment**: Each `drr-tnt-<tenant>-<env>` hosts its own `tenant-openbao`, `tenant-minio`, `tenant-postgres`, `tenant-mongodb`, and `tenant-keycloak`.
+4. **Storage Isolation**: Tenant workloads NEVER persist data in `drr-corpshared-*` services. All persistence targets the tenant's dedicated services.
+5. **Database & Schema Convention**: Every `tenant-postgres` contains `drr_tnt_keycloak_db` and `drr_tnt_bizapps_db`. Each project uses a sequential schema `schm01`, `schm02`, etc., in `drr_tnt_bizapps_db`.
 
 ### 4.1 Development & Workflow Conventions
 

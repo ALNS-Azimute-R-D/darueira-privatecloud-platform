@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: food-market-06-service
-  namespace: drr-tnt-swfabrik-europe-marketplaces-dev
+  namespace: drr-tnt-swfabrik-europe-dev
   labels:
     app.kubernetes.io/name: food-market-06-service
     app.kubernetes.io/part-of: swfabrik-europe-marketplaces
@@ -51,7 +51,7 @@ spec:
             - name: ASPNETCORE_URLS
               value: "http://0.0.0.0:8086"
             - name: DATABASE_URL
-              value: "postgres://drr_admin:change-me-in-openbao@central-postgres.drr-corpshared-plat.svc.cluster.local:5432/drr_tnt_bizapps_db?sslmode=disable"
+              value: "postgres://drr_tnt_svcs_admin:tenant_pg_secure_pass_2026@tenant-postgres.drr-tnt-swfabrik-europe-dev.svc.cluster.local:5432/drr_tnt_bizapps_db?sslmode=disable"
             - name: RABBITMQ_HOST
               value: "message-broker-rabbitmq.drr-corpshared-plat.svc.cluster.local"
             - name: RABBITMQ_PORT
@@ -92,7 +92,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: food-market-06-service
-  namespace: drr-tnt-swfabrik-europe-marketplaces-dev
+  namespace: drr-tnt-swfabrik-europe-dev
   labels:
     app.kubernetes.io/name: food-market-06-service
     darueira.io/tier: tenant-workload

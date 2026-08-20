@@ -5,9 +5,9 @@ spring:
   application:
     name: food-market-01-service
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://central-postgres.drr-corpshared-plat.svc.cluster.local:5432/drr_tnt_bizapps_db?currentSchema=schm01}
-    username: ${SPRING_DATASOURCE_USERNAME:drr_admin}
-    password: ${SPRING_DATASOURCE_PASSWORD:change-me-in-openbao}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://tenant-postgres.drr-tnt-swfabrik-europe-dev.svc.cluster.local:5432/drr_tnt_bizapps_db?currentSchema=schm01}
+    username: ${SPRING_DATASOURCE_USERNAME:drr_tnt_svcs_admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:tenant_pg_secure_pass_2026}
     driver-class-name: org.postgresql.Driver
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect

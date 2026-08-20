@@ -12,7 +12,7 @@ public class PostgresFoodTradingAdapter : IFoodTradingPersistencePort
     public PostgresFoodTradingAdapter(IConfiguration config)
     {
         _connectionString = config["DATABASE_URL"] ??
-            "Host=central-postgres.drr-corpshared-plat.svc.cluster.local;Port=5432;Database=drr_tnt_bizapps_db;Username=drr_admin;Password=change-me-in-openbao";
+            "Host=tenant-postgres.drr-tnt-swfabrik-europe-dev.svc.cluster.local;Port=5432;Database=drr_tnt_bizapps_db;Username=drr_tnt_svcs_admin;Password=tenant_pg_secure_pass_2026";
     }
 
     private NpgsqlConnection CreateConnection()

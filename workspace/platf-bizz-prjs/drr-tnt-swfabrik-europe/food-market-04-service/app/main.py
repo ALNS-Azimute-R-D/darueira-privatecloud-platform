@@ -18,7 +18,7 @@ logger = logging.getLogger("food-market-04-service")
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgres://drr_admin:change-me-in-openbao@central-postgres.drr-corpshared-plat.svc.cluster.local:5432/drr_tnt_bizapps_db?sslmode=disable",
+    "postgres://drr_tnt_svcs_admin:tenant_pg_secure_pass_2026@tenant-postgres.drr-tnt-swfabrik-europe-dev.svc.cluster.local:5432/drr_tnt_bizapps_db?sslmode=disable",
 )
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "message-broker-rabbitmq.drr-corpshared-plat.svc.cluster.local")
 RABBITMQ_PORT = os.getenv("RABBITMQ_PORT", "5672")

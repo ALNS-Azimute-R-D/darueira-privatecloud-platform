@@ -2,7 +2,7 @@
 """
 ==============================================================================
   Mission #15 Validation Suite: Multi-Tenant Polyglot Event-Driven Platform
-  Tenant: swfabrik-europe | Project: marketplaces | Env: dev
+  Tenant: swfabrik-europe | Environment: dev | Storage: Isolated Tenant PG
 ==============================================================================
 """
 
@@ -46,14 +46,14 @@ def run_in_authentik(python_code: str) -> str:
 
 def main():
     print(f"{CYAN}================================================================================{NC}")
-    print(f"{CYAN}  Darueira Platform - Mission #15 Polyglot Multi-Tenant Validation Suite        {NC}")
+    print(f"{CYAN}  Darueira Platform - Mission #15 & ADR-0013 Multi-Tenant Validation Suite       {NC}")
     print(f"{CYAN}================================================================================{NC}")
 
     passed = 0
     total = 0
 
     # Step 1: Validate Tenant CRDs and Namespace
-    log_info("Step 1: Checking Tenant, Project, Environment CRDs and Namespace...")
+    log_info("Step 1: Checking Tenant & Environment CRDs and Namespace...")
     total += 1
     try:
         tenants = run_kubectl("get tenants.darueira.io -o json")
@@ -69,19 +69,42 @@ def main():
 
     total += 1
     try:
-        ns = run_kubectl("get ns drr-tnt-swfabrik-europe-marketplaces-dev -o json")
+        ns = run_kubectl("get ns drr-tnt-swfabrik-europe-dev -o json")
         ns_json = json.loads(ns)
         pss_enforce = ns_json.get("metadata", {}).get("labels", {}).get("pod-security.kubernetes.io/enforce")
         if pss_enforce == "restricted":
-            log_success("Namespace 'drr-tnt-swfabrik-europe-marketplaces-dev' is active with PSS 'restricted'.")
+            log_success("Namespace 'drr-tnt-swfabrik-europe-dev' is active with PSS 'restricted'.")
             passed += 1
         else:
             log_error(f"Namespace PSS enforce label is '{pss_enforce}', expected 'restricted'.")
     except Exception as e:
         log_error(f"Failed checking Tenant Namespace: {e}")
 
-    # Step 2: Validate Pods Running
-    log_info("Step 2: Checking Pod Status across all 6 microservices & 3 frontends...")
+    # Step 2: Validate Baseline Services in Tenant Namespace
+    log_info("Step 2: Checking Baseline Tenant Services (PostgreSQL, MinIO, OpenBao, MongoDB, Keycloak)...")
+    baseline_resources = [
+        ("statefulset", "tenant-postgres"),
+        ("deployment", "tenant-minio"),
+        ("deployment", "tenant-openbao"),
+        ("statefulset", "tenant-mongodb"),
+        ("deployment", "tenant-keycloak"),
+    ]
+    for kind, name in baseline_resources:
+        total += 1
+        try:
+            out = run_kubectl(f"get {kind}/{name} -n drr-tnt-swfabrik-europe-dev -o json")
+            r_json = json.loads(out)
+            ready_replicas = r_json.get("status", {}).get("readyReplicas", 0)
+            if ready_replicas >= 1:
+                log_success(f"Tenant baseline service '{name}' is 1/1 READY.")
+                passed += 1
+            else:
+                log_error(f"Tenant baseline service '{name}' has {ready_replicas} ready replicas.")
+        except Exception as e:
+            log_error(f"Tenant baseline service '{name}' failed: {e}")
+
+    # Step 3: Validate Workload Pods Running
+    log_info("Step 3: Checking Workload Pod Status across all 6 microservices & 3 frontends...")
     expected_deployments = [
         "food-market-01-service",
         "food-market-02-service",
@@ -97,7 +120,7 @@ def main():
     for dep in expected_deployments:
         total += 1
         try:
-            out = run_kubectl(f"get deployment/{dep} -n drr-tnt-swfabrik-europe-marketplaces-dev -o json")
+            out = run_kubectl(f"get deployment/{dep} -n drr-tnt-swfabrik-europe-dev -o json")
             d_json = json.loads(out)
             ready_replicas = d_json.get("status", {}).get("readyReplicas", 0)
             if ready_replicas >= 1:
@@ -108,14 +131,14 @@ def main():
         except Exception as e:
             log_error(f"Deployment '{dep}' failed: {e}")
 
-    # Step 3: Test 6 Polyglot REST APIs & OpenAPI Specs & DB persistence
-    log_info("Step 3: Testing REST API, OpenAPI, Database & RabbitMQ Event Flow for each Backend...")
+    # Step 4: Test 6 Polyglot REST APIs & OpenAPI Specs & Isolated Schema DB persistence
+    log_info("Step 4: Testing REST API, OpenAPI, Isolated Database & RabbitMQ Event Flow...")
 
     test_script = """
 import urllib.request, json, time
 
 services = [
-    {"num": 1, "tech": "Java / Spring Boot", "port": 8081, "market": "MKT-EU-01-JAVA", "item": "Spanish Olive Oil 5L", "price": 38.5, "trader": "Andalucia SL", "openapi": "/v3/api-docs"},
+    {"num": 1, "tech": "Java / Spring Boot", "port": 8081, "market": "MKT-EU-01-SPRING", "item": "Spanish Olive Oil 5L", "price": 38.5, "trader": "Andalucia SL", "openapi": "/v3/api-docs"},
     {"num": 2, "tech": "Kotlin / Quarkus", "port": 8082, "market": "MKT-EU-02-QUARKUS", "item": "Parmigiano Reggiano 24M", "price": 65.0, "trader": "Emilia Foods", "openapi": "/q/openapi?format=json"},
     {"num": 3, "tech": "Go / Gin", "port": 8083, "market": "MKT-EU-03-GOLANG", "item": "Black Forest Ham 5kg", "price": 48.0, "trader": "Bavaria Meats", "openapi": "/v3/api-docs"},
     {"num": 4, "tech": "Python / FastAPI", "port": 8084, "market": "MKT-EU-04-PYTHON", "item": "Brie de Meaux AOP", "price": 35.5, "trader": "Fromagerie Paris", "openapi": "/openapi.json"},
@@ -125,7 +148,7 @@ services = [
 
 results = []
 for s in services:
-    base_url = f"http://food-market-0{s['num']}-service.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:{s['port']}"
+    base_url = f"http://food-market-0{s['num']}-service.drr-tnt-swfabrik-europe-dev.svc.cluster.local:{s['port']}"
     
     # 1. Test POST /api/food-tradings
     post_data = json.dumps({
@@ -172,13 +195,28 @@ print(json.dumps(results))
     except Exception as e:
         log_error(f"Failed running polyglot microservice test suite: {e}")
 
-    # Step 4: Validate Frontend App
-    log_info("Step 4: Checking Frontend Host SPA...")
+    # Step 5: Validate Database Isolation in Tenant PostgreSQL
+    log_info("Step 5: Validating Database Isolation (Tenant-PostgreSQL schemas schm01..schm06)...")
+    for i in range(1, 7):
+        total += 1
+        try:
+            cnt_str = run_kubectl(f"exec -n drr-tnt-swfabrik-europe-dev tenant-postgres-0 -- psql -U drr_tnt_svcs_admin -d drr_tnt_bizapps_db -t -c 'SELECT count(*) FROM schm0{i}.tb_food_trading;'")
+            count = int(cnt_str.strip())
+            if count >= 1:
+                log_success(f"Schema 'schm0{i}' in Tenant PostgreSQL has {count} verified records.")
+                passed += 1
+            else:
+                log_error(f"Schema 'schm0{i}' has 0 records.")
+        except Exception as e:
+            log_error(f"Schema 'schm0{i}' verification failed: {e}")
+
+    # Step 6: Validate Frontend App
+    log_info("Step 6: Checking Frontend Host SPA...")
     total += 1
     try:
         fe_script = """
 import urllib.request
-with urllib.request.urlopen("http://app-food-market-00-mfe.drr-tnt-swfabrik-europe-marketplaces-dev.svc.cluster.local:80", timeout=5) as resp:
+with urllib.request.urlopen("http://app-food-market-00-mfe.drr-tnt-swfabrik-europe-dev.svc.cluster.local:80", timeout=5) as resp:
     html = resp.read().decode()
     print("STATUS_OK" if resp.status == 200 and "<title>" in html else "STATUS_FAIL")
 """

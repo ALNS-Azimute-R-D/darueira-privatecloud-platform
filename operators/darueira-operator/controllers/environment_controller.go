@@ -36,7 +36,7 @@ func (r *EnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, fmt.Errorf("failed to get Environment: %w", err)
 	}
 
-	targetNamespace := fmt.Sprintf("drr-tnt-%s-%s-%s", env.Spec.TenantRef, env.Spec.ProjectRef, env.Spec.Type)
+	targetNamespace := fmt.Sprintf("drr-tnt-%s-%s", env.Spec.TenantRef, env.Spec.Type)
 	logger.Info("Reconciling Environment namespace", "targetNamespace", targetNamespace)
 
 	// 1. Ensure Namespace exists
@@ -50,7 +50,6 @@ func (r *EnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 					Labels: map[string]string{
 						"darueira.io/tier":                     "tenant-workload",
 						"darueira.io/tenant":                   env.Spec.TenantRef,
-						"darueira.io/project":                  env.Spec.ProjectRef,
 						"darueira.io/environment":              string(env.Spec.Type),
 						"pod-security.kubernetes.io/enforce":   "restricted",
 						"pod-security.kubernetes.io/audit":     "restricted",

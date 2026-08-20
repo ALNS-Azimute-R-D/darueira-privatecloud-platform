@@ -27,6 +27,8 @@ class RabbitMQConsumer(
     private val user: String,
     @ConfigProperty(name = "rabbitmq-password", defaultValue = "darueira-admin123")
     private val pass: String,
+    @ConfigProperty(name = "rabbitmq-virtual-host", defaultValue = "/")
+    private val vhost: String,
     @ConfigProperty(name = "app.rabbitmq.topic", defaultValue = "marketplace.foodtrading.topic")
     private val topicExchange: String,
     @ConfigProperty(name = "app.rabbitmq.queue", defaultValue = "marketplace.foodtrading.queue02")

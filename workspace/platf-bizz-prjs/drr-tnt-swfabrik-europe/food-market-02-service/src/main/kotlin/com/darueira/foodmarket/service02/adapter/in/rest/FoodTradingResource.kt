@@ -42,9 +42,21 @@ class FoodTradingResource(
     @GET
     @Path("/stream")
     @Produces(MediaType.SERVER_SENT_EVENTS)
-    @RestStreamElementType(MediaType.APPLICATION_JSON)
     @Operation(summary = "Stream Food Tradings", description = "F01.3: Real-Time Server-Sent Events (SSE) Stream from Quarkus Mutiny")
-    fun streamTradings(): Multi<FoodTradingResponse> {
-        return useCase.subscribeStream().map { FoodTradingResponse.fromDomain(it) }
+    fun streamTradings(@jakarta.ws.rs.core.Context sse: jakarta.ws.rs.sse.Sse): Multi<jakarta.ws.rs.sse.OutboundSseEvent> {
+        val initEvent = sse.newEventBuilder()
+            .name("INIT")
+            .data("Connected to Food Trading Live SSE Stream (Service 02 - Kotlin/Quarkus)")
+            .build()
+
+        val dataStream = useCase.subscribeStream().map {
+            sse.newEventBuilder()
+                .name("FOOD_TRADING_EVENT")
+                .mediaType(MediaType.APPLICATION_JSON_TYPE)
+                .data(FoodTradingResponse.fromDomain(it))
+                .build()
+        }
+
+        return Multi.createFrom().item(initEvent).onCompletion().switchTo(dataStream)
     }
 }

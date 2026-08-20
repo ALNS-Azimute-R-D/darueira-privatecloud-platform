@@ -60,23 +60,54 @@ export const BackendCard: React.FC<BackendCardProps> = ({ config, onTradingAdded
         if (onStreamStateChange) onStreamStateChange(true);
       };
 
+      const handleIncomingEvent = (rawData: any) => {
+        try {
+          if (!rawData) return;
+          let item: FoodTrading | null = null;
+          if (typeof rawData === 'string') {
+            try {
+              item = JSON.parse(rawData);
+            } catch {
+              setLatestSseEvent(`Live: ${rawData}`);
+              return;
+            }
+          } else if (typeof rawData === 'object') {
+            item = rawData;
+          }
+
+          if (item && item.tradingId) {
+            setLatestSseEvent(`New: ${item.tradingId} (${item.itemName || 'Trading'})`);
+            setTradings((prev) => {
+              const existingIdx = prev.findIndex((p) => p.tradingId === item!.tradingId);
+              if (existingIdx >= 0) {
+                const updated = [...prev];
+                updated[existingIdx] = { ...updated[existingIdx], ...item };
+                return updated;
+              }
+              return [item!, ...prev];
+            });
+            if (onTradingAdded) onTradingAdded();
+          }
+        } catch (err) {
+          console.error("Error processing SSE message:", err);
+        }
+      };
+
       eventSource.addEventListener('INIT', (e: MessageEvent) => {
         setLatestSseEvent(`Connected: ${e.data}`);
       });
 
       eventSource.addEventListener('FOOD_TRADING_EVENT', (e: MessageEvent) => {
-        try {
-          const item: FoodTrading = JSON.parse(e.data);
-          setLatestSseEvent(`New: ${item.tradingId} (${item.itemName})`);
-          setTradings((prev) => {
-            if (prev.some((p) => p.tradingId === item.tradingId)) return prev;
-            return [item, ...prev];
-          });
-          if (onTradingAdded) onTradingAdded();
-        } catch {
-          setLatestSseEvent(`Stream event: ${e.data}`);
-        }
+        handleIncomingEvent(e.data);
       });
+
+      eventSource.addEventListener('message', (e: MessageEvent) => {
+        handleIncomingEvent(e.data);
+      });
+
+      eventSource.onmessage = (e: MessageEvent) => {
+        handleIncomingEvent(e.data);
+      };
 
       eventSource.onerror = () => {
         setSseConnected(false);

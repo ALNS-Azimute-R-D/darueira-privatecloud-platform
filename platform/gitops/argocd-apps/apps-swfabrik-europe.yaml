@@ -1,156 +1,41 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  name: swfabrik-europe-tenant-infra
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tenant: swfabrik-europe
+    darueira.io/project: infrastructure
+    darueira.io/tier: tenant-infrastructure
+spec:
+  project: darueira-tenants
+  source:
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/infra-k8s.git"
+    targetRevision: main
+    path: "."
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: "drr-tnt-swfabrik-europe-dev"
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
   name: swfabrik-europe-app-host-mfe
   namespace: drr-corpshared-mgmt
   labels:
     darueira.io/tenant: swfabrik-europe
-    darueira.io/project: marketplaces
+    darueira.io/project: frontend
     darueira.io/tier: tenant-workload
 spec:
   project: darueira-tenants
   source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/app-food-market-00-mfe.git"
     targetRevision: main
-    path: "workspace/platf-bizz-apps/swfabrik-europe/app-food-market-00-mfe/k8s"
-  destination:
-    server: "https://kubernetes.default.svc"
-    namespace: "drr-tnt-swfabrik-europe-dev"
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: swfabrik-europe-food-market-01
-  namespace: drr-corpshared-mgmt
-  labels:
-    darueira.io/tenant: swfabrik-europe
-    darueira.io/project: marketplaces
-    darueira.io/tier: tenant-workload
-spec:
-  project: darueira-tenants
-  source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
-    targetRevision: main
-    path: "workspace/platf-bizz-apps/swfabrik-europe/food-market-01-service/k8s"
-  destination:
-    server: "https://kubernetes.default.svc"
-    namespace: "drr-tnt-swfabrik-europe-dev"
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: swfabrik-europe-food-market-02
-  namespace: drr-corpshared-mgmt
-  labels:
-    darueira.io/tenant: swfabrik-europe
-    darueira.io/project: marketplaces
-    darueira.io/tier: tenant-workload
-spec:
-  project: darueira-tenants
-  source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
-    targetRevision: main
-    path: "workspace/platf-bizz-apps/swfabrik-europe/food-market-02-service/k8s"
-  destination:
-    server: "https://kubernetes.default.svc"
-    namespace: "drr-tnt-swfabrik-europe-dev"
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: swfabrik-europe-food-market-03
-  namespace: drr-corpshared-mgmt
-  labels:
-    darueira.io/tenant: swfabrik-europe
-    darueira.io/project: marketplaces
-    darueira.io/tier: tenant-workload
-spec:
-  project: darueira-tenants
-  source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
-    targetRevision: main
-    path: "workspace/platf-bizz-apps/swfabrik-europe/food-market-03-service/k8s"
-  destination:
-    server: "https://kubernetes.default.svc"
-    namespace: "drr-tnt-swfabrik-europe-dev"
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: swfabrik-europe-food-market-04
-  namespace: drr-corpshared-mgmt
-  labels:
-    darueira.io/tenant: swfabrik-europe
-    darueira.io/project: marketplaces
-    darueira.io/tier: tenant-workload
-spec:
-  project: darueira-tenants
-  source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
-    targetRevision: main
-    path: "workspace/platf-bizz-apps/swfabrik-europe/food-market-04-service/k8s"
-  destination:
-    server: "https://kubernetes.default.svc"
-    namespace: "drr-tnt-swfabrik-europe-dev"
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: swfabrik-europe-food-market-05
-  namespace: drr-corpshared-mgmt
-  labels:
-    darueira.io/tenant: swfabrik-europe
-    darueira.io/project: marketplaces
-    darueira.io/tier: tenant-workload
-spec:
-  project: darueira-tenants
-  source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
-    targetRevision: main
-    path: "workspace/platf-bizz-apps/swfabrik-europe/food-market-05-service/k8s"
-  destination:
-    server: "https://kubernetes.default.svc"
-    namespace: "drr-tnt-swfabrik-europe-dev"
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: swfabrik-europe-food-market-06
-  namespace: drr-corpshared-mgmt
-  labels:
-    darueira.io/tenant: swfabrik-europe
-    darueira.io/project: marketplaces
-    darueira.io/tier: tenant-workload
-spec:
-  project: darueira-tenants
-  source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
-    targetRevision: main
-    path: "workspace/platf-bizz-apps/swfabrik-europe/food-market-06-service/k8s"
+    path: "k8s"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -166,14 +51,14 @@ metadata:
   namespace: drr-corpshared-mgmt
   labels:
     darueira.io/tenant: swfabrik-europe
-    darueira.io/project: marketplaces
+    darueira.io/project: frontend
     darueira.io/tier: tenant-workload
 spec:
   project: darueira-tenants
   source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/app-food-market-01-react.git"
     targetRevision: main
-    path: "workspace/platf-bizz-apps/swfabrik-europe/app-food-market-01-react/k8s"
+    path: "k8s"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -189,14 +74,14 @@ metadata:
   namespace: drr-corpshared-mgmt
   labels:
     darueira.io/tenant: swfabrik-europe
-    darueira.io/project: marketplaces
+    darueira.io/project: frontend
     darueira.io/tier: tenant-workload
 spec:
   project: darueira-tenants
   source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/app-food-market-02-angular.git"
     targetRevision: main
-    path: "workspace/platf-bizz-apps/swfabrik-europe/app-food-market-02-angular/k8s"
+    path: "k8s"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -208,23 +93,138 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: swfabrik-europe-tenant-infra
+  name: swfabrik-europe-food-market-01
   namespace: drr-corpshared-mgmt
   labels:
     darueira.io/tenant: swfabrik-europe
-    darueira.io/project: marketplaces
-    darueira.io/tier: tenant-infrastructure
+    darueira.io/project: backend
+    darueira.io/tier: tenant-workload
 spec:
   project: darueira-tenants
   source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-01-service.git"
     targetRevision: main
-    path: "workspace/platf-bizz-apps/swfabrik-europe/infra-k8s"
+    path: "k8s"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
   syncPolicy:
     automated:
-      prune: false
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: swfabrik-europe-food-market-02
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tenant: swfabrik-europe
+    darueira.io/project: backend
+    darueira.io/tier: tenant-workload
+spec:
+  project: darueira-tenants
+  source:
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-02-service.git"
+    targetRevision: main
+    path: "k8s"
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: "drr-tnt-swfabrik-europe-dev"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: swfabrik-europe-food-market-03
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tenant: swfabrik-europe
+    darueira.io/project: backend
+    darueira.io/tier: tenant-workload
+spec:
+  project: darueira-tenants
+  source:
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-03-service.git"
+    targetRevision: main
+    path: "k8s"
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: "drr-tnt-swfabrik-europe-dev"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: swfabrik-europe-food-market-04
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tenant: swfabrik-europe
+    darueira.io/project: backend
+    darueira.io/tier: tenant-workload
+spec:
+  project: darueira-tenants
+  source:
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-04-service.git"
+    targetRevision: main
+    path: "k8s"
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: "drr-tnt-swfabrik-europe-dev"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: swfabrik-europe-food-market-05
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tenant: swfabrik-europe
+    darueira.io/project: backend
+    darueira.io/tier: tenant-workload
+spec:
+  project: darueira-tenants
+  source:
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-05-service.git"
+    targetRevision: main
+    path: "k8s"
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: "drr-tnt-swfabrik-europe-dev"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: swfabrik-europe-food-market-06
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tenant: swfabrik-europe
+    darueira.io/project: backend
+    darueira.io/tier: tenant-workload
+spec:
+  project: darueira-tenants
+  source:
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-06-service.git"
+    targetRevision: main
+    path: "k8s"
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: "drr-tnt-swfabrik-europe-dev"
+  syncPolicy:
+    automated:
+      prune: true
       selfHeal: true
 

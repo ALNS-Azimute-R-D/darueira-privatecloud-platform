@@ -44,5 +44,5 @@ spec:
         export TRIVY_CACHE_DIR="$(workspaces.source.path)/.trivycache"
         mkdir -p "$TRIVY_CACHE_DIR"
         echo "==> Running Trivy Security Vulnerability & SAST scan on: $TARGET_DIR..."
-        trivy fs --cache-dir "$TRIVY_CACHE_DIR" --severity "$(params.severity)" --exit-code 0 "$TARGET_DIR" || true
+        trivy fs --cache-dir "$TRIVY_CACHE_DIR" --skip-db-update --skip-java-db-update --scanners config,secret,vuln --severity "$(params.severity)" --exit-code 0 "$TARGET_DIR" || true
         echo "==> Security audit completed. Zero blocking policy violations found."

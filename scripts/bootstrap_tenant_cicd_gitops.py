@@ -30,7 +30,7 @@ FORGEJO_ADMIN_USER = "drradmin"
 FORGEJO_ADMIN_PASS = os.environ.get("FORGEJO_ADMIN_PASSWORD", "darueira-admin123")
 TEKTON_WEBHOOK_URL = os.environ.get("TEKTON_WEBHOOK_URL", "http://el-forgejo-webhook-listener.drr-corpshared-mgmt.svc.cluster.local:8080")
 
-NEXUS_REGISTRY = "localhost:8082"
+NEXUS_REGISTRY = os.environ.get("NEXUS_REGISTRY", "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082")
 TENANT_NAME = "swfabrik-europe"
 PROJECT_NAME = "marketplaces"
 

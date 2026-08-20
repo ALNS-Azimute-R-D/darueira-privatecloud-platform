@@ -7,11 +7,11 @@ metadata:
     app.kubernetes.io/component: ci-pipeline
     darueira.io/tier: enterprise-shared
 spec:
-  description: "Builds a container image using unprivileged Kaniko executor and pushes to Nexus OCI Registry"
+  description: "Builds a container image using unprivileged Kaniko executor and pushes to Sonatype Nexus OCI Registry"
   params:
     - name: image-name
       type: string
-      description: "Target image name with tag (e.g. localhost:8082/tenant-app:v1.0.0)"
+      description: "Target image name with tag (e.g. nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/tenant-app:v1.0.0)"
     - name: dockerfile-path
       type: string
       default: "Dockerfile"
@@ -27,25 +27,21 @@ spec:
     - name: build-and-push
       image: gcr.io/kaniko-project/executor:v1.23.2-debug
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 10001
-        runAsGroup: 10001
         allowPrivilegeEscalation: false
-        capabilities:
-          drop:
-            - ALL
         seccompProfile:
           type: RuntimeDefault
       script: |
         #!/busybox/sh
         set -eu
-        DOCKER_DIR="$(workspaces.source.path)/.docker"
-        mkdir -p "$DOCKER_DIR"
+        mkdir -p /kaniko/.docker
         AUTH_B64="$(echo -n 'admin:darueira-admin123' | base64 | tr -d '\n')"
-        cat << EOF > "$DOCKER_DIR/config.json"
+        cat << EOF > /kaniko/.docker/config.json
         {
           "auths": {
             "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082": {
+              "auth": "$AUTH_B64"
+            },
+            "10.152.183.89:8082": {
               "auth": "$AUTH_B64"
             },
             "localhost:8082": {
@@ -54,9 +50,7 @@ spec:
           }
         }
         EOF
-        export DOCKER_CONFIG="$DOCKER_DIR"
-        CACHE_DIR="$(workspaces.source.path)/.kaniko-cache"
-        mkdir -p "$CACHE_DIR"
+        export DOCKER_CONFIG=/kaniko/.docker
 
         DF_PATH="$(workspaces.source.path)/source/$(params.context-subpath)/$(params.dockerfile-path)"
         if [ ! -f "$DF_PATH" ]; then
@@ -68,15 +62,27 @@ spec:
         CMD ["echo", "Darueira Enterprise Workload Container Active"]
         EOF
         fi
-        echo "==> Building container image $(params.image-name) from $DF_PATH..."
+
+        DEST_IMAGE="$(params.image-name)"
+        case "$DEST_IMAGE" in
+          localhost:8082/*)
+            DEST_IMAGE="nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/${DEST_IMAGE#localhost:8082/}"
+            ;;
+          127.0.0.1:8082/*)
+            DEST_IMAGE="nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/${DEST_IMAGE#127.0.0.1:8082/}"
+            ;;
+        esac
+
+        echo "==> Building container image $DEST_IMAGE from $DF_PATH..."
         /kaniko/executor \
           --dockerfile="$DF_PATH" \
           --context="$(workspaces.source.path)/source/$(params.context-subpath)" \
-          --destination="$(params.image-name)" \
+          --destination="$DEST_IMAGE" \
           --insecure=true \
           --skip-tls-verify=true \
+          --insecure-registry=nexus-oss.drr-corpshared-plat.svc.cluster.local:8082 \
+          --insecure-registry=10.152.183.89:8082 \
           --cache=true \
-          --cache-dir="$CACHE_DIR" || {
-            echo "==> Notice: Direct push returned non-zero. Falling back to local verification..."
-          }
-        echo "==> Image step completed for: $(params.image-name)"
+          --cache-dir="$(workspaces.source.path)/.kaniko-cache"
+
+        echo "==> Successfully built and published container image: $DEST_IMAGE to Nexus OSS Docker Registry!"

@@ -16,7 +16,7 @@ spec:
     - name: git-revision
       value: "main"
     - name: image-reference
-      value: "localhost:8082/swfabrik-europe/food-market-01-service:latest"
+      value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-europe/food-market-01-service:latest"
     - name: context-subpath
       value: "workspace/platf-bizz-apps/swfabrik-europe/food-market-01-service"
     - name: build-tool

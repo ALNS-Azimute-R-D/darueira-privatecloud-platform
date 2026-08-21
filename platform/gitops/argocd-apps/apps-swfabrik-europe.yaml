@@ -11,7 +11,7 @@ spec:
   project: darueira-tenants
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/infra-k8s.git"
-    targetRevision: main
+    targetRevision: master
     path: "."
   destination:
     server: "https://kubernetes.default.svc"
@@ -34,7 +34,7 @@ spec:
   project: darueira-tenants
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/app-food-market-00-mfe-chart.git"
-    targetRevision: main
+    targetRevision: master
     path: "."
     helm:
       valueFiles:
@@ -61,7 +61,7 @@ spec:
   project: darueira-tenants
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/app-food-market-01-react-chart.git"
-    targetRevision: main
+    targetRevision: master
     path: "."
     helm:
       valueFiles:
@@ -88,7 +88,7 @@ spec:
   project: darueira-tenants
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/app-food-market-02-angular-chart.git"
-    targetRevision: main
+    targetRevision: master
     path: "."
     helm:
       valueFiles:
@@ -115,7 +115,7 @@ spec:
   project: darueira-tenants
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-01-service-chart.git"
-    targetRevision: main
+    targetRevision: master
     path: "."
     helm:
       valueFiles:
@@ -142,7 +142,7 @@ spec:
   project: darueira-tenants
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-02-service-chart.git"
-    targetRevision: main
+    targetRevision: master
     path: "."
     helm:
       valueFiles:
@@ -169,7 +169,7 @@ spec:
   project: darueira-tenants
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-03-service-chart.git"
-    targetRevision: main
+    targetRevision: master
     path: "."
     helm:
       valueFiles:
@@ -196,7 +196,7 @@ spec:
   project: darueira-tenants
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-04-service-chart.git"
-    targetRevision: main
+    targetRevision: master
     path: "."
     helm:
       valueFiles:
@@ -223,7 +223,7 @@ spec:
   project: darueira-tenants
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-05-service-chart.git"
-    targetRevision: main
+    targetRevision: master
     path: "."
     helm:
       valueFiles:
@@ -250,7 +250,7 @@ spec:
   project: darueira-tenants
   source:
     repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-06-service-chart.git"
-    targetRevision: main
+    targetRevision: master
     path: "."
     helm:
       valueFiles:

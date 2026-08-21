@@ -88,6 +88,12 @@ spec:
   serviceAccountName: tekton-triggers-controller
   triggers:
     - name: forgejo-events
+      interceptors:
+        - ref:
+            name: "cel"
+          params:
+            - name: "filter"
+              value: "body.ref == 'refs/heads/master' && !body.repository.name.endsWith('-chart')"
       bindings:
         - ref: forgejo-push-binding
       template:

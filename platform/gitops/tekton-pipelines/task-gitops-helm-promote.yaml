@@ -94,7 +94,7 @@ spec:
             echo "==> No changes in $VALUES_FILE (already on tag $TAG)."
           else
             git commit -m "chore(gitops): promote image tag $TAG in $VALUES_FILE [skip ci]"
-            git push origin main
+            git push origin master
             echo "==> [SUCCESS] Successfully promoted image tag $TAG to $CHART_REPO ($VALUES_FILE)!"
           fi
         else

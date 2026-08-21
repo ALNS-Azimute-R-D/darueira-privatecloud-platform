@@ -1,0 +1,168 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-janitor-sa
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/component: janitor
+    darueira.io/tier: enterprise-shared
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tekton-janitor-role
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/component: janitor
+    darueira.io/tier: enterprise-shared
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "delete"]
+  - apiGroups: ["tekton.dev"]
+    resources: ["pipelineruns", "taskruns"]
+    verbs: ["get", "list", "watch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tekton-janitor-rb
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/component: janitor
+    darueira.io/tier: enterprise-shared
+subjects:
+  - kind: ServiceAccount
+    name: tekton-janitor-sa
+    namespace: drr-corpshared-mgmt
+roleRef:
+  kind: Role
+  name: tekton-janitor-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tekton-janitor-script
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/component: janitor
+    darueira.io/tier: enterprise-shared
+data:
+  janitor.sh: |
+    #!/usr/bin/env bash
+    set -eo pipefail
+
+    NAMESPACE="drr-corpshared-mgmt"
+    KEEP_COUNT=3
+
+    echo "=================================================================="
+    echo "  [Tekton Janitor] Automated PipelineRun & Pod Cleanup"
+    echo "  Timestamp: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+    echo "=================================================================="
+
+    # 1. Prune excess PipelineRuns, keeping the last 3 per project
+    echo "==> [1/2] Pruning PipelineRuns (Retention: max $KEEP_COUNT runs per project)..."
+    PRS_JSON=$(kubectl get pipelinerun -n "$NAMESPACE" -o json 2>/dev/null || echo '{"items":[]}')
+
+    PROJECTS=$(echo "$PRS_JSON" | jq -c '
+      [ .items[] | {
+          name: .metadata.name,
+          created: .metadata.creationTimestamp,
+          app: (
+            (.spec.params[]? | select(.name=="app-name" or .name=="repo-name") | .value) //
+            (if (.metadata.name | test("^forgejo-ci-")) then (.metadata.name | sub("^forgejo-ci-"; "") | sub("-[a-z0-9]+$"; ""))
+             elif (.metadata.name | test("^pr-")) then (.metadata.name | sub("^pr-"; "") | sub("-[a-z0-9]+$"; ""))
+             else .metadata.name end)
+          )
+      } ] | group_by(.app) | .[] | {
+          app: .[0].app,
+          runs: [sort_by(.created) | reverse | .[].name]
+      }')
+
+    if [ -n "$PROJECTS" ]; then
+      while IFS= read -r proj_json; do
+        [ -z "$proj_json" ] && continue
+        APP=$(echo "$proj_json" | jq -r '.app')
+        TOTAL=$(echo "$proj_json" | jq '.runs | length')
+
+        if [ "$TOTAL" -gt "$KEEP_COUNT" ]; then
+          TO_DELETE=$(echo "$proj_json" | jq -r ".runs[$KEEP_COUNT:][]")
+          echo "  [-] Project '\''$APP'\'' has $TOTAL runs. Retaining top $KEEP_COUNT, deleting older runs:"
+          for pr_name in $TO_DELETE; do
+            echo "      Deleting PipelineRun: $pr_name"
+            kubectl delete pipelinerun "$pr_name" -n "$NAMESPACE" --wait=false || true
+          done
+        else
+          echo "  [✓] Project '\''$APP'\'': $TOTAL run(s) (<= $KEEP_COUNT). Retention optimal."
+        fi
+      done <<< "$PROJECTS"
+    else
+      echo "  [✓] No PipelineRuns found to prune."
+    fi
+
+    # 2. Delete all Completed / Error (Succeeded / Failed) Tekton Pods
+    echo "==> [2/2] Deleting Completed / Error Tekton Pods..."
+    kubectl delete pods -n "$NAMESPACE" -l "tekton.dev/taskRun" --field-selector="status.phase=Succeeded" --wait=false 2>/dev/null || true
+    kubectl delete pods -n "$NAMESPACE" -l "tekton.dev/taskRun" --field-selector="status.phase=Failed" --wait=false 2>/dev/null || true
+    kubectl delete pods -n "$NAMESPACE" --field-selector="status.phase=Succeeded" --wait=false 2>/dev/null || true
+    kubectl delete pods -n "$NAMESPACE" --field-selector="status.phase=Failed" --wait=false 2>/dev/null || true
+
+    echo "==> [Tekton Janitor] Cleanup cycle completed successfully."
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tekton-pipeline-janitor
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/component: janitor
+    darueira.io/tier: enterprise-shared
+spec:
+  schedule: "*/1 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 120
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/component: janitor
+            darueira.io/tier: enterprise-shared
+        spec:
+          serviceAccountName: tekton-janitor-sa
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: janitor
+              image: bitnami/kubectl:latest
+              imagePullPolicy: IfNotPresent
+              command: ["/usr/bin/bash", "/scripts/janitor.sh"]
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
+              volumeMounts:
+                - name: script-vol
+                  mountPath: /scripts
+          volumes:
+            - name: script-vol
+              configMap:
+                name: tekton-janitor-script
+                defaultMode: 0755

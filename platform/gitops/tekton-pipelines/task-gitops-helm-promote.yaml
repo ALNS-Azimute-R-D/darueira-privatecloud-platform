@@ -85,11 +85,9 @@ spec:
         git config user.email "gitops-promoter@darueira.local"
 
         if [ -f "$VALUES_FILE" ]; then
-          # Update image tag using sed
-          sed -i 's/tag:[[:space:]]*"[^"]*"/tag: "'"$TAG"'"/g' "$VALUES_FILE"
-          sed -i 's/tag:[[:space:]]*[^"[:space:]]*/tag: "'"$TAG"'"/g' "$VALUES_FILE"
-          sed -i 's/imageVersion:[[:space:]]*"[^"]*"/imageVersion: "'"$TAG"'"/g' "$VALUES_FILE"
-          sed -i 's/imageVersion:[[:space:]]*[^"[:space:]]*/imageVersion: "'"$TAG"'"/g' "$VALUES_FILE"
+          # Update image tag using regex
+          sed -i -E 's/^([[:space:]]*tag:)[[:space:]]*.*/\1 "'"$TAG"'"/' "$VALUES_FILE"
+          sed -i -E 's/^([[:space:]]*imageVersion:)[[:space:]]*.*/\1 "'"$TAG"'"/' "$VALUES_FILE"
 
           git add "$VALUES_FILE"
           if git diff --staged --quiet; then

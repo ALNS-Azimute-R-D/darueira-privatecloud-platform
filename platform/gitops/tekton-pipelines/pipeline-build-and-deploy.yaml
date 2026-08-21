@@ -29,6 +29,10 @@ spec:
       type: string
       default: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/darueira/sample-app:latest"
       description: "Target container image destination (Nexus OCI registry)"
+    - name: image-tag
+      type: string
+      default: "auto"
+      description: "Container image tag version (default 'auto' uses YYYY.MMDD.HHMMSS in CET/CEST timezone)"
     - name: dockerfile-path
       type: string
       default: "Dockerfile"
@@ -37,6 +41,13 @@ spec:
       type: string
       default: "corpshared-plat"
       description: "Name of the target ArgoCD application to synchronize after build"
+  results:
+    - name: image-tag
+      description: "Concrete version tag assigned to the container image"
+      value: $(tasks.build-and-publish-image.results.image-tag)
+    - name: image-url
+      description: "Full versioned image reference published to the registry"
+      value: $(tasks.build-and-publish-image.results.image-url)
   workspaces:
     - name: pipeline-workspace
       description: "Shared workspace for cloned code and build artifacts"
@@ -87,6 +98,8 @@ spec:
       params:
         - name: image-name
           value: $(params.image-name)
+        - name: image-tag
+          value: $(params.image-tag)
         - name: dockerfile-path
           value: $(params.dockerfile-path)
         - name: context-subpath

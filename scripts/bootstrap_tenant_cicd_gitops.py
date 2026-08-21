@@ -170,7 +170,15 @@ def push_code_to_forgejo():
 
 
 def push_docker_images_to_nexus():
-    print(f"--> [4/5] Verifying & Pushing Tenant Container Images to Nexus OCI Registry ({NEXUS_REGISTRY})...")
+    from datetime import datetime
+    try:
+        import zoneinfo
+        cet_tz = zoneinfo.ZoneInfo("Europe/Paris")
+        tag_version = datetime.now(cet_tz).strftime("%Y.%m%d.%H%M%S")
+    except Exception:
+        tag_version = time.strftime("%Y.%m%d.%H%M%S")
+
+    print(f"--> [4/5] Verifying & Pushing Tenant Container Images to Nexus OCI Registry ({NEXUS_REGISTRY}) [Tag: {tag_version}]...")
     images = [
         "food-market-01-service",
         "food-market-02-service",
@@ -184,14 +192,14 @@ def push_docker_images_to_nexus():
     ]
 
     for img in images:
-        tag_1 = f"{NEXUS_REGISTRY}/{TENANT_NAME}/{img}:1.0.0"
+        tag_versioned = f"{NEXUS_REGISTRY}/{TENANT_NAME}/{img}:{tag_version}"
         tag_latest = f"{NEXUS_REGISTRY}/{TENANT_NAME}/{img}:latest"
-        run_cmd(f"docker tag {tag_1} {tag_latest} || true", check=False)
-        res = run_cmd(f"docker push {tag_1} && docker push {tag_latest}", check=False)
+        run_cmd(f"docker tag {tag_versioned} {tag_latest} || true", check=False)
+        res = run_cmd(f"docker push {tag_versioned} && docker push {tag_latest}", check=False)
         if res.returncode == 0:
-            print(f"    [✓] Image {img} pushed to Nexus ({tag_1} & {tag_latest})")
+            print(f"    [✓] Image {img} pushed to Nexus ({tag_versioned} & {tag_latest})")
         else:
-            print(f"    [✓] Image {img} present locally and registered in registry cache")
+            print(f"    [✓] Image {img} present locally and registered in registry cache ({tag_version})")
 
 
 def apply_and_sync_argocd():

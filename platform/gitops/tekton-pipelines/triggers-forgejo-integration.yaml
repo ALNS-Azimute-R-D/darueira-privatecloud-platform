@@ -55,7 +55,9 @@ spec:
           - name: git-revision
             value: $(tt.params.git-revision)
           - name: image-name
-            value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/$(tt.params.owner-name)/$(tt.params.repository-name):latest"
+            value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/$(tt.params.owner-name)/$(tt.params.repository-name)"
+          - name: image-tag
+            value: "auto"
           - name: argocd-app-name
             value: "$(tt.params.owner-name)-$(tt.params.repository-name)"
         workspaces:

@@ -7,11 +7,15 @@ metadata:
     app.kubernetes.io/component: ci-pipeline
     darueira.io/tier: enterprise-shared
 spec:
-  description: "Builds a container image using unprivileged Kaniko executor and pushes to Sonatype Nexus OCI Registry"
+  description: "Builds a container image using unprivileged Kaniko executor and pushes versioned (YYYY.MMDD.HHMMSS in CET/CEST) and latest tags to Sonatype Nexus OCI Registry"
   params:
     - name: image-name
       type: string
-      description: "Target image name with tag (e.g. nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/tenant-app:v1.0.0)"
+      description: "Target image name (e.g. nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-europe/app-food-market-00-mfe)"
+    - name: image-tag
+      type: string
+      default: "auto"
+      description: "Version tag to apply. When 'auto', generates 'YYYY.MMDD.HHMMSS' in CET/CEST timezone."
     - name: dockerfile-path
       type: string
       default: "Dockerfile"
@@ -20,6 +24,11 @@ spec:
       type: string
       default: "."
       description: "Build context directory relative to source workspace"
+  results:
+    - name: image-tag
+      description: "The concrete version tag assigned to the image"
+    - name: image-url
+      description: "The full versioned image reference in the registry"
   workspaces:
     - name: source
       description: "Workspace containing source code and Dockerfile"
@@ -33,6 +42,8 @@ spec:
       script: |
         #!/busybox/sh
         set -eu
+
+        # 1. Setup Docker config for Nexus registry
         mkdir -p /kaniko/.docker
         AUTH_B64="$(echo -n 'admin:darueira-admin123' | base64 | tr -d '\n')"
         cat << EOF > /kaniko/.docker/config.json
@@ -52,6 +63,7 @@ spec:
         EOF
         export DOCKER_CONFIG=/kaniko/.docker
 
+        # 2. Check Dockerfile
         DF_PATH="$(workspaces.source.path)/source/$(params.context-subpath)/$(params.dockerfile-path)"
         if [ ! -f "$DF_PATH" ]; then
           echo "==> Dockerfile not found at $DF_PATH. Generating baseline alpine container manifest..."
@@ -63,21 +75,50 @@ spec:
         EOF
         fi
 
-        DEST_IMAGE="$(params.image-name)"
-        case "$DEST_IMAGE" in
+        # 3. Calculate CET/CEST timestamped tag: YYYY.MMDD.HHMMSS
+        export TZ="CET-1CEST,M3.5.0,M10.5.0/3"
+        TAG="$(params.image-tag)"
+        if [ -z "$TAG" ] || [ "$TAG" = "auto" ] || [ "$TAG" = "latest" ]; then
+          TAG="$(date +'%Y.%m%d.%H%M%S')"
+        fi
+
+        # 4. Resolve Image Base Name
+        RAW_IMAGE="$(params.image-name)"
+        case "$RAW_IMAGE" in
           localhost:8082/*)
-            DEST_IMAGE="nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/${DEST_IMAGE#localhost:8082/}"
+            RAW_IMAGE="nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/${RAW_IMAGE#localhost:8082/}"
             ;;
           127.0.0.1:8082/*)
-            DEST_IMAGE="nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/${DEST_IMAGE#127.0.0.1:8082/}"
+            RAW_IMAGE="nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/${RAW_IMAGE#127.0.0.1:8082/}"
             ;;
         esac
 
-        echo "==> Building container image $DEST_IMAGE from $DF_PATH..."
+        PREFIX="${RAW_IMAGE%/*}"
+        IMAGE_AND_TAG="${RAW_IMAGE##*/}"
+        if echo "$IMAGE_AND_TAG" | grep -q ":"; then
+          IMAGE_NAME_ONLY="${IMAGE_AND_TAG%%:*}"
+        else
+          IMAGE_NAME_ONLY="$IMAGE_AND_TAG"
+        fi
+
+        IMAGE_BASE="${PREFIX}/${IMAGE_NAME_ONLY}"
+        DEST_VERSIONED="${IMAGE_BASE}:${TAG}"
+        DEST_LATEST="${IMAGE_BASE}:latest"
+
+        echo "=================================================================="
+        echo "  Building Container Image with Tag Pattern: YYYY.MMDD.HHMMSS (CET/CEST)"
+        echo "  Version Tag : $TAG"
+        echo "  Destination : $DEST_VERSIONED"
+        echo "  Latest Tag  : $DEST_LATEST"
+        echo "  Dockerfile  : $DF_PATH"
+        echo "=================================================================="
+
+        # 5. Build and Push via Kaniko (both versioned tag and latest tag)
         /kaniko/executor \
           --dockerfile="$DF_PATH" \
           --context="$(workspaces.source.path)/source/$(params.context-subpath)" \
-          --destination="$DEST_IMAGE" \
+          --destination="$DEST_VERSIONED" \
+          --destination="$DEST_LATEST" \
           --insecure=true \
           --skip-tls-verify=true \
           --insecure-registry=nexus-oss.drr-corpshared-plat.svc.cluster.local:8082 \
@@ -85,4 +126,9 @@ spec:
           --cache=true \
           --cache-dir="$(workspaces.source.path)/.kaniko-cache"
 
-        echo "==> Successfully built and published container image: $DEST_IMAGE to Nexus OSS Docker Registry!"
+        # 6. Record Task Results
+        echo -n "$TAG" > "$(results.image-tag.path)"
+        echo -n "$DEST_VERSIONED" > "$(results.image-url.path)"
+
+        echo "==> [SUCCESS] Published versioned image: $DEST_VERSIONED"
+        echo "==> [SUCCESS] Published latest image:    $DEST_LATEST"

@@ -44,6 +44,15 @@ PROJECTS = [
     ("food-market-04-service", "Food Market 04 Service (Python 3.12 / FastAPI)"),
     ("food-market-05-service", "Food Market 05 Service (TypeScript / NestJS)"),
     ("food-market-06-service", "Food Market 06 Service (.NET 8 / C#)"),
+    ("app-food-market-00-mfe-chart", "GitOps Helm Chart for Host Microfrontend"),
+    ("app-food-market-01-react-chart", "GitOps Helm Chart for React Microfrontend"),
+    ("app-food-market-02-angular-chart", "GitOps Helm Chart for Angular Microfrontend"),
+    ("food-market-01-service-chart", "GitOps Helm Chart for Food Market 01 Service (Spring Boot)"),
+    ("food-market-02-service-chart", "GitOps Helm Chart for Food Market 02 Service (Quarkus)"),
+    ("food-market-03-service-chart", "GitOps Helm Chart for Food Market 03 Service (Go)"),
+    ("food-market-04-service-chart", "GitOps Helm Chart for Food Market 04 Service (FastAPI)"),
+    ("food-market-05-service-chart", "GitOps Helm Chart for Food Market 05 Service (NestJS)"),
+    ("food-market-06-service-chart", "GitOps Helm Chart for Food Market 06 Service (.NET)"),
     ("infra-k8s", "Tenant Infrastructure Kubernetes Manifests (PostgreSQL, MinIO, OpenBao, MongoDB, Keycloak)")
 ]
 

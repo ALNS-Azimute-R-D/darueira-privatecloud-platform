@@ -1,0 +1,105 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: task-gitops-helm-promote
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/component: ci-pipeline
+    darueira.io/tier: enterprise-shared
+spec:
+  description: "Promotes a newly built container image tag to the tenant GitOps Helm Chart repository"
+  params:
+    - name: git-server
+      type: string
+      default: "forgejo-git.drr-corpshared-plat.svc.cluster.local:3000"
+      description: "Internal Forgejo Git server"
+    - name: tenant-name
+      type: string
+      default: "swfabrik-europe"
+      description: "Tenant organization name in Forgejo"
+    - name: app-name
+      type: string
+      description: "Name of the application being deployed"
+    - name: chart-repo-name
+      type: string
+      default: ""
+      description: "Name of the Helm Chart repository (defaults to <app-name>-chart)"
+    - name: target-env
+      type: string
+      default: "dev-green"
+      description: "Target deployment environment"
+    - name: values-file
+      type: string
+      default: "values-dev-green.yaml"
+      description: "Target values file to update"
+    - name: image-tag
+      type: string
+      description: "New image version tag (e.g. YYYY.MMDD.HHMMSS)"
+  steps:
+    - name: update-chart-and-push
+      image: alpine/git:2.47.2
+      securityContext:
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+      script: |
+        #!/bin/sh
+        set -eu
+
+        APP_NAME="$(params.app-name)"
+        TENANT="$(params.tenant-name)"
+        CHART_REPO="$(params.chart-repo-name)"
+        if [ -z "$CHART_REPO" ]; then
+          CHART_REPO="${APP_NAME}-chart"
+        fi
+
+        TAG="$(params.image-tag)"
+        VALUES_FILE="$(params.values-file)"
+
+        echo "=================================================================="
+        echo "  Promoting Image Tag to GitOps Helm Chart Repository"
+        echo "  Application : $APP_NAME"
+        echo "  Chart Repo  : $CHART_REPO"
+        echo "  Target Tag  : $TAG"
+        echo "  Values File : $VALUES_FILE"
+        echo "=================================================================="
+
+        AUTH_USER="drradmin"
+        AUTH_PASS="darueira-admin123"
+        GIT_HOST="$(params.git-server)"
+
+        CLONE_URL="http://${AUTH_USER}:${AUTH_PASS}@${GIT_HOST}/${TENANT}/${CHART_REPO}.git"
+
+        TMP_DIR="/tmp/chart-repo-$(date +%s)"
+        rm -rf "$TMP_DIR"
+        git clone "$CLONE_URL" "$TMP_DIR"
+        cd "$TMP_DIR"
+
+        git config user.name "Tekton GitOps Promoter"
+        git config user.email "gitops-promoter@darueira.local"
+
+        if [ -f "$VALUES_FILE" ]; then
+          # Update image tag using sed
+          sed -i 's/tag:[[:space:]]*"[^"]*"/tag: "'"$TAG"'"/g' "$VALUES_FILE"
+          sed -i 's/tag:[[:space:]]*[^"[:space:]]*/tag: "'"$TAG"'"/g' "$VALUES_FILE"
+          sed -i 's/imageVersion:[[:space:]]*"[^"]*"/imageVersion: "'"$TAG"'"/g' "$VALUES_FILE"
+          sed -i 's/imageVersion:[[:space:]]*[^"[:space:]]*/imageVersion: "'"$TAG"'"/g' "$VALUES_FILE"
+
+          git add "$VALUES_FILE"
+          if git diff --staged --quiet; then
+            echo "==> No changes in $VALUES_FILE (already on tag $TAG)."
+          else
+            git commit -m "chore(gitops): promote image tag $TAG in $VALUES_FILE [skip ci]"
+            git push origin main
+            echo "==> [SUCCESS] Successfully promoted image tag $TAG to $CHART_REPO ($VALUES_FILE)!"
+          fi
+        else
+          echo "==> Warning: $VALUES_FILE not found in $CHART_REPO. Available files:"
+          ls -la
+        fi

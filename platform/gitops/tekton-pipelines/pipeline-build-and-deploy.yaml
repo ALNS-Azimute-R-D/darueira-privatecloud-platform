@@ -41,6 +41,18 @@ spec:
       type: string
       default: "corpshared-plat"
       description: "Name of the target ArgoCD application to synchronize after build"
+    - name: tenant-name
+      type: string
+      default: "swfabrik-europe"
+      description: "Tenant organization name in Forgejo"
+    - name: app-name
+      type: string
+      default: "sample-app"
+      description: "Application repository name"
+    - name: target-env
+      type: string
+      default: "dev-green"
+      description: "Target environment values file to update"
   results:
     - name: image-tag
       description: "Concrete version tag assigned to the container image"
@@ -108,11 +120,28 @@ spec:
         - name: source
           workspace: pipeline-workspace
 
+    - name: promote-to-helm-gitops
+      taskRef:
+        name: task-gitops-helm-promote
+      runAfter:
+        - build-and-publish-image
+      params:
+        - name: tenant-name
+          value: $(params.tenant-name)
+        - name: app-name
+          value: $(params.app-name)
+        - name: target-env
+          value: $(params.target-env)
+        - name: values-file
+          value: "values-$(params.target-env).yaml"
+        - name: image-tag
+          value: $(tasks.build-and-publish-image.results.image-tag)
+
     - name: sync-argocd-deployment
       taskRef:
         name: task-argocd-sync
       runAfter:
-        - build-and-publish-image
+        - promote-to-helm-gitops
       params:
         - name: application-name
           value: $(params.argocd-app-name)

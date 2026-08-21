@@ -33,9 +33,13 @@ metadata:
 spec:
   project: darueira-tenants
   source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/app-food-market-00-mfe.git"
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/app-food-market-00-mfe-chart.git"
     targetRevision: main
-    path: "k8s"
+    path: "."
+    helm:
+      valueFiles:
+        - "values.yaml"
+        - "values-dev-green.yaml"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -56,9 +60,13 @@ metadata:
 spec:
   project: darueira-tenants
   source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/app-food-market-01-react.git"
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/app-food-market-01-react-chart.git"
     targetRevision: main
-    path: "k8s"
+    path: "."
+    helm:
+      valueFiles:
+        - "values.yaml"
+        - "values-dev-green.yaml"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -79,9 +87,13 @@ metadata:
 spec:
   project: darueira-tenants
   source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/app-food-market-02-angular.git"
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/app-food-market-02-angular-chart.git"
     targetRevision: main
-    path: "k8s"
+    path: "."
+    helm:
+      valueFiles:
+        - "values.yaml"
+        - "values-dev-green.yaml"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -102,9 +114,13 @@ metadata:
 spec:
   project: darueira-tenants
   source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-01-service.git"
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-01-service-chart.git"
     targetRevision: main
-    path: "k8s"
+    path: "."
+    helm:
+      valueFiles:
+        - "values.yaml"
+        - "values-dev-green.yaml"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -125,9 +141,13 @@ metadata:
 spec:
   project: darueira-tenants
   source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-02-service.git"
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-02-service-chart.git"
     targetRevision: main
-    path: "k8s"
+    path: "."
+    helm:
+      valueFiles:
+        - "values.yaml"
+        - "values-dev-green.yaml"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -148,9 +168,13 @@ metadata:
 spec:
   project: darueira-tenants
   source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-03-service.git"
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-03-service-chart.git"
     targetRevision: main
-    path: "k8s"
+    path: "."
+    helm:
+      valueFiles:
+        - "values.yaml"
+        - "values-dev-green.yaml"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -171,9 +195,13 @@ metadata:
 spec:
   project: darueira-tenants
   source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-04-service.git"
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-04-service-chart.git"
     targetRevision: main
-    path: "k8s"
+    path: "."
+    helm:
+      valueFiles:
+        - "values.yaml"
+        - "values-dev-green.yaml"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -194,9 +222,13 @@ metadata:
 spec:
   project: darueira-tenants
   source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-05-service.git"
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-05-service-chart.git"
     targetRevision: main
-    path: "k8s"
+    path: "."
+    helm:
+      valueFiles:
+        - "values.yaml"
+        - "values-dev-green.yaml"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"
@@ -217,9 +249,13 @@ metadata:
 spec:
   project: darueira-tenants
   source:
-    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-06-service.git"
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-06-service-chart.git"
     targetRevision: main
-    path: "k8s"
+    path: "."
+    helm:
+      valueFiles:
+        - "values.yaml"
+        - "values-dev-green.yaml"
   destination:
     server: "https://kubernetes.default.svc"
     namespace: "drr-tnt-swfabrik-europe-dev"

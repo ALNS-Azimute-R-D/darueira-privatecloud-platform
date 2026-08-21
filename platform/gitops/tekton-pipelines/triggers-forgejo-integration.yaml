@@ -58,6 +58,12 @@ spec:
             value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/$(tt.params.owner-name)/$(tt.params.repository-name)"
           - name: image-tag
             value: "auto"
+          - name: tenant-name
+            value: $(tt.params.owner-name)
+          - name: app-name
+            value: $(tt.params.repository-name)
+          - name: target-env
+            value: "dev-green"
           - name: argocd-app-name
             value: "$(tt.params.owner-name)-$(tt.params.repository-name)"
         workspaces:

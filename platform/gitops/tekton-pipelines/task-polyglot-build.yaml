@@ -26,7 +26,7 @@ spec:
       description: "Workspace containing cloned source code"
   steps:
     - name: test-node
-      image: node:20-alpine
+      image: node:22-alpine
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001

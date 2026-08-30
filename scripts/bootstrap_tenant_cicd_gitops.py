@@ -140,12 +140,22 @@ def ensure_tenant_repositories():
             "events": ["push", "pull_request"],
             "active": True
         }
-        hook_req = urllib.request.Request(
-            f"http://{FORGEJO_LOCAL_HOST}/api/v1/repos/{TENANT_NAME}/{repo_name}/hooks",
-            data=json.dumps(hook_payload).encode(),
-            headers=headers,
-            method="POST"
-        )
+        # Check if webhook already exists
+        existing_hooks = []
+        try:
+            get_h_req = urllib.request.Request(f"http://{FORGEJO_LOCAL_HOST}/api/v1/repos/{TENANT_NAME}/{repo_name}/hooks", headers=headers)
+            with urllib.request.urlopen(get_h_req, timeout=5) as hresp:
+                existing_hooks = json.loads(hresp.read().decode())
+        except Exception:
+            pass
+
+        if not existing_hooks:
+            hook_req = urllib.request.Request(
+                f"http://{FORGEJO_LOCAL_HOST}/api/v1/repos/{TENANT_NAME}/{repo_name}/hooks",
+                data=json.dumps(hook_payload).encode(),
+                headers=headers,
+                method="POST"
+            )
         try:
             with urllib.request.urlopen(hook_req, timeout=10) as resp:
                 pass

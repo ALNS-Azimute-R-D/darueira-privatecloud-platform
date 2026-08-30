@@ -49,6 +49,9 @@ spec:
       spec:
         pipelineRef:
           name: standard-ci-cd-pipeline
+        podTemplate:
+          nodeSelector:
+            kubernetes.io/hostname: nbalns-mifcom-lnx-01
         params:
           - name: git-url
             value: $(tt.params.git-url)

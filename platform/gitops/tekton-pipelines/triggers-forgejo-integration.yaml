@@ -93,7 +93,7 @@ spec:
             name: "cel"
           params:
             - name: "filter"
-              value: "body.ref == 'refs/heads/master' && !body.repository.name.endsWith('-chart')"
+              value: "body.ref == 'refs/heads/master' && !body.repository.name.endsWith('-chart') && body.repository.name != 'infra-k8s'"
       bindings:
         - ref: forgejo-push-binding
       template:

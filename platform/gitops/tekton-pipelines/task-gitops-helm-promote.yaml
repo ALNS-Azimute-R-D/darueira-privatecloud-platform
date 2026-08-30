@@ -7,42 +7,41 @@ metadata:
     app.kubernetes.io/component: ci-pipeline
     darueira.io/tier: enterprise-shared
 spec:
-  description: "Promotes a newly built container image tag to the tenant GitOps Helm Chart repository"
+  description: "Promotes a newly built and verified image tag to the tenant's GitOps Helm chart repository"
   params:
-    - name: git-server
-      type: string
-      default: "forgejo-git.drr-corpshared-plat.svc.cluster.local:3000"
-      description: "Internal Forgejo Git server"
     - name: tenant-name
       type: string
-      default: "swfabrik-europe"
-      description: "Tenant organization name in Forgejo"
+      description: "Tenant owner name"
     - name: app-name
       type: string
-      description: "Name of the application being deployed"
+      description: "Application repository name"
     - name: chart-repo-name
       type: string
       default: ""
-      description: "Name of the Helm Chart repository (defaults to <app-name>-chart)"
+      description: "Helm Chart repository name (defaults to <app-name>-chart)"
+    - name: image-tag
+      type: string
+      description: "Image tag to promote"
     - name: target-env
       type: string
       default: "dev-green"
-      description: "Target deployment environment"
+      description: "Target deployment environment (e.g. dev-green, prod-green)"
     - name: values-file
       type: string
       default: "values-dev-green.yaml"
-      description: "Target values file to update"
-    - name: image-tag
+      description: "Relative path to the values file in the chart repository"
+    - name: git-server
       type: string
-      description: "New image version tag (e.g. YYYY.MMDD.HHMMSS)"
+      default: "forgejo-git.drr-corpshared-plat.svc.cluster.local:3000"
+      description: "In-cluster Git server endpoint"
   steps:
-    - name: update-chart-and-push
-      image: alpine/git:2.47.2
+    - name: promote
+      image: alpine/git:2.45.2
       securityContext:
-        allowPrivilegeEscalation: false
         runAsNonRoot: true
         runAsUser: 10001
         runAsGroup: 10001
+        allowPrivilegeEscalation: false
         capabilities:
           drop:
             - ALL
@@ -85,8 +84,16 @@ spec:
         git config user.email "gitops-promoter@darueira.local"
 
         if [ -f "$VALUES_FILE" ]; then
-          # Update image tag using regex
-          sed -i -E 's/^([[:space:]]*tag:)[[:space:]]*.*/\1 "'"$TAG"'"/' "$VALUES_FILE"
+          if grep -q "legalhubMgmt:" "$VALUES_FILE"; then
+            awk -v tag="$TAG" '
+              /legalhubMgmt:/ { in_sec=1 }
+              /fakeAgency:/ { in_sec=0 }
+              in_sec && /^[[:space:]]*tag:/ { sub(/tag:[[:space:]]*.*/, "tag: \"" tag "\""); in_sec=0 }
+              { print }
+            ' "$VALUES_FILE" > "${VALUES_FILE}.tmp" && mv "${VALUES_FILE}.tmp" "$VALUES_FILE"
+          else
+            sed -i -E 's/^([[:space:]]*tag:)[[:space:]]*.*/\1 "'"$TAG"'"/' "$VALUES_FILE"
+          fi
           sed -i -E 's/^([[:space:]]*imageVersion:)[[:space:]]*.*/\1 "'"$TAG"'"/' "$VALUES_FILE"
 
           git add "$VALUES_FILE"

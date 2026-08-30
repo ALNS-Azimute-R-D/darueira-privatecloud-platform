@@ -37,6 +37,14 @@ spec:
   hostPath:
     path: /mnt/FileBuckets01/darueira-platform/data/corpshared-plat/central-minio
     type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - nbalns-mifcom-lnx-01
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -257,3 +265,149 @@ spec:
   hostPath:
     path: /mnt/FileBuckets01/darueira-platform/data/tenants/tnt-acme/tenant-minio
     type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-tnt-swfabrik-europe-postgres
+  labels:
+    darueira.io/volume: tnt-swfabrik-europe-postgres
+    darueira.io/tenant: swfabrik-europe
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: tenant-postgres-pvc
+    namespace: drr-tnt-swfabrik-europe-dev
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/tenants/swfabrik-europe/tenant-postgres
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - nbalns-mifcom-lnx-01
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-tnt-swfabrik-europe-mongodb
+  labels:
+    darueira.io/volume: tnt-swfabrik-europe-mongodb
+    darueira.io/tenant: swfabrik-europe
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: tenant-mongodb-pvc
+    namespace: drr-tnt-swfabrik-europe-dev
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/tenants/swfabrik-europe/tenant-mongodb
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - nbalns-mifcom-lnx-01
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-tnt-swfabrik-europe-minio
+  labels:
+    darueira.io/volume: tnt-swfabrik-europe-minio
+    darueira.io/tenant: swfabrik-europe
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: tenant-minio-pvc
+    namespace: drr-tnt-swfabrik-europe-dev
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/tenants/swfabrik-europe/tenant-minio
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - nbalns-mifcom-lnx-01
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-tnt-swfabrik-europe-mysql
+  labels:
+    darueira.io/volume: tnt-swfabrik-europe-mysql
+    darueira.io/tenant: swfabrik-europe
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: tenant-mysql-pvc
+    namespace: drr-tnt-swfabrik-europe-dev
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/tenants/swfabrik-europe/tenant-mysql
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - nbalns-mifcom-lnx-01
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-openbao-master
+  labels:
+    darueira.io/volume: openbao-master
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: openbao-master-pvc
+    namespace: drr-corpshared-secr-internal
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/corpshared-secr/openbao
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - nbalns-mifcom-lnx-01
+
+

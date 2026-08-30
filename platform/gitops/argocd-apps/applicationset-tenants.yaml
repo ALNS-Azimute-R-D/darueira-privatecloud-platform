@@ -27,9 +27,6 @@ spec:
           - tenant: "globex"
             project: "logistics"
             env: "prod"
-          - tenant: "swfabrik-europe"
-            project: "marketplaces"
-            env: "dev"
   template:
     metadata:
       name: "tenant-{{tenant}}-{{env}}"
@@ -41,7 +38,7 @@ spec:
       project: darueira-tenants
       source:
         repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/darueira-corp/platform-core.git"
-        targetRevision: main
+        targetRevision: master
         path: "platform/kustomize/base/tnt-tenant-base"
       destination:
         server: "https://kubernetes.default.svc"

@@ -495,6 +495,18 @@ port-forward-foodmarket: ## Port-forward European Food Marketplace Frontends & B
 	$(KUBECTL) port-forward -n drr-tnt-swfabrik-europe-marketplaces-dev svc/food-market-06-service 8086:8086 & \
 	wait
 
+.PHONY: port-forward-legaltech
+port-forward-legaltech: ## Port-forward LegalTech CaseForce Solutions on localhost (LegalHub :8080, Fake Agency :8085, MySQL :3306)
+	@echo -e "${GREEN}==> Exposing LegalTech CaseForce Solutions on localhost...${NC}"
+	@echo -e "${CYAN}  - CaseForce LegalHub Mgmt:    http://localhost:8080/swagger-ui${NC}"
+	@echo -e "${CYAN}  - Fake Partner Agency App:    http://localhost:8085/swagger-ui.html${NC}"
+	@echo -e "${CYAN}  - Tenant MySQL 8 Instance:    localhost:3306${NC}"
+	@trap 'kill 0' EXIT; \
+	$(KUBECTL) port-forward -n drr-tnt-swfabrik-europe-dev svc/caseforce-legalhub-mgmt 8080:8080 & \
+	$(KUBECTL) port-forward -n drr-tnt-swfabrik-europe-dev svc/fake-legal-partners-agencies-app 8085:8085 & \
+	$(KUBECTL) port-forward -n drr-tnt-swfabrik-europe-dev svc/tenant-mysql 3306:3306 & \
+	wait
+
 .PHONY: clean
 clean: ## Clean build artifacts and temporary files
 	@echo -e "${YELLOW}==> Cleaning workspace artifacts...${NC}"

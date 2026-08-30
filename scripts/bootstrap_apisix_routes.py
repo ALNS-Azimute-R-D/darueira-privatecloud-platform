@@ -590,6 +590,26 @@ ROUTES = [
         "plugins": {"prometheus": {}}
     },
     {
+        "id": "route-host-swfabrik-europe-keycloak",
+        "name": "Tenant SWFabrik Europe Keycloak",
+        "desc": "Identity Provider & AuthZEN PDP for Tenant SWFabrik Europe",
+        "uri": "/*",
+        "hosts": [
+            "keycloak.swfabrik-europe.127.0.0.1.nip.io",
+            "keycloak.swfabrik-europe.192.168.178.84.nip.io",
+            "keycloak.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+            "keycloak.darueira-tnt-swfabrik-europe.192.168.178.84.nip.io",
+            "keycloak.swfabrik-europe.local",
+            "keycloak.darueira-tnt-swfabrik-europe.local"
+        ],
+        "upstream": {
+            "type": "roundrobin",
+            "nodes": {"tenant-keycloak.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8080": 1},
+            "pass_host": "pass"
+        },
+        "plugins": {"prometheus": {}}
+    },
+    {
         "id": "route-host-swfabrik-europe-dashboard",
         "name": "Food Market Host Dashboard SPA",
         "desc": "European Food Marketplace Host Dashboard (React 19 / Vite / Tailwind)",

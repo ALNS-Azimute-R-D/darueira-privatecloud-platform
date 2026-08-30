@@ -1,3 +1,19 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: openbao-master-pvc
+  namespace: drr-corpshared-secr-internal
+  labels:
+    app.kubernetes.io/name: openbao-master
+    darueira.io/tier: enterprise-shared
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: darueira-host-storage
+  resources:
+    requests:
+      storage: 5Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -24,6 +40,8 @@ spec:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
+      nodeSelector:
+        kubernetes.io/hostname: nbalns-mifcom-lnx-01
       containers:
         - name: openbao
           image: hashicorp/vault:1.17.6
@@ -77,7 +95,8 @@ spec:
             periodSeconds: 10
       volumes:
         - name: bao-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: openbao-master-pvc
 ---
 apiVersion: v1
 kind: Service

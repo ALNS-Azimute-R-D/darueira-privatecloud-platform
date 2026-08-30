@@ -65,6 +65,11 @@ WORKLOAD_ENTRIES = [
         "name": "globex-security-audit",
         "spiffe_id": f"spiffe://{TRUST_DOMAIN}/ns/drr-tnt-globex/sa/globex-security-audit",
         "selectors": ["k8s:ns:drr-tnt-globex", "k8s:sa:globex-security-audit"]
+    },
+    {
+        "name": "swfabrik-foodmarket-svcs",
+        "spiffe_id": f"spiffe://{TRUST_DOMAIN}/ns/drr-tnt-swfabrik-europe-dev/sa/default",
+        "selectors": ["k8s:ns:drr-tnt-swfabrik-europe-dev"]
     }
 ]
 
@@ -221,6 +226,12 @@ def bootstrap_openbao_spiffe_auth():
             path "transit/encrypt/tenant-globex-key" { capabilities = ["update"] }
             path "transit/decrypt/tenant-globex-key" { capabilities = ["update"] }
             path "pki_int/issue/darueira-workload-role" { capabilities = ["create", "update"] }
+        """,
+        "tenant-swfabrik-europe": """
+            path "secret/data/tenants/swfabrik-europe/*" { capabilities = ["create", "read", "update", "delete", "list"] }
+            path "transit/encrypt/tenant-swfabrik-key" { capabilities = ["update"] }
+            path "transit/decrypt/tenant-swfabrik-key" { capabilities = ["update"] }
+            path "pki_int/issue/darueira-workload-role" { capabilities = ["create", "update"] }
         """
     }
 
@@ -272,6 +283,19 @@ def bootstrap_openbao_spiffe_auth():
             "role_type": "jwt",
             "token_policies": ["tenant-globex", "default"],
             "token_ttl": "1h"
+        },
+        {
+            "name": "tenant-swfabrik-europe-role",
+            "user_claim": "sub",
+            "bound_claims": {
+                "sub": [
+                    f"spiffe://{TRUST_DOMAIN}/ns/drr-tnt-swfabrik-europe-dev/sa/default"
+                ]
+            },
+            "bound_audiences": ["openbao", "vault"],
+            "role_type": "jwt",
+            "token_policies": ["tenant-swfabrik-europe", "default"],
+            "token_ttl": "1h"
         }
     ]
 
@@ -305,6 +329,10 @@ def bootstrap_openbao_secrets_engines():
         "secret/data/tenants/globex/audit": {
             "siem_ingest_token": "globex-audit-token-2026",
             "compliance_export_key": "globex-export-rsa-key"
+        },
+        "secret/data/tenants/swfabrik-europe/caseforce": {
+            "jwt_secret": "caseforce-jwt-secret-key-2026",
+            "integration_token": "legalhero-partner-token-2026"
         }
     }
 
@@ -314,7 +342,7 @@ def bootstrap_openbao_secrets_engines():
 
     # 2. Transit Encryption Engine
     openbao_request("sys/mounts/transit", data={"type": "transit"}, method="POST")
-    for key_name in ["tenant-acme-key", "tenant-globex-key", "platform-core-key"]:
+    for key_name in ["tenant-acme-key", "tenant-globex-key", "tenant-swfabrik-key", "platform-core-key"]:
         openbao_request(f"transit/keys/{key_name}", data={"type": "aes256-gcm96"}, method="POST")
         print(f"    [✓] Configured Transit Key: {key_name} (AES-256-GCM)")
 

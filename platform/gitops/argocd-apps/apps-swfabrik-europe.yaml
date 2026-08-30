@@ -263,4 +263,30 @@ spec:
     automated:
       prune: true
       selfHeal: true
-
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: swfabrik-europe-legaltech-caseforce
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tenant: swfabrik-europe
+    darueira.io/project: legaltech-caseforce
+    darueira.io/tier: tenant-workload
+spec:
+  project: darueira-tenants
+  source:
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/legaltech-caseforce-solutions-chart.git"
+    targetRevision: master
+    path: "."
+    helm:
+      valueFiles:
+        - "values.yaml"
+        - "values-dev-green.yaml"
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: "drr-tnt-swfabrik-europe-dev"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

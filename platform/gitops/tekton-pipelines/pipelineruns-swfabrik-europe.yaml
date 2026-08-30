@@ -5,20 +5,90 @@ metadata:
   namespace: drr-corpshared-plat
   labels:
     darueira.io/tenant: swfabrik-europe
-    darueira.io/project: marketplaces
+    darueira.io/project: food-market-01-service
     darueira.io/service: food-market-01-service
 spec:
   pipelineRef:
     name: polyglot-ci-cd-pipeline
   params:
     - name: git-url
-      value: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/marketplaces.git"
+      value: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/food-market-01-service.git"
     - name: git-revision
-      value: "main"
+      value: "master"
     - name: image-reference
       value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-europe/food-market-01-service:latest"
     - name: context-subpath
-      value: "workspace/platf-bizz-apps/swfabrik-europe/food-market-01-service"
+      value: "."
+    - name: build-tool
+      value: "maven"
+    - name: target-environment
+      value: "dev"
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pr-swfabrik-europe-caseforce-legalhub-manual
+  namespace: drr-corpshared-plat
+  labels:
+    darueira.io/tenant: swfabrik-europe
+    darueira.io/project: legaltech-caseforce
+    darueira.io/service: caseforce-legalhub-mgmt
+spec:
+  pipelineRef:
+    name: polyglot-ci-cd-pipeline
+  params:
+    - name: git-url
+      value: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/legaltech-caseforce-solutions.git"
+    - name: git-revision
+      value: "master"
+    - name: image-reference
+      value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-europe/caseforce-legalhub-mgmt:latest"
+    - name: context-subpath
+      value: "caseforce-legalhub-mgmt"
+    - name: build-tool
+      value: "gradle"
+    - name: target-environment
+      value: "dev"
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pr-swfabrik-europe-fake-agency-manual
+  namespace: drr-corpshared-plat
+  labels:
+    darueira.io/tenant: swfabrik-europe
+    darueira.io/project: legaltech-caseforce
+    darueira.io/service: fake-legal-partners-agencies-app
+spec:
+  pipelineRef:
+    name: polyglot-ci-cd-pipeline
+  params:
+    - name: git-url
+      value: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/legaltech-caseforce-solutions.git"
+    - name: git-revision
+      value: "master"
+    - name: image-reference
+      value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-europe/fake-legal-partners-agencies-app:latest"
+    - name: context-subpath
+      value: "fake-helpers-apps/fake-legal-partners-agencies-app"
     - name: build-tool
       value: "maven"
     - name: target-environment

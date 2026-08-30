@@ -3,6 +3,8 @@
 ==============================================================================
 Darueira Private Cloud Platform - Tenant CI/CD & GitOps Integration Engine
 Declarative Forgejo Git, Nexus OCI Registry, Tekton & ArgoCD Engine for Tenants
+Branch Standard: 'master' (Protected, Direct Push Forbidden, PR-driven CI/CD)
+Image Tag Standard: 'YYYY.MMDD.HHmmSS' (CET/CEST)
 ==============================================================================
 """
 
@@ -30,9 +32,8 @@ FORGEJO_ADMIN_USER = "drradmin"
 FORGEJO_ADMIN_PASS = os.environ.get("FORGEJO_ADMIN_PASSWORD", "darueira-admin123")
 TEKTON_WEBHOOK_URL = os.environ.get("TEKTON_WEBHOOK_URL", "http://el-forgejo-webhook-listener.drr-corpshared-mgmt.svc.cluster.local:8080")
 
-NEXUS_REGISTRY = os.environ.get("NEXUS_REGISTRY", "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082")
+NEXUS_REGISTRY = os.environ.get("NEXUS_REGISTRY", "127.0.0.1:32082")
 TENANT_NAME = "swfabrik-europe"
-PROJECT_NAME = "marketplaces"
 
 PROJECTS = [
     ("app-food-market-00-mfe", "Host Microfrontend Dashboard (React 19 / Vite / Tailwind)"),
@@ -53,7 +54,9 @@ PROJECTS = [
     ("food-market-04-service-chart", "GitOps Helm Chart for Food Market 04 Service (FastAPI)"),
     ("food-market-05-service-chart", "GitOps Helm Chart for Food Market 05 Service (NestJS)"),
     ("food-market-06-service-chart", "GitOps Helm Chart for Food Market 06 Service (.NET)"),
-    ("infra-k8s", "Tenant Infrastructure Kubernetes Manifests (PostgreSQL, MinIO, OpenBao, MongoDB, Keycloak)")
+    ("legaltech-caseforce-solutions", "LegalTech CaseForce Solutions Suite (Micronaut LegalHub & Spring Boot Fake Agency)"),
+    ("legaltech-caseforce-solutions-chart", "GitOps Helm Chart for LegalTech CaseForce Solutions"),
+    ("infra-k8s", "Tenant Infrastructure Kubernetes Manifests (PostgreSQL, MinIO, OpenBao, MongoDB, Keycloak, MySQL)")
 ]
 
 
@@ -71,7 +74,7 @@ def get_forgejo_auth_header():
 
 
 def ensure_tenant_org():
-    print(f"--> [1/5] Ensuring Forgejo Organization '{TENANT_NAME}'...")
+    print(f"--> [1/6] Ensuring Forgejo Organization '{TENANT_NAME}'...")
     headers = get_forgejo_auth_header()
     req = urllib.request.Request(
         f"http://{FORGEJO_LOCAL_HOST}/api/v1/orgs",
@@ -88,15 +91,24 @@ def ensure_tenant_org():
         else:
             print(f"    [!] Org note: HTTP {e.code}")
 
+    # Remove obsolete repository 'marketplaces'
+    req_del = urllib.request.Request(
+        f"http://{FORGEJO_LOCAL_HOST}/api/v1/repos/{TENANT_NAME}/marketplaces",
+        headers=headers,
+        method="DELETE"
+    )
+    try:
+        with urllib.request.urlopen(req_del, timeout=5) as resp:
+            print("    [✓] Cleaned up obsolete repository 'marketplaces'")
+    except Exception:
+        pass
+
 
 def ensure_tenant_repositories():
-    print(f"--> [2/5] Provisioning Forgejo Repositories for Tenant '{TENANT_NAME}'...")
+    print(f"--> [2/6] Provisioning Forgejo Repositories for Tenant '{TENANT_NAME}' with Default Branch 'master'...")
     headers = get_forgejo_auth_header()
 
-    # 1. Monorepo / Project repo: marketplaces
-    all_repos = [(PROJECT_NAME, f"Tenant {TENANT_NAME} monorepo containing all marketplace projects")] + PROJECTS
-
-    for repo_name, desc in all_repos:
+    for repo_name, desc in PROJECTS:
         req = urllib.request.Request(
             f"http://{FORGEJO_LOCAL_HOST}/api/v1/orgs/{TENANT_NAME}/repos",
             data=json.dumps({
@@ -104,7 +116,7 @@ def ensure_tenant_repositories():
                 "description": desc,
                 "private": False,
                 "auto_init": True,
-                "default_branch": "main"
+                "default_branch": "master"
             }).encode(),
             headers=headers,
             method="POST"
@@ -114,7 +126,7 @@ def ensure_tenant_repositories():
                 print(f"    [✓] Created repository: {TENANT_NAME}/{repo_name}")
         except urllib.error.HTTPError as e:
             if e.code in (400, 409, 422):
-                print(f"    [✓] Repository {TENANT_NAME}/{repo_name} already exists.")
+                pass
             else:
                 print(f"    [!] Repo {repo_name} error: HTTP {e.code}")
 
@@ -136,34 +148,32 @@ def ensure_tenant_repositories():
         )
         try:
             with urllib.request.urlopen(hook_req, timeout=10) as resp:
-                print(f"    [✓] Configured Tekton Webhook on {TENANT_NAME}/{repo_name}")
+                pass
         except urllib.error.HTTPError as e:
             if e.code in (400, 409, 422):
                 pass
 
 
 def push_code_to_forgejo():
-    print("--> [3/5] Pushing Tenant Source Code and Manifests to Forgejo Git Repositories...")
+    print("--> [3/6] Pushing Tenant Project Source Codes & Helm Charts to 'master' Branch...")
+    headers = get_forgejo_auth_header()
 
-    # 1. Push to marketplaces monorepo (preserving path structure for ArgoCD)
-    with tempfile.TemporaryDirectory() as tmpdir:
-        dest_workspace = os.path.join(tmpdir, "workspace", "platf-bizz-apps", "swfabrik-europe")
-        os.makedirs(os.path.dirname(dest_workspace), exist_ok=True)
-        shutil.copytree(TENANT_WORKSPACE, dest_workspace, ignore=shutil.ignore_patterns("target", "node_modules", "dist", "bin", "obj", ".git"))
-
-        # Add README
-        with open(os.path.join(tmpdir, "README.md"), "w") as f:
-            f.write(f"# Darueira Platform - Tenant {TENANT_NAME} ({PROJECT_NAME})\n\nMonorepo containing polyglot business microservices and frontends.\n")
-
-        # Git init and push to internal forgejo
-        run_cmd(f"cd {tmpdir} && git init -b main && git config user.name 'Platform Bootstrapper' && git config user.email 'bootstrapper@darueira.local' && git add -A && git commit -m 'feat(tenant): initialize swfabrik-europe marketplaces repositories' && git remote add forgejo http://{FORGEJO_ADMIN_USER}:{FORGEJO_ADMIN_PASS}@{FORGEJO_LOCAL_HOST}/{TENANT_NAME}/{PROJECT_NAME}.git && git push -u forgejo main --force")
-        print(f"    [✓] Successfully synced entire tenant codebase to Forgejo '{TENANT_NAME}/{PROJECT_NAME}.git'")
-
-    # 2. Push to each individual project repo
     for proj_name, _ in PROJECTS:
         src_path = os.path.join(TENANT_WORKSPACE, proj_name)
         if not os.path.exists(src_path):
             continue
+
+        # Temporarily remove branch protection to allow initial sync push
+        try:
+            del_bp_req = urllib.request.Request(
+                f"http://{FORGEJO_LOCAL_HOST}/api/v1/repos/{TENANT_NAME}/{proj_name}/branch_protections/master",
+                headers=headers,
+                method="DELETE"
+            )
+            with urllib.request.urlopen(del_bp_req, timeout=5) as resp:
+                pass
+        except Exception:
+            pass
 
         with tempfile.TemporaryDirectory() as tmpdir:
             proj_dest = os.path.join(tmpdir, proj_name)
@@ -174,8 +184,82 @@ def push_code_to_forgejo():
                 shutil.move(os.path.join(proj_dest, item), tmpdir)
             os.rmdir(proj_dest)
 
-            run_cmd(f"cd {tmpdir} && git init -b main && git config user.name 'Platform Bootstrapper' && git config user.email 'bootstrapper@darueira.local' && git add -A && git commit -m 'feat(service): initialize {proj_name} repository' && git remote add forgejo http://{FORGEJO_ADMIN_USER}:{FORGEJO_ADMIN_PASS}@{FORGEJO_LOCAL_HOST}/{TENANT_NAME}/{proj_name}.git && git push -u forgejo main --force")
-            print(f"    [✓] Pushed project repository: '{TENANT_NAME}/{proj_name}.git'")
+            run_cmd(f"cd {tmpdir} && git init -b master && git config user.name 'Platform Bootstrapper' && git config user.email 'bootstrapper@darueira.local' && git add -A && git commit -m 'feat(service): initialize {proj_name} repository on master' && git remote add forgejo http://{FORGEJO_ADMIN_USER}:{FORGEJO_ADMIN_PASS}@{FORGEJO_LOCAL_HOST}/{TENANT_NAME}/{proj_name}.git && git push -u forgejo master --force")
+            print(f"    [✓] Pushed '{TENANT_NAME}/{proj_name}.git' -> branch 'master'")
+
+        # Ensure default branch is master via API
+        patch_req = urllib.request.Request(
+            f"http://{FORGEJO_LOCAL_HOST}/api/v1/repos/{TENANT_NAME}/{proj_name}",
+            data=json.dumps({"default_branch": "master"}).encode(),
+            headers=headers,
+            method="PATCH"
+        )
+        try:
+            with urllib.request.urlopen(patch_req, timeout=5) as resp:
+                pass
+        except Exception:
+            pass
+
+        # Delete obsolete 'main' branch if present
+        del_main_req = urllib.request.Request(
+            f"http://{FORGEJO_LOCAL_HOST}/api/v1/repos/{TENANT_NAME}/{proj_name}/branches/main",
+            headers=headers,
+            method="DELETE"
+        )
+        try:
+            with urllib.request.urlopen(del_main_req, timeout=5) as resp:
+                pass
+        except Exception:
+            pass
+
+
+def configure_branch_protections():
+    print("--> [4/6] Enforcing Branch Protection on 'master' (No Direct Push, PR Required)...")
+    headers = get_forgejo_auth_header()
+
+    protection_rule = {
+        "branch_name": "master",
+        "rule_name": "master",
+        "enable_push": False,
+        "enable_push_whitelist": False,
+        "push_whitelist_usernames": [],
+        "push_whitelist_teams": [],
+        "require_pull_request": True,
+        "required_approvals": 0,
+        "block_on_rejected_reviews": False,
+        "block_on_official_review_requests": False,
+        "block_on_outdated_branch": False,
+        "dismiss_stale_approvals": False,
+        "require_signed_commits": False,
+        "enable_status_check": False,
+        "apply_to_admins": True
+    }
+
+    for proj_name, _ in PROJECTS:
+        # Create master branch protection
+        req_create = urllib.request.Request(
+            f"http://{FORGEJO_LOCAL_HOST}/api/v1/repos/{TENANT_NAME}/{proj_name}/branch_protections",
+            data=json.dumps(protection_rule).encode(),
+            headers=headers,
+            method="POST"
+        )
+        try:
+            with urllib.request.urlopen(req_create, timeout=5) as resp:
+                print(f"    [✓] Protected 'master' branch on {TENANT_NAME}/{proj_name} (PR required, direct push disabled)")
+        except urllib.error.HTTPError as e:
+            if e.code in (400, 409, 422):
+                # Update existing rule
+                patch_rule_req = urllib.request.Request(
+                    f"http://{FORGEJO_LOCAL_HOST}/api/v1/repos/{TENANT_NAME}/{proj_name}/branch_protections/master",
+                    data=json.dumps(protection_rule).encode(),
+                    headers=headers,
+                    method="PATCH"
+                )
+                try:
+                    with urllib.request.urlopen(patch_rule_req, timeout=5) as resp:
+                        print(f"    [✓] Updated protection on 'master' branch for {TENANT_NAME}/{proj_name}")
+                except Exception:
+                    pass
 
 
 def push_docker_images_to_nexus():
@@ -187,7 +271,7 @@ def push_docker_images_to_nexus():
     except Exception:
         tag_version = time.strftime("%Y.%m%d.%H%M%S")
 
-    print(f"--> [4/5] Verifying & Pushing Tenant Container Images to Nexus OCI Registry ({NEXUS_REGISTRY}) [Tag: {tag_version}]...")
+    print(f"--> [5/6] Verifying & Pushing Tenant Container Images to Nexus OCI Registry ({NEXUS_REGISTRY}) [Tag Convention: {tag_version}]...")
     images = [
         "food-market-01-service",
         "food-market-02-service",
@@ -197,7 +281,9 @@ def push_docker_images_to_nexus():
         "food-market-06-service",
         "app-food-market-00-mfe",
         "app-food-market-01-react",
-        "app-food-market-02-angular"
+        "app-food-market-02-angular",
+        "caseforce-legalhub-mgmt",
+        "fake-legal-partners-agencies-app"
     ]
 
     for img in images:
@@ -212,7 +298,7 @@ def push_docker_images_to_nexus():
 
 
 def apply_and_sync_argocd():
-    print(f"--> [5/5] Applying ArgoCD Applications and Syncing Workloads for Tenant '{TENANT_NAME}'...")
+    print(f"--> [6/6] Applying ArgoCD Applications and Syncing Workloads for Tenant '{TENANT_NAME}'...")
     run_cmd(f"microk8s kubectl apply -f {GITOPS_APPS_FILE}")
     print("    [✓] Applied ArgoCD Applications from platform/gitops/argocd-apps/apps-swfabrik-europe.yaml")
 
@@ -230,7 +316,8 @@ def apply_and_sync_argocd():
         "swfabrik-europe-food-market-03",
         "swfabrik-europe-food-market-04",
         "swfabrik-europe-food-market-05",
-        "swfabrik-europe-food-market-06"
+        "swfabrik-europe-food-market-06",
+        "swfabrik-europe-legaltech-caseforce"
     ]
 
     for app in apps:
@@ -243,12 +330,14 @@ def apply_and_sync_argocd():
 def main():
     print("==================================================================")
     print("  Darueira Platform - Tenant CI/CD & GitOps Integration Engine    ")
-    print(f"  Tenant: {TENANT_NAME} | Project: {PROJECT_NAME}                 ")
+    print(f"  Tenant: {TENANT_NAME} | Default Branch: master (Protected)      ")
+    print("  Image Tag Convention: YYYY.MMDD.HHmmSS (Nexus Registry)         ")
     print("==================================================================")
 
     ensure_tenant_org()
     ensure_tenant_repositories()
     push_code_to_forgejo()
+    configure_branch_protections()
     push_docker_images_to_nexus()
     apply_and_sync_argocd()
 

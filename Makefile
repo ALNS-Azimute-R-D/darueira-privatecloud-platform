@@ -215,6 +215,13 @@ proxy: ## Start APISIX Ingress Reverse Proxy on localhost:9080 & 9443 (non-root)
 	@echo -e "${CYAN}  - ArgoCD Console:        https://argocd.darueira-corpshared.127.0.0.1.nip.io:9443${NC}"
 	@echo -e "${CYAN}  - Tekton CI/CD Console:  https://tekton.darueira-corpshared.127.0.0.1.nip.io:9443${NC}"
 	@echo -e "${CYAN}================================================================================${NC}"
+	@echo -e "${CYAN}  Tenant SWFabrik Europe & Business Applications (HTTPS :9443 / HTTP :9080):    ${NC}"
+	@echo -e "${CYAN}================================================================================${NC}"
+	@echo -e "${CYAN}  - Food Market Dashboard: https://foodmarket.swfabrik-europe.127.0.0.1.nip.io:9443${NC}"
+	@echo -e "${CYAN}  - Tenant Keycloak IdP:   https://keycloak.swfabrik-europe.127.0.0.1.nip.io:9443${NC}"
+	@echo -e "${CYAN}  - CaseForce LegalHub:    https://caseforce.swfabrik-europe.127.0.0.1.nip.io:9443/swagger-ui/index.html${NC}"
+	@echo -e "${CYAN}  - Fake Partner Agency:   https://agency.swfabrik-europe.127.0.0.1.nip.io:9443/swagger-ui.html${NC}"
+	@echo -e "${CYAN}================================================================================${NC}"
 	$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway 9080:80 9443:443
 
 .PHONY: proxy-80
@@ -235,6 +242,13 @@ proxy-80: ## Start APISIX Ingress Reverse Proxy on default Ports 80 & 443 (HTTP 
 	@echo -e "${CYAN}  - Backstage Portal:      https://backstage.darueira-corpshared.127.0.0.1.nip.io${NC}"
 	@echo -e "${CYAN}  - ArgoCD Console:        https://argocd.darueira-corpshared.127.0.0.1.nip.io${NC}"
 	@echo -e "${CYAN}  - Tekton CI/CD Console:  https://tekton.darueira-corpshared.127.0.0.1.nip.io${NC}"
+	@echo -e "${CYAN}================================================================================${NC}"
+	@echo -e "${CYAN}  Tenant SWFabrik Europe & Business Applications (HTTPS / Port 443):             ${NC}"
+	@echo -e "${CYAN}================================================================================${NC}"
+	@echo -e "${CYAN}  - Food Market Dashboard: https://foodmarket.swfabrik-europe.127.0.0.1.nip.io${NC}"
+	@echo -e "${CYAN}  - Tenant Keycloak IdP:   https://keycloak.swfabrik-europe.127.0.0.1.nip.io${NC}"
+	@echo -e "${CYAN}  - CaseForce LegalHub:    https://caseforce.swfabrik-europe.127.0.0.1.nip.io/swagger-ui/index.html${NC}"
+	@echo -e "${CYAN}  - Fake Partner Agency:   https://agency.swfabrik-europe.127.0.0.1.nip.io/swagger-ui.html${NC}"
 	@echo -e "${CYAN}================================================================================${NC}"
 	sudo $(KUBECTL) --kubeconfig $(HOME)/.kube/config port-forward -n drr-corpshared-plat svc/apisix-gateway 80:80 443:443
 

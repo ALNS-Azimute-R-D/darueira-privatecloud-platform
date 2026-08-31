@@ -747,6 +747,56 @@ ROUTES = [
         },
         "plugins": {"prometheus": {}}
     },
+    {
+        "id": "route-host-swfabrik-europe-caseforce",
+        "name": "CaseForce LegalHub Management API (Kotlin / Micronaut)",
+        "desc": "Micronaut LegalTech Hub Management API & Swagger UI",
+        "uri": "/*",
+        "hosts": [
+            "caseforce.swfabrik-europe.127.0.0.1.nip.io",
+            "caseforce.swfabrik-europe.192.168.178.84.nip.io",
+            "caseforce.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+            "caseforce.darueira-tnt-swfabrik-europe.192.168.178.84.nip.io",
+            "caseforce.swfabrik-europe.local",
+            "caseforce.darueira-tnt-swfabrik-europe.local",
+            "legalhub.swfabrik-europe.127.0.0.1.nip.io",
+            "legalhub.swfabrik-europe.local"
+        ],
+        "upstream": {
+            "nodes": {"caseforce-legalhub-mgmt.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8080": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {
+            "cors": {},
+            "prometheus": {}
+        }
+    },
+    {
+        "id": "route-host-swfabrik-europe-fake-agency",
+        "name": "Fake Legal Partners Agencies App (Spring Boot / Java)",
+        "desc": "Spring Boot Multi-Agency Legal Partner Integration & Swagger UI",
+        "uri": "/*",
+        "hosts": [
+            "agency.swfabrik-europe.127.0.0.1.nip.io",
+            "agency.swfabrik-europe.192.168.178.84.nip.io",
+            "agency.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+            "agency.darueira-tnt-swfabrik-europe.192.168.178.84.nip.io",
+            "agency.swfabrik-europe.local",
+            "agency.darueira-tnt-swfabrik-europe.local",
+            "partners.swfabrik-europe.127.0.0.1.nip.io",
+            "partners.swfabrik-europe.local",
+            "fake-agency.swfabrik-europe.127.0.0.1.nip.io",
+            "fake-agency.swfabrik-europe.local"
+        ],
+        "upstream": {
+            "nodes": {"fake-legal-partners-agencies-app.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8085": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {
+            "cors": {},
+            "prometheus": {}
+        }
+    },
     # Path-based routing on main dashboard host (Port 80)
     {
         "id": "route-path-foodmarket-01",
@@ -969,6 +1019,88 @@ ROUTES = [
         "plugins": {
             "proxy-rewrite": {
                 "regex_uri": ["^/api/food06/(.*)", "/api/$1"]
+            },
+            "response-rewrite": {
+                "headers": {
+                    "set": {
+                        "X-Accel-Buffering": "no",
+                        "Cache-Control": "no-cache, no-transform"
+                    }
+                }
+            },
+            "cors": {},
+            "prometheus": {}
+        }
+    },
+    {
+        "id": "route-path-caseforce",
+        "name": "CaseForce LegalHub Management API Path",
+        "desc": "Path routing /api/caseforce/* to Micronaut CaseForce service",
+        "uri": "/api/caseforce/*",
+        "hosts": [
+            "caseforce.swfabrik-europe.127.0.0.1.nip.io",
+            "caseforce.swfabrik-europe.192.168.178.84.nip.io",
+            "foodmarket.swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.swfabrik-europe.192.168.178.84.nip.io",
+            "foodmarket.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.swfabrik-europe.local",
+            "marketplaces.swfabrik-europe.127.0.0.1.nip.io",
+            "marketplaces.swfabrik-europe.local",
+            "swfabrik-europe.127.0.0.1.nip.io",
+            "swfabrik-europe.192.168.178.84.nip.io",
+            "swfabrik-europe.local",
+            "localhost",
+            "127.0.0.1"
+        ],
+        "upstream": {
+            "nodes": {"caseforce-legalhub-mgmt.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8080": 1},
+            "type": "roundrobin",
+            "timeout": {"connect": 6, "send": 3600, "read": 3600}
+        },
+        "plugins": {
+            "proxy-rewrite": {
+                "regex_uri": ["^/api/caseforce/(.*)", "/$1"]
+            },
+            "response-rewrite": {
+                "headers": {
+                    "set": {
+                        "X-Accel-Buffering": "no",
+                        "Cache-Control": "no-cache, no-transform"
+                    }
+                }
+            },
+            "cors": {},
+            "prometheus": {}
+        }
+    },
+    {
+        "id": "route-path-fake-agency",
+        "name": "Fake Legal Partners Agencies App Path",
+        "desc": "Path routing /api/agency/* to Spring Boot Fake Agency service",
+        "uri": "/api/agency/*",
+        "hosts": [
+            "agency.swfabrik-europe.127.0.0.1.nip.io",
+            "agency.swfabrik-europe.192.168.178.84.nip.io",
+            "foodmarket.swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.swfabrik-europe.192.168.178.84.nip.io",
+            "foodmarket.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+            "foodmarket.swfabrik-europe.local",
+            "marketplaces.swfabrik-europe.127.0.0.1.nip.io",
+            "marketplaces.swfabrik-europe.local",
+            "swfabrik-europe.127.0.0.1.nip.io",
+            "swfabrik-europe.192.168.178.84.nip.io",
+            "swfabrik-europe.local",
+            "localhost",
+            "127.0.0.1"
+        ],
+        "upstream": {
+            "nodes": {"fake-legal-partners-agencies-app.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8085": 1},
+            "type": "roundrobin",
+            "timeout": {"connect": 6, "send": 3600, "read": 3600}
+        },
+        "plugins": {
+            "proxy-rewrite": {
+                "regex_uri": ["^/api/agency/(.*)", "/$1"]
             },
             "response-rewrite": {
                 "headers": {

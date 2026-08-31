@@ -163,7 +163,7 @@ spec:
     name: opensearch-pvc
     namespace: drr-corpshared-obs
   hostPath:
-    path: /mnt/FileBuckets01/darueira-platform/data/corpshared-obs/opensearch
+    path: /mnt/FileBuckets01/darueira-platform/data/corpshared-obs/opensearch-data
     type: DirectoryOrCreate
 ---
 apiVersion: v1
@@ -209,49 +209,10 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: pv-drr-tnt-acme-postgres
+  name: pv-drr-tnt-swfabrik-europe-openbao
   labels:
-    darueira.io/volume: tnt-acme-postgres
-spec:
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: darueira-host-storage
-  claimRef:
-    name: tenant-postgres-pvc
-    namespace: drr-tnt-acme
-  hostPath:
-    path: /mnt/FileBuckets01/darueira-platform/data/tenants/tnt-acme/tenant-postgres
-    type: DirectoryOrCreate
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: pv-drr-tnt-acme-mongodb
-  labels:
-    darueira.io/volume: tnt-acme-mongodb
-spec:
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: darueira-host-storage
-  claimRef:
-    name: tenant-mongodb-pvc
-    namespace: drr-tnt-acme
-  hostPath:
-    path: /mnt/FileBuckets01/darueira-platform/data/tenants/tnt-acme/tenant-mongodb
-    type: DirectoryOrCreate
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: pv-drr-tnt-acme-minio
-  labels:
-    darueira.io/volume: tnt-acme-minio
+    darueira.io/volume: tnt-swfabrik-europe-openbao
+    darueira.io/tenant: swfabrik-europe
 spec:
   capacity:
     storage: 5Gi
@@ -260,11 +221,19 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: darueira-host-storage
   claimRef:
-    name: tenant-minio-pvc
-    namespace: drr-tnt-acme
+    name: tenant-openbao-pvc
+    namespace: drr-tnt-swfabrik-europe-dev
   hostPath:
-    path: /mnt/FileBuckets01/darueira-platform/data/tenants/tnt-acme/tenant-minio
+    path: /mnt/FileBuckets01/darueira-platform/data/tenants/swfabrik-europe/tenant-openbao
     type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - nbalns-mifcom-lnx-01
 ---
 apiVersion: v1
 kind: PersistentVolume

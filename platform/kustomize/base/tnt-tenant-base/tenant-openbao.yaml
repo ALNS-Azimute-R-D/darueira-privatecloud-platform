@@ -1,37 +1,99 @@
 apiVersion: v1
-kind: ServiceAccount
+kind: PersistentVolumeClaim
 metadata:
-  name: tenant-openbao-sa
+  name: tenant-openbao-pvc
   labels:
     app.kubernetes.io/name: tenant-openbao
     darueira.io/tier: tenant-workload
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: darueira-host-storage
+  resources:
+    requests:
+      storage: 5Gi
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+apiVersion: v1
+kind: ConfigMap
 metadata:
-  name: tenant-secrets-manager
+  name: tenant-openbao-config
   labels:
     app.kubernetes.io/name: tenant-openbao
     darueira.io/tier: tenant-workload
-rules:
-  - apiGroups: [""]
-    resources: ["secrets"]
-    verbs: ["get", "list", "watch", "create", "update", "patch"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: tenant-openbao-secrets-binding
-  labels:
-    app.kubernetes.io/name: tenant-openbao
-    darueira.io/tier: tenant-workload
-subjects:
-  - kind: ServiceAccount
-    name: tenant-openbao-sa
-roleRef:
-  kind: Role
-  name: tenant-secrets-manager
-  apiGroup: rbac.authorization.k8s.io
+data:
+  bao.json: |
+    {
+      "listener": {
+        "tcp": {
+          "address": "0.0.0.0:8200",
+          "tls_disable": true
+        }
+      },
+      "storage": {
+        "file": {
+          "path": "/vault/data"
+        }
+      },
+      "ui": true,
+      "default_lease_ttl": "720h",
+      "max_lease_ttl": "8760h",
+      "disable_mlock": true
+    }
+  entrypoint.sh: |
+    #!/bin/sh
+    export VAULT_ADDR="http://127.0.0.1:8200"
+
+    echo "=================================================="
+    echo "  Starting Tenant OpenBao Storage Node            "
+    echo "=================================================="
+
+    # Start OpenBao server in the background
+    bao server -config=/vault/config/bao.json &
+    BAO_PID=$!
+
+    # Wait for HTTP endpoint
+    echo "==> Waiting for OpenBao HTTP port 8200..."
+    until wget -q -O- http://127.0.0.1:8200/v1/sys/init >/dev/null 2>&1; do
+      sleep 1
+    done
+
+    # Check if initialized
+    INIT_STATUS=$(wget -q -O- http://127.0.0.1:8200/v1/sys/init 2>/dev/null || echo '{"initialized":false}')
+    if echo "$INIT_STATUS" | grep -q '"initialized":false'; then
+      echo "==> [INIT] Initializing Tenant OpenBao with persistent backend..."
+      INIT_OUTPUT=$(bao operator init -key-shares=1 -key-threshold=1)
+      UNSEAL_KEY=$(echo "$INIT_OUTPUT" | grep 'Unseal Key 1:' | awk '{print $NF}')
+      ROOT_TOKEN=$(echo "$INIT_OUTPUT" | grep 'Initial Root Token:' | awk '{print $NF}')
+
+      echo "UNSEAL_KEY=${UNSEAL_KEY}" > /vault/data/.vault-keys.env
+      echo "ROOT_TOKEN=${ROOT_TOKEN}" >> /vault/data/.vault-keys.env
+      chmod 600 /vault/data/.vault-keys.env
+      echo "==> [INIT] Tenant Keys saved securely to /vault/data/.vault-keys.env"
+    fi
+
+    # Check seal status and unseal
+    SEAL_STATUS=$(wget -q -O- http://127.0.0.1:8200/v1/sys/seal-status 2>/dev/null || echo '{"sealed":true}')
+    if echo "$SEAL_STATUS" | grep -q '"sealed":true'; then
+      if [ -f /vault/data/.vault-keys.env ]; then
+        . /vault/data/.vault-keys.env
+        if [ -n "$UNSEAL_KEY" ]; then
+          echo "==> [UNSEAL] Auto-unsealing Tenant OpenBao..."
+          bao operator unseal "$UNSEAL_KEY"
+          echo "==> [UNSEAL] Successfully unsealed!"
+        fi
+      fi
+    fi
+
+    # Ensure predefined root token and secret engine
+    if [ -f /vault/data/.vault-keys.env ]; then
+      . /vault/data/.vault-keys.env
+      TARGET_TOKEN="${PREDEFINED_ROOT_TOKEN:-tenant-vault-root-token-2026}"
+      env VAULT_TOKEN="$ROOT_TOKEN" bao token create -id="$TARGET_TOKEN" -policy="root" -orphan=true -period="0" >/dev/null 2>&1 || true
+      env VAULT_TOKEN="$ROOT_TOKEN" bao secrets enable -path=secret kv-v2 >/dev/null 2>&1 || true
+    fi
+
+    echo "==> [READY] Tenant OpenBao is fully operational, unsealed, and serving requests on 0.0.0.0:8200"
+    wait $BAO_PID
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -39,10 +101,12 @@ metadata:
   name: tenant-openbao
   labels:
     app.kubernetes.io/name: tenant-openbao
-    app.kubernetes.io/component: secrets-vault
+    app.kubernetes.io/component: secrets-management
     darueira.io/tier: tenant-workload
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: tenant-openbao
@@ -52,7 +116,8 @@ spec:
         app.kubernetes.io/name: tenant-openbao
         darueira.io/tier: tenant-workload
     spec:
-      serviceAccountName: tenant-openbao-sa
+      nodeSelector:
+        kubernetes.io/hostname: nbalns-mifcom-lnx-01
       securityContext:
         runAsNonRoot: true
         runAsUser: 100
@@ -62,31 +127,24 @@ spec:
           type: RuntimeDefault
       containers:
         - name: openbao
-          image: hashicorp/vault:1.17.6
+          image: openbao/openbao:2.0.0
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
-            runAsNonRoot: true
-            runAsUser: 100
-            runAsGroup: 1000
             capabilities:
               drop:
                 - ALL
             seccompProfile:
               type: RuntimeDefault
           command:
-            - "vault"
-            - "server"
-            - "-dev"
-            - "-dev-listen-address=0.0.0.0:8200"
-            - "-dev-root-token-id=tenant-vault-root-token-2026"
-            - "-dev-no-store-token"
+            - "/bin/sh"
+            - "/vault/config/entrypoint.sh"
           env:
             - name: HOME
               value: /vault/data
-            - name: VAULT_DEV_LISTEN_ADDRESS
-              value: 0.0.0.0:8200
+            - name: PREDEFINED_ROOT_TOKEN
+              value: "tenant-vault-root-token-2026"
             - name: VAULT_UI
               value: "true"
           ports:
@@ -95,123 +153,42 @@ spec:
           resources:
             requests:
               cpu: 50m
-              memory: 128Mi
+              memory: 64Mi
             limits:
-              cpu: 250m
+              cpu: 300m
               memory: 256Mi
           volumeMounts:
-            - name: bao-storage
+            - name: bao-data
               mountPath: /vault/data
-          livenessProbe:
+            - name: bao-config
+              mountPath: /vault/config
+          startupProbe:
             httpGet:
               path: /v1/sys/health?uninitcode=200&sealedcode=200
+              port: 8200
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /v1/sys/health
               port: 8200
             initialDelaySeconds: 10
             periodSeconds: 15
           readinessProbe:
             httpGet:
-              path: /v1/sys/health?uninitcode=200&sealedcode=200
+              path: /v1/sys/health
               port: 8200
             initialDelaySeconds: 5
             periodSeconds: 10
-        - name: openbao-syncer
-          image: alpine/k8s:1.30.0
-          imagePullPolicy: IfNotPresent
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: false
-            runAsNonRoot: true
-            runAsUser: 1000
-            runAsGroup: 1000
-            capabilities:
-              drop:
-                - ALL
-            seccompProfile:
-              type: RuntimeDefault
-          command:
-            - /bin/sh
-            - -c
-            - |
-              set -e
-              VAULT_ADDR="http://127.0.0.1:8200"
-              VAULT_TOKEN="tenant-vault-root-token-2026"
-
-              echo "==> [OpenBao Syncer] Waiting for OpenBao server to become healthy..."
-              until curl -s "$VAULT_ADDR/v1/sys/health" | grep -q 'initialized'; do
-                sleep 2
-              done
-
-              echo "==> [OpenBao Syncer] OpenBao is ready. Verifying / seeding KV secrets store..."
-
-              # 1. Seed tenant-db secret (Keycloak DB) if not exists
-              if ! curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/secret/data/tenant-db" | grep -q 'drr_tnt_keycloak_db'; then
-                echo "--> Seeding secret/tenant-db in OpenBao..."
-                curl -s -X POST -H "X-Vault-Token: $VAULT_TOKEN" -d '{"data": {"database": "drr_tnt_keycloak_db", "username": "drr_tnt_svcs_admin", "password": "tenant_pg_secure_pass_2026"}}' "$VAULT_ADDR/v1/secret/data/tenant-db"
-              fi
-
-              # 1b. Seed tenant-bizapps-db secret if not exists
-              if ! curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/secret/data/tenant-bizapps-db" | grep -q 'drr_tnt_bizapps_db'; then
-                echo "--> Seeding secret/tenant-bizapps-db in OpenBao..."
-                curl -s -X POST -H "X-Vault-Token: $VAULT_TOKEN" -d '{"data": {"database": "drr_tnt_bizapps_db", "username": "drr_tnt_bizapps_dba", "password": "tenant_pg_secure_pass_2026"}}' "$VAULT_ADDR/v1/secret/data/tenant-bizapps-db"
-              fi
-
-              # 2. Seed tenant-keycloak secret if not exists
-              if ! curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/secret/data/tenant-keycloak" | grep -q 'drr_tenant_admin'; then
-                echo "--> Seeding secret/tenant-keycloak in OpenBao..."
-                curl -s -X POST -H "X-Vault-Token: $VAULT_TOKEN" -d '{"data": {"admin-username": "drr_tenant_admin", "admin-password": "tenant_keycloak_pass_2026"}}' "$VAULT_ADDR/v1/secret/data/tenant-keycloak"
-              fi
-
-              # 3. Seed tenant-mongo secret if not exists
-              if ! curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/secret/data/tenant-mongo" | grep -q 'tenant_doc_db'; then
-                echo "--> Seeding secret/tenant-mongo in OpenBao..."
-                curl -s -X POST -H "X-Vault-Token: $VAULT_TOKEN" -d '{"data": {"database": "tenant_doc_db", "root-username": "tenant_mongo_admin", "root-password": "tenant_mongo_secure_pass_2026"}}' "$VAULT_ADDR/v1/secret/data/tenant-mongo"
-              fi
-
-              # 4. Seed tenant-minio secret if not exists
-              if ! curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/secret/data/tenant-minio" | grep -q 'drr_tenant_admin'; then
-                echo "--> Seeding secret/tenant-minio in OpenBao..."
-                curl -s -X POST -H "X-Vault-Token: $VAULT_TOKEN" -d '{"data": {"root-user": "drr_tenant_admin", "root-password": "drr_tenant_s3_pass_2026"}}' "$VAULT_ADDR/v1/secret/data/tenant-minio"
-              fi
-
-              sync_to_k8s() {
-                SECRET_NAME=$1
-                VAULT_PATH=$2
-
-                RES=$(curl -s -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/secret/data/$VAULT_PATH")
-                ARGS=""
-                for k in $(echo "$RES" | jq -r '.data.data | keys[]'); do
-                  v=$(echo "$RES" | jq -r --arg key "$k" '.data.data[$key]')
-                  ARGS="$ARGS --from-literal=$k=$v"
-                done
-                kubectl create secret generic "$SECRET_NAME" $ARGS --dry-run=client -o yaml | kubectl apply -f - >/dev/null
-              }
-
-              echo "==> [OpenBao Syncer] Syncing OpenBao KV secrets to Kubernetes Secrets..."
-              sync_to_k8s "tenant-db-credentials" "tenant-db"
-              sync_to_k8s "tenant-bizapps-db-credentials" "tenant-bizapps-db"
-              sync_to_k8s "tenant-keycloak-credentials" "tenant-keycloak"
-              sync_to_k8s "tenant-mongo-credentials" "tenant-mongo"
-              sync_to_k8s "tenant-minio-credentials" "tenant-minio"
-
-              echo "==> [OpenBao Syncer] Secrets successfully synced. Starting continuous sync loop..."
-              while true; do
-                sleep 20
-                sync_to_k8s "tenant-db-credentials" "tenant-db"
-                sync_to_k8s "tenant-bizapps-db-credentials" "tenant-bizapps-db"
-                sync_to_k8s "tenant-keycloak-credentials" "tenant-keycloak"
-                sync_to_k8s "tenant-mongo-credentials" "tenant-mongo"
-                sync_to_k8s "tenant-minio-credentials" "tenant-minio"
-              done
-          resources:
-            requests:
-              cpu: 20m
-              memory: 32Mi
-            limits:
-              cpu: 100m
-              memory: 64Mi
       volumes:
-        - name: bao-storage
-          emptyDir: {}
+        - name: bao-data
+          persistentVolumeClaim:
+            claimName: tenant-openbao-pvc
+        - name: bao-config
+          configMap:
+            name: tenant-openbao-config
+            defaultMode: 0755
 ---
 apiVersion: v1
 kind: Service

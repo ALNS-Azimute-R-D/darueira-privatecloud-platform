@@ -429,56 +429,56 @@ data:
       # =========================================================================
       # 2. Tenant Isolated Services - Host-based Reverse Proxy Routes
       # =========================================================================
-      # Tenant Vault (OpenBao) - ACME
-      - id: route-tenant-vault-acme
+      # Tenant Vault (OpenBao) - SWFABRIK-EUROPE
+      - id: route-tenant-vault-swfabrik-europe
         uri: /*
         hosts:
-          - "vault.darueira-tnt-acme.127.0.0.1.nip.io"
-          - "vault.darueira-tnt-acme.192.168.178.84.nip.io"
-          - "vault.darueira-tnt-acme.127.0.0.1.sslip.io"
-          - "vault.darueira-tnt-acme.local"
+          - "vault.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io"
+          - "vault.darueira-tnt-swfabrik-europe.192.168.178.84.nip.io"
+          - "vault.darueira-tnt-swfabrik-europe.127.0.0.1.sslip.io"
+          - "vault.darueira-tnt-swfabrik-europe.local"
         upstream:
           nodes:
-            "tenant-openbao.drr-tnt-acme.svc.cluster.local:8200": 1
+            "tenant-openbao.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8200": 1
           type: roundrobin
 
-      # Tenant Keycloak IdP - ACME
-      - id: route-tenant-keycloak-acme
+      # Tenant Keycloak IdP - SWFABRIK-EUROPE
+      - id: route-tenant-keycloak-swfabrik-europe
         uri: /*
         hosts:
-          - "keycloak.darueira-tnt-acme.127.0.0.1.nip.io"
-          - "keycloak.darueira-tnt-acme.192.168.178.84.nip.io"
-          - "keycloak.darueira-tnt-acme.127.0.0.1.sslip.io"
-          - "keycloak.darueira-tnt-acme.local"
+          - "keycloak.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io"
+          - "keycloak.darueira-tnt-swfabrik-europe.192.168.178.84.nip.io"
+          - "keycloak.darueira-tnt-swfabrik-europe.127.0.0.1.sslip.io"
+          - "keycloak.darueira-tnt-swfabrik-europe.local"
         upstream:
           nodes:
-            "tenant-keycloak.drr-tnt-acme.svc.cluster.local:8080": 1
+            "tenant-keycloak.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8080": 1
           type: roundrobin
 
-      # Tenant MinIO S3 Console - ACME
-      - id: route-tenant-minio-acme
+      # Tenant MinIO S3 Console - SWFABRIK-EUROPE
+      - id: route-tenant-minio-swfabrik-europe
         uri: /*
         hosts:
-          - "minio.darueira-tnt-acme.127.0.0.1.nip.io"
-          - "minio.darueira-tnt-acme.192.168.178.84.nip.io"
-          - "minio.darueira-tnt-acme.127.0.0.1.sslip.io"
-          - "minio.darueira-tnt-acme.local"
+          - "minio.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io"
+          - "minio.darueira-tnt-swfabrik-europe.192.168.178.84.nip.io"
+          - "minio.darueira-tnt-swfabrik-europe.127.0.0.1.sslip.io"
+          - "minio.darueira-tnt-swfabrik-europe.local"
         upstream:
           nodes:
-            "tenant-minio.drr-tnt-acme.svc.cluster.local:9001": 1
+            "tenant-minio.drr-tnt-swfabrik-europe-dev.svc.cluster.local:9001": 1
           type: roundrobin
 
-      # Tenant S3 API - ACME
-      - id: route-tenant-s3-acme
+      # Tenant S3 API - SWFABRIK-EUROPE
+      - id: route-tenant-s3-swfabrik-europe
         uri: /*
         hosts:
-          - "s3.darueira-tnt-acme.127.0.0.1.nip.io"
-          - "s3.darueira-tnt-acme.192.168.178.84.nip.io"
-          - "s3.darueira-tnt-acme.127.0.0.1.sslip.io"
-          - "s3.darueira-tnt-acme.local"
+          - "s3.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io"
+          - "s3.darueira-tnt-swfabrik-europe.192.168.178.84.nip.io"
+          - "s3.darueira-tnt-swfabrik-europe.127.0.0.1.sslip.io"
+          - "s3.darueira-tnt-swfabrik-europe.local"
         upstream:
           nodes:
-            "tenant-minio.drr-tnt-acme.svc.cluster.local:9000": 1
+            "tenant-minio.drr-tnt-swfabrik-europe-dev.svc.cluster.local:9000": 1
           type: roundrobin
 
       # =========================================================================

@@ -18,6 +18,9 @@ spec:
         app.kubernetes.io/name: central-postgres
         darueira.io/tier: enterprise-shared
     spec:
+      terminationGracePeriodSeconds: 60
+      nodeSelector:
+        kubernetes.io/hostname: nbalns-mifcom-lnx-01
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
@@ -56,6 +59,36 @@ spec:
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data
+          startupProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U drr_admin -d drr_keycloak_db
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 180
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U drr_admin -d drr_keycloak_db
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U drr_admin -d drr_keycloak_db
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
   volumeClaimTemplates:
     - metadata:
         name: postgres-data

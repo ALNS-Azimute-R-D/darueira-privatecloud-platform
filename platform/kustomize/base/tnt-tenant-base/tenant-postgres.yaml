@@ -18,6 +18,7 @@ spec:
         app.kubernetes.io/name: tenant-postgres
         darueira.io/tier: tenant-workload
     spec:
+      terminationGracePeriodSeconds: 60
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
@@ -72,22 +73,36 @@ spec:
           volumeMounts:
             - name: pg-storage
               mountPath: /var/lib/postgresql/data
-          livenessProbe:
+          startupProbe:
             exec:
               command:
                 - /bin/sh
                 - -c
-                - pg_isready -U drr_tnt_svcs_admin -d drr_tnt_keycloak_db
-            initialDelaySeconds: 15
+                - pg_isready -U drr_tnt_svcs_admin -d drr_tnt_bizapps_db
+            initialDelaySeconds: 5
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 180
           readinessProbe:
             exec:
               command:
                 - /bin/sh
                 - -c
-                - pg_isready -U drr_tnt_svcs_admin -d drr_tnt_keycloak_db
+                - pg_isready -U drr_tnt_svcs_admin -d drr_tnt_bizapps_db
             initialDelaySeconds: 5
             periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U drr_tnt_svcs_admin -d drr_tnt_bizapps_db
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
       volumes:
         - name: pg-storage
           persistentVolumeClaim:
@@ -104,7 +119,6 @@ spec:
   accessModes:
     - ReadWriteOnce
   storageClassName: darueira-host-storage
-  volumeName: pv-drr-tnt-acme-postgres
   resources:
     requests:
       storage: 10Gi
@@ -115,6 +129,7 @@ metadata:
   name: tenant-postgres
   labels:
     app.kubernetes.io/name: tenant-postgres
+    app.kubernetes.io/component: relational-database
     darueira.io/tier: tenant-workload
 spec:
   type: ClusterIP

@@ -43,16 +43,22 @@ data:
     #!/bin/sh
     export VAULT_ADDR="http://127.0.0.1:8200"
 
+    if command -v bao >/dev/null 2>&1; then
+      BIN="bao"
+    else
+      BIN="vault"
+    fi
+
     echo "=================================================="
-    echo "  Starting Tenant OpenBao Storage Node            "
+    echo "  Starting Tenant OpenBao / Vault Storage Node    "
     echo "=================================================="
 
-    # Start OpenBao server in the background
-    bao server -config=/vault/config/bao.json &
-    BAO_PID=$!
+    # Start server in the background
+    $BIN server -config=/vault/config/bao.json &
+    SERVER_PID=$!
 
     # Wait for HTTP endpoint
-    echo "==> Waiting for OpenBao HTTP port 8200..."
+    echo "==> Waiting for HTTP port 8200..."
     until wget -q -O- http://127.0.0.1:8200/v1/sys/init >/dev/null 2>&1; do
       sleep 1
     done
@@ -60,8 +66,8 @@ data:
     # Check if initialized
     INIT_STATUS=$(wget -q -O- http://127.0.0.1:8200/v1/sys/init 2>/dev/null || echo '{"initialized":false}')
     if echo "$INIT_STATUS" | grep -q '"initialized":false'; then
-      echo "==> [INIT] Initializing Tenant OpenBao with persistent backend..."
-      INIT_OUTPUT=$(bao operator init -key-shares=1 -key-threshold=1)
+      echo "==> [INIT] Initializing Tenant backend with 1 unseal share..."
+      INIT_OUTPUT=$($BIN operator init -key-shares=1 -key-threshold=1)
       UNSEAL_KEY=$(echo "$INIT_OUTPUT" | grep 'Unseal Key 1:' | awk '{print $NF}')
       ROOT_TOKEN=$(echo "$INIT_OUTPUT" | grep 'Initial Root Token:' | awk '{print $NF}')
 
@@ -77,8 +83,8 @@ data:
       if [ -f /vault/data/.vault-keys.env ]; then
         . /vault/data/.vault-keys.env
         if [ -n "$UNSEAL_KEY" ]; then
-          echo "==> [UNSEAL] Auto-unsealing Tenant OpenBao..."
-          bao operator unseal "$UNSEAL_KEY"
+          echo "==> [UNSEAL] Auto-unsealing Tenant node..."
+          $BIN operator unseal "$UNSEAL_KEY"
           echo "==> [UNSEAL] Successfully unsealed!"
         fi
       fi
@@ -88,12 +94,12 @@ data:
     if [ -f /vault/data/.vault-keys.env ]; then
       . /vault/data/.vault-keys.env
       TARGET_TOKEN="${PREDEFINED_ROOT_TOKEN:-tenant-vault-root-token-2026}"
-      env VAULT_TOKEN="$ROOT_TOKEN" bao token create -id="$TARGET_TOKEN" -policy="root" -orphan=true -period="0" >/dev/null 2>&1 || true
-      env VAULT_TOKEN="$ROOT_TOKEN" bao secrets enable -path=secret kv-v2 >/dev/null 2>&1 || true
+      env VAULT_TOKEN="$ROOT_TOKEN" $BIN token create -id="$TARGET_TOKEN" -policy="root" -orphan=true -period="0" >/dev/null 2>&1 || true
+      env VAULT_TOKEN="$ROOT_TOKEN" $BIN secrets enable -path=secret kv-v2 >/dev/null 2>&1 || true
     fi
 
-    echo "==> [READY] Tenant OpenBao is fully operational, unsealed, and serving requests on 0.0.0.0:8200"
-    wait $BAO_PID
+    echo "==> [READY] Tenant Node is fully operational, unsealed with UI on 0.0.0.0:8200"
+    wait $SERVER_PID
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -127,7 +133,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: openbao
-          image: openbao/openbao:2.0.0
+          image: hashicorp/vault:1.17.6
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

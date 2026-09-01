@@ -27,6 +27,14 @@ spec:
       containers:
         - name: redis
           image: redis:7-alpine
+          command:
+            - "redis-server"
+            - "--save"
+            - ""
+            - "--appendonly"
+            - "no"
+            - "--stop-writes-on-bgsave-error"
+            - "no"
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
@@ -102,7 +110,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: clavex
-          image: nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/darueira-corpshared/clavex:1.8.0
+          image: 127.0.0.1:32082/darueira-corpshared/clavex:1.8.0
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
@@ -185,7 +193,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: ui
-          image: nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/darueira-corpshared/clavex-ui:1.8.0
+          image: 127.0.0.1:32082/darueira-corpshared/clavex-ui:1.8.0
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false

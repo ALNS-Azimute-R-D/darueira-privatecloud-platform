@@ -172,8 +172,42 @@ data:
             "authentik-server.drr-corpshared-plat.svc.cluster.local:9000": 1
           type: roundrobin
 
-      # Clavex eIDAS 2.0 / EUDI Wallet Server
-      - id: route-host-clavex
+      # Clavex eIDAS 2.0 / EUDI Wallet Server (API & OIDC)
+      - id: route-host-clavex-api
+        uris:
+          - "/api/*"
+          - "/healthz"
+          - "/readyz"
+          - "/.well-known/*"
+          - "/swfabrik-europe/*"
+          - "/*/authorize"
+          - "/*/token"
+          - "/*/userinfo"
+          - "/*/logout"
+          - "/*/.well-known/*"
+          - "/*/introspect"
+          - "/*/revoke"
+          - "/*/jwks.json"
+          - "/*/register"
+          - "/*/device_authorization"
+          - "/*/bc-authorize"
+          - "/oid4vci/*"
+          - "/oid4vp/*"
+        hosts:
+          - "clavex.darueira-corpshared.127.0.0.1.nip.io"
+          - "clavex.darueira-corpshared.192.168.178.84.nip.io"
+          - "clavex.darueira-corpshared.127.0.0.1.sslip.io"
+          - "clavex.darueira-corpshared.local"
+          - "eudi.darueira-corpshared.127.0.0.1.nip.io"
+          - "eudi.darueira-corpshared.local"
+        priority: 10
+        upstream:
+          nodes:
+            "clavex.drr-corpshared-plat.svc.cluster.local:8080": 1
+          type: roundrobin
+
+      # Clavex Web UI (SPA Console)
+      - id: route-host-clavex-ui
         uri: /*
         hosts:
           - "clavex.darueira-corpshared.127.0.0.1.nip.io"
@@ -182,9 +216,10 @@ data:
           - "clavex.darueira-corpshared.local"
           - "eudi.darueira-corpshared.127.0.0.1.nip.io"
           - "eudi.darueira-corpshared.local"
+        priority: 1
         upstream:
           nodes:
-            "clavex.drr-corpshared-plat.svc.cluster.local:8080": 1
+            "clavex-ui.drr-corpshared-plat.svc.cluster.local:8080": 1
           type: roundrobin
 
       # Sonatype Nexus OSS

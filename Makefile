@@ -276,6 +276,11 @@ bootstrap-iam: bootstrap-authentik ## Bootstrap Authentik LDAP Directory, Keyclo
 	bash scripts/bootstrap_keycloak_iam.sh
 	@$(MAKE) bootstrap-stalwart
 
+.PHONY: bootstrap-tenant-keycloak
+bootstrap-tenant-keycloak: ## Configure Tenant Keycloak IAM, Central SSO Identity Broker, and Role Mappers
+	@echo -e "${GREEN}==> Bootstrapping Tenant Keycloak IAM & Central SSO Federation...${NC}"
+	$(KUBECTL) exec -i -n drr-tnt-swfabrik-europe-dev deploy/food-market-04-service -- python3 < scripts/bootstrap_tenant_keycloak_iam.py
+
 .PHONY: validate-iam
 validate-iam: ## Run end-to-end authentication and token claims assertions for corporate users
 	@echo -e "${GREEN}==> Validating IAM Federation & Keycloak OIDC Authentication...${NC}"

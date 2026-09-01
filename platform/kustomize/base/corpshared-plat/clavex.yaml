@@ -1,0 +1,221 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clavex-redis
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: clavex-redis
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: clavex-redis
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: clavex-redis
+        darueira.io/tier: enterprise-shared
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 6379
+              name: redis
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clavex-redis
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: clavex-redis
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: clavex-redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+      name: redis
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: clavex-secrets
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: clavex
+    darueira.io/tier: enterprise-shared
+type: Opaque
+stringData:
+  CLAVEX_AUTH_ADMIN_SECRET: "aaff39c0c9c6faee0ee94a8e79a8fccf95389256c167d1f8121fe37c88fad1bf"
+  CLAVEX_AUTH_KEY_ENCRYPTION_KEY: "qMCQVD0Jrpv9RcWRUvrfvXsoyUjKuLcKAa6VezdBCDQ="
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clavex-server
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: clavex
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: clavex
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: clavex
+        darueira.io/tier: enterprise-shared
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: clavex
+          image: nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/darueira-corpshared/clavex:1.8.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: CLAVEX_HTTP_ADDR
+              value: ":8080"
+            - name: CLAVEX_HTTP_BASE_DOMAIN
+              value: "clavex.darueira-corpshared.127.0.0.1.nip.io"
+            - name: CLAVEX_AUTH_ISSUER_BASE
+              value: "https://clavex.darueira-corpshared.127.0.0.1.nip.io"
+            - name: CLAVEX_DATABASE_MODE
+              value: "external"
+            - name: CLAVEX_DATABASE_DSN
+              value: "postgres://clavex:change-me-in-openbao@central-postgres.drr-corpshared-plat.svc.cluster.local:5432/drr_clavex_db?sslmode=disable"
+            - name: CLAVEX_REDIS_ADDR
+              value: "clavex-redis.drr-corpshared-plat.svc.cluster.local:6379"
+            - name: CLAVEX_AUTH_KEY_BACKEND
+              value: "db"
+            - name: CLAVEX_DEV
+              value: "false"
+          envFrom:
+            - secretRef:
+                name: clavex-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clavex
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: clavex
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: clavex
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clavex-ui
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: clavex-ui
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: clavex-ui
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: clavex-ui
+        darueira.io/tier: enterprise-shared
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ui
+          image: nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/darueira-corpshared/clavex-ui:1.8.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 8080
+              name: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clavex-ui
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: clavex-ui
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: clavex-ui
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http

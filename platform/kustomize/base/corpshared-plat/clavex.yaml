@@ -110,7 +110,8 @@ spec:
           type: RuntimeDefault
       containers:
         - name: clavex
-          image: 127.0.0.1:32082/darueira-corpshared/clavex:1.8.0
+          image: 127.0.0.1:32082/darueira-corpshared/clavex:1.8.1
+          imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false

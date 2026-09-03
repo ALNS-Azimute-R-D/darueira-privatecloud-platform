@@ -1,0 +1,69 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pr-swfabrik-latam-checkout-service-manual
+  namespace: drr-corpshared-plat
+  labels:
+    darueira.io/tenant: swfabrik-latam
+    darueira.io/project: checkout-service
+    darueira.io/service: checkout-service
+spec:
+  pipelineRef:
+    name: polyglot-ci-cd-pipeline
+  params:
+    - name: git-url
+      value: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-latam/checkout-service.git"
+    - name: git-revision
+      value: "master"
+    - name: image-reference
+      value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-latam/checkout-service:latest"
+    - name: context-subpath
+      value: "."
+    - name: build-tool
+      value: "go"
+    - name: target-environment
+      value: "dev"
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pr-swfabrik-latam-app-identity-studio-manual
+  namespace: drr-corpshared-plat
+  labels:
+    darueira.io/tenant: swfabrik-latam
+    darueira.io/project: app-identity-studio
+    darueira.io/service: app-identity-studio
+spec:
+  pipelineRef:
+    name: polyglot-ci-cd-pipeline
+  params:
+    - name: git-url
+      value: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-latam/app-identity-studio.git"
+    - name: git-revision
+      value: "master"
+    - name: image-reference
+      value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-latam/app-identity-studio:latest"
+    - name: context-subpath
+      value: "."
+    - name: build-tool
+      value: "node"
+    - name: target-environment
+      value: "dev"
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi

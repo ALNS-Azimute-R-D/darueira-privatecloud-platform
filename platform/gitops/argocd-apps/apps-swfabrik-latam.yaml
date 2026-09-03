@@ -1,0 +1,74 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: swfabrik-latam-tenant-infra
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tenant: swfabrik-latam
+    darueira.io/project: infrastructure
+    darueira.io/tier: tenant-infrastructure
+spec:
+  project: darueira-tenants
+  source:
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-latam/infra-k8s.git"
+    targetRevision: master
+    path: "."
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: "drr-tnt-swfabrik-latam-dev"
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: swfabrik-latam-checkout-service
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tenant: swfabrik-latam
+    darueira.io/project: backend
+    darueira.io/tier: tenant-workload
+spec:
+  project: darueira-tenants
+  source:
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-latam/checkout-service-chart.git"
+    targetRevision: master
+    path: "."
+    helm:
+      valueFiles:
+        - "values.yaml"
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: "drr-tnt-swfabrik-latam-dev"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: swfabrik-latam-app-identity-studio
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tenant: swfabrik-latam
+    darueira.io/project: frontend
+    darueira.io/tier: tenant-workload
+spec:
+  project: darueira-tenants
+  source:
+    repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-latam/app-identity-studio-chart.git"
+    targetRevision: master
+    path: "."
+    helm:
+      valueFiles:
+        - "values.yaml"
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: "drr-tnt-swfabrik-latam-dev"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

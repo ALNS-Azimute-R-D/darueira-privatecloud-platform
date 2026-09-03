@@ -180,6 +180,7 @@ data:
           - "/readyz"
           - "/.well-known/*"
           - "/swfabrik-europe/*"
+          - "/swfabrik-latam/*"
           - "/*/authorize"
           - "/*/token"
           - "/*/userinfo"
@@ -529,6 +530,88 @@ data:
         upstream:
           nodes:
             "tenant-minio.drr-tnt-swfabrik-europe-dev.svc.cluster.local:9000": 1
+          type: roundrobin
+
+      # =========================================================================
+      # Tenant Isolated Services - SWFABRIK-LATAM
+      # =========================================================================
+      # Tenant Vault (OpenBao) - SWFABRIK-LATAM
+      - id: route-tenant-vault-swfabrik-latam
+        uri: /*
+        hosts:
+          - "vault.darueira-tnt-swfabrik-latam.127.0.0.1.nip.io"
+          - "vault.darueira-tnt-swfabrik-latam.192.168.178.84.nip.io"
+          - "vault.darueira-tnt-swfabrik-latam.127.0.0.1.sslip.io"
+          - "vault.darueira-tnt-swfabrik-latam.local"
+        upstream:
+          nodes:
+            "tenant-openbao.drr-tnt-swfabrik-latam-dev.svc.cluster.local:8200": 1
+          type: roundrobin
+
+      # Tenant Keycloak IdP - SWFABRIK-LATAM
+      - id: route-tenant-keycloak-swfabrik-latam
+        uri: /*
+        hosts:
+          - "keycloak.darueira-tnt-swfabrik-latam.127.0.0.1.nip.io"
+          - "keycloak.darueira-tnt-swfabrik-latam.192.168.178.84.nip.io"
+          - "keycloak.darueira-tnt-swfabrik-latam.127.0.0.1.sslip.io"
+          - "keycloak.darueira-tnt-swfabrik-latam.local"
+        upstream:
+          nodes:
+            "tenant-keycloak.drr-tnt-swfabrik-latam-dev.svc.cluster.local:8080": 1
+          type: roundrobin
+
+      # Tenant MinIO S3 Console - SWFABRIK-LATAM
+      - id: route-tenant-minio-swfabrik-latam
+        uri: /*
+        hosts:
+          - "minio.darueira-tnt-swfabrik-latam.127.0.0.1.nip.io"
+          - "minio.darueira-tnt-swfabrik-latam.192.168.178.84.nip.io"
+          - "minio.darueira-tnt-swfabrik-latam.127.0.0.1.sslip.io"
+          - "minio.darueira-tnt-swfabrik-latam.local"
+        upstream:
+          nodes:
+            "tenant-minio.drr-tnt-swfabrik-latam-dev.svc.cluster.local:9001": 1
+          type: roundrobin
+
+      # Tenant S3 API - SWFABRIK-LATAM
+      - id: route-tenant-s3-swfabrik-latam
+        uri: /*
+        hosts:
+          - "s3.darueira-tnt-swfabrik-latam.127.0.0.1.nip.io"
+          - "s3.darueira-tnt-swfabrik-latam.192.168.178.84.nip.io"
+          - "s3.darueira-tnt-swfabrik-latam.127.0.0.1.sslip.io"
+          - "s3.darueira-tnt-swfabrik-latam.local"
+        upstream:
+          nodes:
+            "tenant-minio.drr-tnt-swfabrik-latam-dev.svc.cluster.local:9000": 1
+          type: roundrobin
+
+      # Sovereign Identity Studio & Zero-Trust Portal (Frontend) - SWFABRIK-LATAM
+      - id: route-host-swfabrik-latam-identity-studio
+        uri: /*
+        hosts:
+          - "identity.swfabrik-latam.127.0.0.1.nip.io"
+          - "identity.darueira-tnt-swfabrik-latam.127.0.0.1.nip.io"
+          - "identity.swfabrik-latam.local"
+          - "studio.swfabrik-latam.127.0.0.1.nip.io"
+          - "studio.swfabrik-latam.local"
+        upstream:
+          nodes:
+            "app-identity-studio.drr-tnt-swfabrik-latam-dev.svc.cluster.local:80": 1
+          type: roundrobin
+
+      # Checkout Service API - SWFABRIK-LATAM
+      - id: route-host-swfabrik-latam-checkout
+        uri: /*
+        hosts:
+          - "checkout.swfabrik-latam.127.0.0.1.nip.io"
+          - "checkout.darueira-tnt-swfabrik-latam.127.0.0.1.nip.io"
+          - "checkout.swfabrik-latam.local"
+          - "api.checkout.swfabrik-latam.127.0.0.1.nip.io"
+        upstream:
+          nodes:
+            "checkout-service.drr-tnt-swfabrik-latam-dev.svc.cluster.local:8080": 1
           type: roundrobin
 
       # =========================================================================

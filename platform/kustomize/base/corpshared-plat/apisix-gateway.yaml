@@ -532,6 +532,65 @@ data:
             "tenant-minio.drr-tnt-swfabrik-europe-dev.svc.cluster.local:9000": 1
           type: roundrobin
 
+      # BookAnything Frontend Web - SWFABRIK-EUROPE
+      - id: route-host-swfabrik-europe-bookanything-frontend
+        uri: /*
+        hosts:
+          - "bookanything.swfabrik-europe.127.0.0.1.nip.io"
+          - "bookanything.swfabrik-europe.192.168.178.84.nip.io"
+          - "bookanything.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io"
+          - "bookanything.darueira-tnt-swfabrik-europe.192.168.178.84.nip.io"
+          - "bookanything.swfabrik-europe.local"
+          - "app.bookanything.swfabrik-europe.127.0.0.1.nip.io"
+        upstream:
+          nodes:
+            "bookanything-microfrontends-01.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8080": 1
+          type: roundrobin
+        plugins:
+          cors: {}
+          prometheus: {}
+
+      # BookAnything Backend API - SWFABRIK-EUROPE
+      - id: route-host-swfabrik-europe-bookanything-backend
+        uri: /*
+        hosts:
+          - "bookanything-api.swfabrik-europe.127.0.0.1.nip.io"
+          - "bookanything-api.swfabrik-europe.192.168.178.84.nip.io"
+          - "bookanything-api.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io"
+          - "bookanything-api.darueira-tnt-swfabrik-europe.192.168.178.84.nip.io"
+          - "bookanything-api.swfabrik-europe.local"
+          - "api.bookanything.swfabrik-europe.127.0.0.1.nip.io"
+        upstream:
+          nodes:
+            "bookanything-monolith-backend-01.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8060": 1
+          type: roundrobin
+        plugins:
+          cors: {}
+          prometheus: {}
+
+      # BookAnything API & Swagger Path Routing on Frontend Host - SWFABRIK-EUROPE
+      - id: route-path-swfabrik-europe-bookanything-api
+        uris:
+          - "/api/*"
+          - "/management/*"
+          - "/swagger-ui/*"
+          - "/v3/api-docs*"
+          - "/swagger-resources*"
+        priority: 10
+        hosts:
+          - "bookanything.swfabrik-europe.127.0.0.1.nip.io"
+          - "bookanything.swfabrik-europe.192.168.178.84.nip.io"
+          - "bookanything.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io"
+          - "bookanything.darueira-tnt-swfabrik-europe.192.168.178.84.nip.io"
+          - "bookanything.swfabrik-europe.local"
+        upstream:
+          nodes:
+            "bookanything-monolith-backend-01.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8060": 1
+          type: roundrobin
+        plugins:
+          cors: {}
+          prometheus: {}
+
       # =========================================================================
       # Tenant Isolated Services - SWFABRIK-LATAM
       # =========================================================================

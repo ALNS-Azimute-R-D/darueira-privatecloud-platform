@@ -797,6 +797,72 @@ ROUTES = [
             "prometheus": {}
         }
     },
+    {
+        "id": "route-host-swfabrik-europe-bookanything-frontend",
+        "name": "BookAnything Frontend Web (React 19 / TypeScript / Vite)",
+        "desc": "BookAnything Platform Web Frontend UI",
+        "uri": "/*",
+        "hosts": [
+            "bookanything.swfabrik-europe.127.0.0.1.nip.io",
+            "bookanything.swfabrik-europe.192.168.178.84.nip.io",
+            "bookanything.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+            "bookanything.darueira-tnt-swfabrik-europe.192.168.178.84.nip.io",
+            "bookanything.swfabrik-europe.local",
+            "app.bookanything.swfabrik-europe.127.0.0.1.nip.io"
+        ],
+        "upstream": {
+            "nodes": {"bookanything-microfrontends-01.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8080": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {
+            "cors": {},
+            "prometheus": {}
+        }
+    },
+    {
+        "id": "route-host-swfabrik-europe-bookanything-backend",
+        "name": "BookAnything Backend API (Kotlin / Spring Boot)",
+        "desc": "BookAnything Platform Monolith Backend API & Swagger UI",
+        "uri": "/*",
+        "hosts": [
+            "bookanything-api.swfabrik-europe.127.0.0.1.nip.io",
+            "bookanything-api.swfabrik-europe.192.168.178.84.nip.io",
+            "bookanything-api.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+            "bookanything-api.darueira-tnt-swfabrik-europe.192.168.178.84.nip.io",
+            "bookanything-api.swfabrik-europe.local",
+            "api.bookanything.swfabrik-europe.127.0.0.1.nip.io"
+        ],
+        "upstream": {
+            "nodes": {"bookanything-monolith-backend-01.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8060": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {
+            "cors": {},
+            "prometheus": {}
+        }
+    },
+    {
+        "id": "route-path-swfabrik-europe-bookanything-api",
+        "name": "BookAnything API & Swagger Path Routing on Frontend Host",
+        "desc": "Proxy /api/*, /management/*, /swagger-ui/* to Backend on frontend host",
+        "uris": ["/api/*", "/management/*", "/swagger-ui/*", "/v3/api-docs*", "/swagger-resources*"],
+        "priority": 10,
+        "hosts": [
+            "bookanything.swfabrik-europe.127.0.0.1.nip.io",
+            "bookanything.swfabrik-europe.192.168.178.84.nip.io",
+            "bookanything.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+            "bookanything.darueira-tnt-swfabrik-europe.192.168.178.84.nip.io",
+            "bookanything.swfabrik-europe.local"
+        ],
+        "upstream": {
+            "nodes": {"bookanything-monolith-backend-01.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8060": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {
+            "cors": {},
+            "prometheus": {}
+        }
+    },
     # Path-based routing on main dashboard host (Port 80)
     {
         "id": "route-path-foodmarket-01",

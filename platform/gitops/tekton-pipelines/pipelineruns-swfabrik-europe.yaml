@@ -102,3 +102,90 @@ spec:
           resources:
             requests:
               storage: 1Gi
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pr-swfabrik-europe-bookanything-backend-manual
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tenant: swfabrik-europe
+    darueira.io/project: bookanything-platform
+    darueira.io/service: bookanything-monolith-backend-01
+spec:
+  pipelineRef:
+    name: standard-ci-cd-pipeline
+  params:
+    - name: git-url
+      value: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/bookanything-platform.git"
+    - name: git-revision
+      value: "master"
+    - name: runtime
+      value: "maven"
+    - name: source-subpath
+      value: "1-backends/bookanything-monolith-backend-01"
+    - name: image-name
+      value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-europe/bookanything-monolith-backend-01:latest"
+    - name: dockerfile-path
+      value: "Dockerfile"
+    - name: tenant-name
+      value: "swfabrik-europe"
+    - name: app-name
+      value: "bookanything-platform"
+    - name: target-env
+      value: "dev-green"
+    - name: argocd-app-name
+      value: "swfabrik-europe-bookanything-platform"
+  workspaces:
+    - name: pipeline-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 2Gi
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pr-swfabrik-europe-bookanything-frontend-manual
+  namespace: drr-corpshared-mgmt
+  labels:
+    darueira.io/tenant: swfabrik-europe
+    darueira.io/project: bookanything-platform
+    darueira.io/service: bookanything-microfrontends-01
+spec:
+  pipelineRef:
+    name: standard-ci-cd-pipeline
+  params:
+    - name: git-url
+      value: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/swfabrik-europe/bookanything-platform.git"
+    - name: git-revision
+      value: "master"
+    - name: runtime
+      value: "node"
+    - name: source-subpath
+      value: "2-frontends/web/bookanything-microfrontends-01"
+    - name: image-name
+      value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-europe/bookanything-microfrontends-01:latest"
+    - name: dockerfile-path
+      value: "Dockerfile"
+    - name: tenant-name
+      value: "swfabrik-europe"
+    - name: app-name
+      value: "bookanything-platform"
+    - name: target-env
+      value: "dev-green"
+    - name: argocd-app-name
+      value: "swfabrik-europe-bookanything-platform"
+  workspaces:
+    - name: pipeline-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 2Gi
+

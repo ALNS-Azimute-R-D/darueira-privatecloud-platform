@@ -105,8 +105,6 @@ data:
     echo "==> [2/2] Deleting Completed / Error Tekton Pods..."
     kubectl delete pods -n "$NAMESPACE" -l "tekton.dev/taskRun" --field-selector="status.phase=Succeeded" --wait=false 2>/dev/null || true
     kubectl delete pods -n "$NAMESPACE" -l "tekton.dev/taskRun" --field-selector="status.phase=Failed" --wait=false 2>/dev/null || true
-    kubectl delete pods -n "$NAMESPACE" --field-selector="status.phase=Succeeded" --wait=false 2>/dev/null || true
-    kubectl delete pods -n "$NAMESPACE" --field-selector="status.phase=Failed" --wait=false 2>/dev/null || true
 
     echo "==> [Tekton Janitor] Cleanup cycle completed successfully."
 ---
@@ -121,6 +119,7 @@ metadata:
 spec:
   schedule: "*/1 * * * *"
   concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 200
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 1
   jobTemplate:
@@ -133,6 +132,8 @@ spec:
             app.kubernetes.io/component: janitor
             darueira.io/tier: enterprise-shared
         spec:
+          nodeSelector:
+            kubernetes.io/hostname: nbalns-mifcom-lnx-01
           serviceAccountName: tekton-janitor-sa
           restartPolicy: OnFailure
           securityContext:

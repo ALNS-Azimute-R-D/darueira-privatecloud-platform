@@ -30,6 +30,10 @@ spec:
       type: string
       default: "values-dev-green.yaml"
       description: "Relative path to the values file in the chart repository"
+    - name: image-name
+      type: string
+      default: ""
+      description: "Image name to identify backend vs frontend component in multi-app charts"
     - name: git-server
       type: string
       default: "forgejo-git.drr-corpshared-plat.svc.cluster.local:3000"
@@ -83,6 +87,7 @@ spec:
         git config user.name "Tekton GitOps Promoter"
         git config user.email "gitops-promoter@darueira.local"
 
+        IMG="$(params.image-name)"
         if [ -f "$VALUES_FILE" ]; then
           if grep -q "legalhubMgmt:" "$VALUES_FILE"; then
             awk -v tag="$TAG" '
@@ -91,6 +96,24 @@ spec:
               in_sec && /^[[:space:]]*tag:/ { sub(/tag:[[:space:]]*.*/, "tag: \"" tag "\""); in_sec=0 }
               { print }
             ' "$VALUES_FILE" > "${VALUES_FILE}.tmp" && mv "${VALUES_FILE}.tmp" "$VALUES_FILE"
+          elif grep -q "backend:" "$VALUES_FILE" && grep -q "frontend:" "$VALUES_FILE"; then
+            if echo "$IMG" | grep -q "backend"; then
+              awk -v tag="$TAG" '
+                /backend:/ { in_sec=1 }
+                /frontend:/ { in_sec=0 }
+                in_sec && /^[[:space:]]*tag:/ { sub(/tag:[[:space:]]*.*/, "tag: \"" tag "\""); in_sec=0 }
+                { print }
+              ' "$VALUES_FILE" > "${VALUES_FILE}.tmp" && mv "${VALUES_FILE}.tmp" "$VALUES_FILE"
+            elif echo "$IMG" | grep -q "frontend"; then
+              awk -v tag="$TAG" '
+                /frontend:/ { in_sec=1 }
+                /backend:/ { in_sec=0 }
+                in_sec && /^[[:space:]]*tag:/ { sub(/tag:[[:space:]]*.*/, "tag: \"" tag "\""); in_sec=0 }
+                { print }
+              ' "$VALUES_FILE" > "${VALUES_FILE}.tmp" && mv "${VALUES_FILE}.tmp" "$VALUES_FILE"
+            else
+              sed -i -E 's/^([[:space:]]*tag:)[[:space:]]*.*/\1 "'"$TAG"'"/' "$VALUES_FILE"
+            fi
           else
             sed -i -E 's/^([[:space:]]*tag:)[[:space:]]*.*/\1 "'"$TAG"'"/' "$VALUES_FILE"
           fi
@@ -101,8 +124,14 @@ spec:
             echo "==> No changes in $VALUES_FILE (already on tag $TAG)."
           else
             git commit -m "chore(gitops): promote image tag $TAG in $VALUES_FILE [skip ci]"
-            git push origin master
-            echo "==> [SUCCESS] Successfully promoted image tag $TAG to $CHART_REPO ($VALUES_FILE)!"
+            for attempt in 1 2 3 4 5; do
+              if git pull --rebase origin master && git push origin master; then
+                echo "==> [SUCCESS] Successfully promoted image tag $TAG to $CHART_REPO ($VALUES_FILE)!"
+                break
+              fi
+              echo "==> Push conflict encountered, retrying in 2s ($attempt/5)..."
+              sleep 2
+            done
           fi
         else
           echo "==> Warning: $VALUES_FILE not found in $CHART_REPO. Available files:"

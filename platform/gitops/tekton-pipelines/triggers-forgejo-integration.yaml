@@ -96,8 +96,136 @@ spec:
             name: "cel"
           params:
             - name: "filter"
-              value: "body.ref == 'refs/heads/master' && !body.repository.name.endsWith('-chart') && body.repository.name != 'infra-k8s'"
+              value: "body.ref == 'refs/heads/master' && !body.repository.name.endsWith('-chart') && body.repository.name != 'infra-k8s' && body.repository.name != 'bookanything-platform'"
       bindings:
         - ref: forgejo-push-binding
       template:
         ref: forgejo-pipeline-template
+    - name: bookanything-events
+      interceptors:
+        - ref:
+            name: "cel"
+          params:
+            - name: "filter"
+              value: "body.ref == 'refs/heads/master' && body.repository.name == 'bookanything-platform'"
+      bindings:
+        - ref: forgejo-push-binding
+      template:
+        ref: bookanything-pipeline-template
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: bookanything-pipeline-template
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/component: ci-triggers
+    darueira.io/tier: enterprise-shared
+spec:
+  params:
+    - name: git-url
+      description: "Repository clone URL"
+    - name: git-revision
+      description: "Commit SHA or branch"
+    - name: repository-name
+      description: "Name of the Git repository"
+    - name: owner-name
+      description: "Owner organization or user of the Git repository"
+      default: "swfabrik-europe"
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:
+        generateName: "forgejo-ci-bookanything-backend-"
+        namespace: drr-corpshared-mgmt
+        labels:
+          darueira.io/tier: enterprise-shared
+          darueira.io/triggered-by: forgejo-webhook
+          darueira.io/tenant: $(tt.params.owner-name)
+          darueira.io/service: bookanything-monolith-backend-01
+      spec:
+        pipelineRef:
+          name: standard-ci-cd-pipeline
+        podTemplate:
+          nodeSelector:
+            kubernetes.io/hostname: nbalns-mifcom-lnx-01
+        params:
+          - name: git-url
+            value: $(tt.params.git-url)
+          - name: git-revision
+            value: $(tt.params.git-revision)
+          - name: runtime
+            value: "maven"
+          - name: source-subpath
+            value: "1-backends/bookanything-monolith-backend-01"
+          - name: image-name
+            value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/$(tt.params.owner-name)/bookanything-monolith-backend-01"
+          - name: image-tag
+            value: "auto"
+          - name: dockerfile-path
+            value: "Dockerfile"
+          - name: tenant-name
+            value: $(tt.params.owner-name)
+          - name: app-name
+            value: $(tt.params.repository-name)
+          - name: target-env
+            value: "dev-green"
+          - name: argocd-app-name
+            value: "$(tt.params.owner-name)-$(tt.params.repository-name)"
+        workspaces:
+          - name: pipeline-workspace
+            volumeClaimTemplate:
+              spec:
+                accessModes:
+                  - ReadWriteOnce
+                resources:
+                  requests:
+                    storage: 2Gi
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:
+        generateName: "forgejo-ci-bookanything-frontend-"
+        namespace: drr-corpshared-mgmt
+        labels:
+          darueira.io/tier: enterprise-shared
+          darueira.io/triggered-by: forgejo-webhook
+          darueira.io/tenant: $(tt.params.owner-name)
+          darueira.io/service: bookanything-microfrontends-01
+      spec:
+        pipelineRef:
+          name: standard-ci-cd-pipeline
+        podTemplate:
+          nodeSelector:
+            kubernetes.io/hostname: nbalns-mifcom-lnx-01
+        params:
+          - name: git-url
+            value: $(tt.params.git-url)
+          - name: git-revision
+            value: $(tt.params.git-revision)
+          - name: runtime
+            value: "node"
+          - name: source-subpath
+            value: "2-frontends/web/bookanything-microfrontends-01"
+          - name: image-name
+            value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/$(tt.params.owner-name)/bookanything-microfrontends-01"
+          - name: image-tag
+            value: "auto"
+          - name: dockerfile-path
+            value: "Dockerfile"
+          - name: tenant-name
+            value: $(tt.params.owner-name)
+          - name: app-name
+            value: $(tt.params.repository-name)
+          - name: target-env
+            value: "dev-green"
+          - name: argocd-app-name
+            value: "$(tt.params.owner-name)-$(tt.params.repository-name)"
+        workspaces:
+          - name: pipeline-workspace
+            volumeClaimTemplate:
+              spec:
+                accessModes:
+                  - ReadWriteOnce
+                resources:
+                  requests:
+                    storage: 2Gi

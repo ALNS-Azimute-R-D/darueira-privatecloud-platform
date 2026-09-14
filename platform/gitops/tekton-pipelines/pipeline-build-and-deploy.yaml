@@ -136,6 +136,8 @@ spec:
           value: "values-$(params.target-env).yaml"
         - name: image-tag
           value: $(tasks.build-and-publish-image.results.image-tag)
+        - name: image-name
+          value: $(params.image-name)
 
     - name: sync-argocd-deployment
       taskRef:

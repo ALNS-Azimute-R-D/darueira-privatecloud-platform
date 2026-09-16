@@ -149,6 +149,34 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
+  name: pv-drr-apache-nifi
+  labels:
+    darueira.io/volume: apache-nifi
+spec:
+  capacity:
+    storage: 15Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: apache-nifi-pvc
+    namespace: drr-corpshared-plat
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/corpshared-plat/apache-nifi
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - nbalns-mifcom-lnx-01
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
   name: pv-drr-opensearch-data
   labels:
     darueira.io/volume: opensearch-data

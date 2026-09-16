@@ -477,6 +477,22 @@ data:
             "drr-env-orchestrator-svc.drr-corpshared-mgmt.svc.cluster.local:8082": 1
           type: roundrobin
 
+      # Apache NiFi (Corporate Data Pipelines & Ingestion UI)
+      - id: route-host-nifi
+        uri: /*
+        hosts:
+          - "nifi.darueira-corpshared.127.0.0.1.nip.io"
+          - "nifi.darueira-corpshared.192.168.178.84.nip.io"
+          - "nifi.darueira-corpshared.127.0.0.1.sslip.io"
+          - "nifi.darueira-corpshared.local"
+          - "pipelines.darueira-corpshared.127.0.0.1.nip.io"
+          - "pipelines.darueira-corpshared.local"
+        upstream:
+          scheme: https
+          nodes:
+            "apache-nifi.drr-corpshared-plat.svc.cluster.local:8443": 1
+          type: roundrobin
+
       # =========================================================================
       # 2. Tenant Isolated Services - Host-based Reverse Proxy Routes
       # =========================================================================

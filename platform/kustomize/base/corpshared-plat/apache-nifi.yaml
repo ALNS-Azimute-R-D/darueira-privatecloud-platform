@@ -1,0 +1,240 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: apache-nifi-pvc
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: apache-nifi
+    darueira.io/tier: enterprise-shared
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: darueira-host-storage
+  volumeName: pv-drr-apache-nifi
+  resources:
+    requests:
+      storage: 15Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apache-nifi
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: apache-nifi
+    app.kubernetes.io/component: data-pipeline
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: apache-nifi
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: apache-nifi
+        app.kubernetes.io/component: data-pipeline
+        darueira.io/tier: enterprise-shared
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: nbalns-mifcom-lnx-01
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: init-keystore
+          image: apache/nifi:1.28.1
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Generating PKCS12 keystore from wildcard TLS..."
+              openssl pkcs12 -export \
+                -in /certs-source/tls.crt \
+                -inkey /certs-source/tls.key \
+                -certfile /certs-source/ca.crt \
+                -out /opt/nifi/certs/keystore.p12 \
+                -name nifi \
+                -passout pass:darueira-keystore-pass
+
+              echo "Preparing PKCS12 truststore with root CA and default JVM certs..."
+              keytool -importkeystore \
+                -srckeystore /usr/lib/jvm/jre-11.0.25-bellsoft-x86_64/lib/security/cacerts \
+                -srcstoretype JKS \
+                -srcstorepass changeit \
+                -destkeystore /opt/nifi/certs/truststore.p12 \
+                -deststoretype PKCS12 \
+                -deststorepass darueira-keystore-pass \
+                -noprompt
+
+              keytool -importcert -noprompt \
+                -alias darueira-root-ca \
+                -file /certs-source/ca.crt \
+                -keystore /opt/nifi/certs/truststore.p12 \
+                -storepass darueira-keystore-pass \
+                -storetype PKCS12
+
+              chmod 644 /opt/nifi/certs/keystore.p12 /opt/nifi/certs/truststore.p12
+              echo "Keystore and truststore generated successfully."
+          volumeMounts:
+            - name: darueira-tls-secret
+              mountPath: /certs-source
+              readOnly: true
+            - name: nifi-certs
+              mountPath: /opt/nifi/certs
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+      containers:
+        - name: nifi
+          image: apache/nifi:1.28.1
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - containerPort: 8443
+              name: https
+          env:
+            - name: AUTH
+              value: "oidc"
+            - name: NIFI_WEB_HTTPS_PORT
+              value: "8443"
+            - name: NIFI_WEB_HTTPS_HOST
+              value: "0.0.0.0"
+            - name: NIFI_WEB_PROXY_HOST
+              value: "nifi.darueira-corpshared.127.0.0.1.nip.io:443,nifi.darueira-corpshared.127.0.0.1.nip.io,nifi.darueira-corpshared.192.168.178.84.nip.io:443,nifi.darueira-corpshared.192.168.178.84.nip.io,nifi.darueira-corpshared.127.0.0.1.sslip.io:443,nifi.darueira-corpshared.127.0.0.1.sslip.io,nifi.darueira-corpshared.local,pipelines.darueira-corpshared.127.0.0.1.nip.io:443,pipelines.darueira-corpshared.127.0.0.1.nip.io,localhost:8443,localhost,127.0.0.1,apache-nifi:8443,apache-nifi.drr-corpshared-plat.svc.cluster.local:8443"
+            - name: KEYSTORE_PATH
+              value: "/opt/nifi/certs/keystore.p12"
+            - name: KEYSTORE_TYPE
+              value: "PKCS12"
+            - name: KEYSTORE_PASSWORD
+              value: "darueira-keystore-pass"
+            - name: KEY_PASSWORD
+              value: "darueira-keystore-pass"
+            - name: TRUSTSTORE_PATH
+              value: "/opt/nifi/certs/truststore.p12"
+            - name: TRUSTSTORE_TYPE
+              value: "PKCS12"
+            - name: TRUSTSTORE_PASSWORD
+              value: "darueira-keystore-pass"
+            - name: INITIAL_ADMIN_IDENTITY
+              value: "andre.nascimento"
+            - name: NIFI_SECURITY_USER_AUTHORIZER
+              value: "managed-authorizer"
+            - name: NIFI_SECURITY_USER_OIDC_DISCOVERY_URL
+              value: "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs/.well-known/openid-configuration"
+            - name: NIFI_SECURITY_USER_OIDC_CLIENT_ID
+              value: "darueira-platform-generic-oidc"
+            - name: NIFI_SECURITY_USER_OIDC_CLIENT_SECRET
+              value: "darueira-oidc-secret-key-2026"
+            - name: NIFI_SECURITY_USER_OIDC_PREFERRED_JWSALGORITHM
+              value: "RS256"
+            - name: NIFI_SECURITY_USER_OIDC_CLAIM_IDENTIFYING_USER
+              value: "preferred_username"
+            - name: NIFI_SECURITY_USER_OIDC_ADDITIONAL_SCOPES
+              value: "profile,email"
+            - name: NIFI_SECURITY_USER_OIDC_TRUSTSTORE_STRATEGY
+              value: "NIFI"
+            - name: NIFI_JVM_HEAP_INIT
+              value: "1024m"
+            - name: NIFI_JVM_HEAP_MAX
+              value: "2048m"
+            - name: NIFI_FLOW_CONFIGURATION_FILE
+              value: "/opt/nifi/nifi-current/data/flow.json.gz"
+            - name: NIFI_FLOWFILE_REPOSITORY_DIRECTORY
+              value: "/opt/nifi/nifi-current/data/flowfile_repository"
+            - name: NIFI_CONTENT_REPOSITORY_DIRECTORY_DEFAULT
+              value: "/opt/nifi/nifi-current/data/content_repository"
+            - name: NIFI_PROVENANCE_REPOSITORY_DIRECTORY_DEFAULT
+              value: "/opt/nifi/nifi-current/data/provenance_repository"
+            - name: NIFI_DATABASE_DIRECTORY
+              value: "/opt/nifi/nifi-current/data/database_repository"
+            - name: CENTRAL_POSTGRES_HOST
+              value: "central-postgres.drr-corpshared-plat.svc.cluster.local"
+            - name: CENTRAL_POSTGRES_DB
+              value: "drr_apache_nifi_db"
+            - name: CENTRAL_KAFKA_BOOTSTRAP
+              value: "message-broker-kafka.drr-corpshared-plat.svc.cluster.local:9092"
+            - name: CENTRAL_MINIO_ENDPOINT
+              value: "http://central-minio.drr-corpshared-plat.svc.cluster.local:9000"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 1024Mi
+            limits:
+              cpu: 2000m
+              memory: 3072Mi
+          volumeMounts:
+            - name: nifi-data
+              mountPath: /opt/nifi/nifi-current/data
+            - name: nifi-certs
+              mountPath: /opt/nifi/certs
+              readOnly: true
+          startupProbe:
+            httpGet:
+              path: /nifi/
+              port: 8443
+              scheme: HTTPS
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /nifi/
+              port: 8443
+              scheme: HTTPS
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /nifi/
+              port: 8443
+              scheme: HTTPS
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 5
+      volumes:
+        - name: nifi-data
+          persistentVolumeClaim:
+            claimName: apache-nifi-pvc
+        - name: darueira-tls-secret
+          secret:
+            secretName: darueira-wildcard-tls
+        - name: nifi-certs
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apache-nifi
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: apache-nifi
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: apache-nifi
+  ports:
+    - port: 8443
+      targetPort: 8443
+      name: https

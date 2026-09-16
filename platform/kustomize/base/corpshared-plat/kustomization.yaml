@@ -24,3 +24,4 @@ resources:
   - tls-secret.yaml
   - webmail.yaml
   - clavex.yaml
+  - apache-nifi.yaml

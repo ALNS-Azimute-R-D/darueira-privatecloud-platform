@@ -39,11 +39,22 @@ data:
         "provider": "postgres"
       },
       "blobStorage": {
-        "provider": "fs"
+        "provider": "aws-s3-storage"
       },
       "trustUserCode": true,
       "allowLocalFilesAccess": true,
       "extensions": {
+        "aws-s3-storage": {
+          "accessKeyId": "minioadmin",
+          "secretAccessKey": "Darueira@2026!",
+          "bucket": "drr-corporate-reports",
+          "s3Options": {
+            "endpoint": "http://central-minio.drr-corpshared-plat.svc.cluster.local:9000",
+            "s3ForcePathStyle": true,
+            "forcePathStyle": true,
+            "sslEnabled": false
+          }
+        },
         "postgres-store": {
           "host": "central-postgres.drr-corpshared-plat.svc.cluster.local",
           "port": 5432,

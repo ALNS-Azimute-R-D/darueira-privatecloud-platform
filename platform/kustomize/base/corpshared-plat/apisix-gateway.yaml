@@ -41,6 +41,13 @@ data:
           - name: admin
             key: edd1c9f034335f136f87ad84b625c8f1
             role: admin
+    nginx_config:
+      http_configuration_snippet: |
+        proxy_buffer_size 128k;
+        proxy_buffers 4 128k;
+        proxy_busy_buffers_size 256k;
+        large_client_header_buffers 4 64k;
+        client_header_buffer_size 16k;
     plugin_attr:
       prometheus:
         export_uri: /apisix/prometheus/metrics
@@ -506,6 +513,7 @@ data:
           - "temporal.darueira-corpshared.local"
           - "workflows.darueira-corpshared.127.0.0.1.nip.io"
           - "workflows.darueira-corpshared.local"
+        enable_websocket: true
         upstream:
           nodes:
             "temporal-ui-svc.drr-corpshared-plat.svc.cluster.local:8080": 1

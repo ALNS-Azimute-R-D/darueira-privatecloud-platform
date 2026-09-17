@@ -85,6 +85,32 @@ data:
           "admin": {
             "username": "admin",
             "password": "change-me-in-openbao"
+          },
+          "authorizationServer": {
+            "name": "Keycloak",
+            "issuer": "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs",
+            "endpoints": {
+              "jwks": "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs/protocol/openid-connect/certs",
+              "authorization": "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs/protocol/openid-connect/auth",
+              "token": "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs/protocol/openid-connect/token",
+              "introspection": "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs/protocol/openid-connect/token/introspect",
+              "userinfo": "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs/protocol/openid-connect/userinfo"
+            },
+            "studioClient": {
+              "clientId": "darueira-platform-generic-oidc",
+              "clientSecret": "darueira-oidc-secret-key-2026",
+              "authType": "basic"
+            },
+            "apiResource": {
+              "clientId": "darueira-platform-generic-oidc",
+              "clientSecret": "darueira-oidc-secret-key-2026",
+              "authType": "basic"
+            },
+            "usernameField": "preferred_username",
+            "timeout": 10000,
+            "authorizationRequest": {
+              "scope": ["openid", "profile", "email"]
+            }
           }
         }
       }
@@ -177,6 +203,8 @@ spec:
               value: "darueira-corporate-jsreport-session-secret-2026-supersecure"
             - name: HOME
               value: "/tmp"
+            - name: NODE_EXTRA_CA_CERTS
+              value: "/etc/ssl/certs/darueira-ca.crt"
             - name: XDG_CONFIG_HOME
               value: "/tmp/.chromium"
             - name: XDG_CACHE_HOME
@@ -217,6 +245,10 @@ spec:
               subPath: jsreport.config.json
             - name: jsreport-data
               mountPath: /app/data
+            - name: darueira-ca
+              mountPath: /etc/ssl/certs/darueira-ca.crt
+              subPath: ca.crt
+              readOnly: true
             - name: dshm
               mountPath: /dev/shm
             - name: tmp
@@ -230,6 +262,12 @@ spec:
         - name: jsreport-data
           persistentVolumeClaim:
             claimName: jsreport-pvc
+        - name: darueira-ca
+          secret:
+            secretName: darueira-wildcard-tls
+            items:
+              - key: ca.crt
+                path: ca.crt
         - name: dshm
           emptyDir:
             medium: Memory

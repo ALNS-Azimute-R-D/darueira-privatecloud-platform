@@ -205,6 +205,26 @@ spec:
               value: "http://localhost:3000,https://temporal.darueira-corpshared.127.0.0.1.nip.io,https://temporal.darueira-corpshared.192.168.178.84.nip.io,https://temporal.darueira-corpshared.127.0.0.1.sslip.io,https://temporal.darueira-corpshared.local"
             - name: PORT
               value: "8080"
+            - name: TEMPORAL_AUTH_ENABLED
+              value: "true"
+            - name: TEMPORAL_AUTH_LABEL
+              value: "Keycloak Corporate SSO"
+            - name: TEMPORAL_AUTH_TYPE
+              value: "oidc"
+            - name: TEMPORAL_AUTH_PROVIDER_URL
+              value: "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs"
+            - name: TEMPORAL_AUTH_ISSUER_URL
+              value: "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs"
+            - name: TEMPORAL_AUTH_CLIENT_ID
+              value: "darueira-platform-generic-oidc"
+            - name: TEMPORAL_AUTH_CLIENT_SECRET
+              value: "darueira-oidc-secret-key-2026"
+            - name: TEMPORAL_AUTH_CALLBACK_URL
+              value: "https://temporal.darueira-corpshared.127.0.0.1.nip.io/auth/sso/callback"
+            - name: TEMPORAL_AUTH_SCOPES
+              value: "openid,profile,email"
+            - name: SSL_CERT_FILE
+              value: "/etc/ssl/certs/darueira-ca.crt"
           resources:
             requests:
               cpu: 100m
@@ -215,6 +235,10 @@ spec:
           volumeMounts:
             - name: ui-config
               mountPath: /home/ui-server/config
+            - name: darueira-ca
+              mountPath: /etc/ssl/certs/darueira-ca.crt
+              subPath: ca.crt
+              readOnly: true
           startupProbe:
             httpGet:
               path: /
@@ -242,6 +266,12 @@ spec:
       volumes:
         - name: ui-config
           emptyDir: {}
+        - name: darueira-ca
+          secret:
+            secretName: darueira-wildcard-tls
+            items:
+              - key: ca.crt
+                path: ca.crt
 ---
 apiVersion: v1
 kind: Service

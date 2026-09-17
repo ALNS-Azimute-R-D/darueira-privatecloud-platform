@@ -99,6 +99,57 @@ spec:
       containers:
         - name: nifi
           image: apache/nifi:1.28.1
+          command:
+            - /bin/sh
+            - -c
+            - |
+              # Ensure persistent directories exist on PVC
+              mkdir -p /opt/nifi/nifi-current/data/conf
+              mkdir -p /opt/nifi/nifi-current/data/flowfile_repository
+              mkdir -p /opt/nifi/nifi-current/data/content_repository
+              mkdir -p /opt/nifi/nifi-current/data/provenance_repository
+              mkdir -p /opt/nifi/nifi-current/data/database_repository
+
+              # Restore persisted security & flow files if present on PVC
+              if [ -f /opt/nifi/nifi-current/data/conf/authorizations.xml ]; then
+                cp -p /opt/nifi/nifi-current/data/conf/authorizations.xml /opt/nifi/nifi-current/conf/authorizations.xml
+              fi
+              if [ -f /opt/nifi/nifi-current/data/conf/users.xml ]; then
+                cp -p /opt/nifi/nifi-current/data/conf/users.xml /opt/nifi/nifi-current/conf/users.xml
+              fi
+              if [ -f /opt/nifi/nifi-current/data/conf/flow.json.gz ]; then
+                cp -p /opt/nifi/nifi-current/data/conf/flow.json.gz /opt/nifi/nifi-current/conf/flow.json.gz
+              fi
+              if [ -f /opt/nifi/nifi-current/data/conf/flow.xml.gz ]; then
+                cp -p /opt/nifi/nifi-current/data/conf/flow.xml.gz /opt/nifi/nifi-current/conf/flow.xml.gz
+              fi
+
+              # Configure repositories to point to persistent PVC storage
+              sed -i -e 's|^nifi.flowfile.repository.directory=.*|nifi.flowfile.repository.directory=/opt/nifi/nifi-current/data/flowfile_repository|' /opt/nifi/nifi-current/conf/nifi.properties
+              sed -i -e 's|^nifi.content.repository.directory.default=.*|nifi.content.repository.directory.default=/opt/nifi/nifi-current/data/content_repository|' /opt/nifi/nifi-current/conf/nifi.properties
+              sed -i -e 's|^nifi.provenance.repository.directory.default=.*|nifi.provenance.repository.directory.default=/opt/nifi/nifi-current/data/provenance_repository|' /opt/nifi/nifi-current/conf/nifi.properties
+              sed -i -e 's|^nifi.database.directory=.*|nifi.database.directory=/opt/nifi/nifi-current/data/database_repository|' /opt/nifi/nifi-current/conf/nifi.properties
+
+              # Periodic backup hook: sync conf changes to persistent storage every 30s
+              (
+                while true; do
+                  sleep 30
+                  if [ -f /opt/nifi/nifi-current/conf/authorizations.xml ]; then
+                    cp -u -p /opt/nifi/nifi-current/conf/authorizations.xml /opt/nifi/nifi-current/data/conf/ 2>/dev/null || true
+                  fi
+                  if [ -f /opt/nifi/nifi-current/conf/users.xml ]; then
+                    cp -u -p /opt/nifi/nifi-current/conf/users.xml /opt/nifi/nifi-current/data/conf/ 2>/dev/null || true
+                  fi
+                  if [ -f /opt/nifi/nifi-current/conf/flow.json.gz ]; then
+                    cp -u -p /opt/nifi/nifi-current/conf/flow.json.gz /opt/nifi/nifi-current/data/conf/ 2>/dev/null || true
+                  fi
+                  if [ -f /opt/nifi/nifi-current/conf/flow.xml.gz ]; then
+                    cp -u -p /opt/nifi/nifi-current/conf/flow.xml.gz /opt/nifi/nifi-current/data/conf/ 2>/dev/null || true
+                  fi
+                done
+              ) &
+
+              exec /opt/nifi/scripts/start.sh
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
@@ -151,6 +202,8 @@ spec:
               value: "profile,email"
             - name: NIFI_SECURITY_USER_OIDC_TRUSTSTORE_STRATEGY
               value: "NIFI"
+            - name: NIFI_SENSITIVE_PROPS_KEY
+              value: "2VaOLGpOAxvyHfJ8zn5wHwVcQZ1t70PO"
             - name: NIFI_JVM_HEAP_INIT
               value: "1024m"
             - name: NIFI_JVM_HEAP_MAX

@@ -25,3 +25,4 @@ resources:
   - webmail.yaml
   - clavex.yaml
   - apache-nifi.yaml
+  - temporal.yaml

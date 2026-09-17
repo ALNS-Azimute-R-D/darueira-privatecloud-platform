@@ -493,6 +493,21 @@ data:
             "apache-nifi.drr-corpshared-plat.svc.cluster.local:8443": 1
           type: roundrobin
 
+      # Temporal.io (Corporate Workflow Engine & Orchestration UI)
+      - id: route-host-temporal
+        uri: /*
+        hosts:
+          - "temporal.darueira-corpshared.127.0.0.1.nip.io"
+          - "temporal.darueira-corpshared.192.168.178.84.nip.io"
+          - "temporal.darueira-corpshared.127.0.0.1.sslip.io"
+          - "temporal.darueira-corpshared.local"
+          - "workflows.darueira-corpshared.127.0.0.1.nip.io"
+          - "workflows.darueira-corpshared.local"
+        upstream:
+          nodes:
+            "temporal-ui-svc.drr-corpshared-plat.svc.cluster.local:8080": 1
+          type: roundrobin
+
       # =========================================================================
       # 2. Tenant Isolated Services - Host-based Reverse Proxy Routes
       # =========================================================================

@@ -53,6 +53,7 @@ spec:
             - -c
             - |
               set -e
+              rm -rf /opt/nifi/certs/*
               echo "Generating PKCS12 keystore from wildcard TLS..."
               openssl pkcs12 -export \
                 -in /certs-source/tls.crt \

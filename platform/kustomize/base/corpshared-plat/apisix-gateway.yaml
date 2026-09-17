@@ -297,11 +297,14 @@ data:
       # Central MinIO S3 Console
       - id: route-host-minio-console
         uri: /*
+        enable_websocket: true
         hosts:
           - "minio.darueira-corpshared.127.0.0.1.nip.io"
           - "minio.darueira-corpshared.192.168.178.84.nip.io"
           - "minio.darueira-corpshared.127.0.0.1.sslip.io"
           - "minio.darueira-corpshared.local"
+          - "minio-corp.darueira-corpshared.127.0.0.1.nip.io"
+          - "minio-corp.darueira-corpshared.local"
         upstream:
           nodes:
             "central-minio.drr-corpshared-plat.svc.cluster.local:9001": 1

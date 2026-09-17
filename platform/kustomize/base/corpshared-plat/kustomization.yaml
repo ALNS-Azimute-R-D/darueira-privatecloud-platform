@@ -26,3 +26,4 @@ resources:
   - clavex.yaml
   - apache-nifi.yaml
   - temporal.yaml
+  - jsreport.yaml

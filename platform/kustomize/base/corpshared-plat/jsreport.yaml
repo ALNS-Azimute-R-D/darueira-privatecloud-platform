@@ -1,0 +1,247 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jsreport-config
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: jsreport
+    darueira.io/tier: enterprise-shared
+data:
+  jsreport.config.json: |
+    {
+      "httpPort": 5488,
+      "tempDirectory": "/tmp/jsreport",
+      "logger": {
+        "console": {
+          "transport": "console",
+          "level": "debug"
+        },
+        "file": null,
+        "error": null
+      },
+      "chrome": {
+        "timeout": 120000,
+        "launchOptions": {
+          "args": [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--no-zygote",
+            "--single-process",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+            "--disable-crash-reporter",
+            "--disable-breakpad",
+            "--disable-crashpad-for-testing"
+          ]
+        }
+      },
+      "store": {
+        "provider": "postgres"
+      },
+      "blobStorage": {
+        "provider": "fs"
+      },
+      "trustUserCode": true,
+      "allowLocalFilesAccess": true,
+      "extensions": {
+        "postgres-store": {
+          "host": "central-postgres.drr-corpshared-plat.svc.cluster.local",
+          "port": 5432,
+          "database": "drr_jsreport_db",
+          "user": "drr_admin",
+          "password": "change-me-in-openbao"
+        },
+        "chrome-pdf": {
+          "timeout": 120000,
+          "launchOptions": {
+            "args": [
+              "--no-sandbox",
+              "--disable-setuid-sandbox",
+              "--no-zygote",
+              "--single-process",
+              "--disable-dev-shm-usage",
+              "--disable-gpu",
+              "--disable-crash-reporter",
+              "--disable-breakpad",
+              "--disable-crashpad-for-testing"
+            ]
+          }
+        },
+        "authentication": {
+          "cookieSession": {
+            "secret": "darueira-corporate-jsreport-session-secret-2026-supersecure"
+          },
+          "admin": {
+            "username": "admin",
+            "password": "change-me-in-openbao"
+          }
+        }
+      }
+    }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jsreport-pvc
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: jsreport
+    darueira.io/tier: enterprise-shared
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: darueira-host-storage
+  resources:
+    requests:
+      storage: 15Gi
+  volumeName: pv-drr-jsreport
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jsreport
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: jsreport
+    app.kubernetes.io/component: reporting-server
+    darueira.io/tier: enterprise-shared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jsreport
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: jsreport
+        app.kubernetes.io/component: reporting-server
+        darueira.io/tier: enterprise-shared
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: nbalns-mifcom-lnx-01
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: jsreport
+          image: jsreport/jsreport:4.14.2-full
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 100
+            runAsGroup: 101
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: store_provider
+              value: "postgres"
+            - name: extensions_postgresStore_host
+              value: "central-postgres.drr-corpshared-plat.svc.cluster.local"
+            - name: extensions_postgresStore_port
+              value: "5432"
+            - name: extensions_postgresStore_database
+              value: "drr_jsreport_db"
+            - name: extensions_postgresStore_user
+              value: "drr_admin"
+            - name: extensions_postgresStore_password
+              value: "change-me-in-openbao"
+            - name: PGSSLMODE
+              value: "disable"
+            - name: trustUserCode
+              value: "true"
+            - name: extensions_authentication_admin_username
+              value: "admin"
+            - name: extensions_authentication_admin_password
+              value: "change-me-in-openbao"
+            - name: extensions_authentication_cookieSession_secret
+              value: "darueira-corporate-jsreport-session-secret-2026-supersecure"
+            - name: HOME
+              value: "/tmp"
+            - name: XDG_CONFIG_HOME
+              value: "/tmp/.chromium"
+            - name: XDG_CACHE_HOME
+              value: "/tmp/.chromium"
+          ports:
+            - name: http
+              containerPort: 5488
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2048Mi
+          startupProbe:
+            httpGet:
+              path: /api/ping
+              port: 5488
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /api/ping
+              port: 5488
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/ping
+              port: 5488
+            periodSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: jsreport-config
+              mountPath: /app/jsreport.config.json
+              subPath: jsreport.config.json
+            - name: jsreport-data
+              mountPath: /app/data
+            - name: dshm
+              mountPath: /dev/shm
+            - name: tmp
+              mountPath: /tmp
+            - name: logs
+              mountPath: /app/logs
+      volumes:
+        - name: jsreport-config
+          configMap:
+            name: jsreport-config
+        - name: jsreport-data
+          persistentVolumeClaim:
+            claimName: jsreport-pvc
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+        - name: tmp
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jsreport
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: jsreport
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 5488
+      targetPort: 5488
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: jsreport

@@ -508,6 +508,22 @@ data:
             "temporal-ui-svc.drr-corpshared-plat.svc.cluster.local:8080": 1
           type: roundrobin
 
+      # jsreport (Corporate Reporting & Document Generation Server)
+      - id: route-host-jsreport
+        uri: /*
+        hosts:
+          - "reports.darueira-corpshared.127.0.0.1.nip.io"
+          - "reports.darueira-corpshared.192.168.178.84.nip.io"
+          - "reports.darueira-corpshared.127.0.0.1.sslip.io"
+          - "reports.darueira-corpshared.local"
+          - "jsreport.darueira-corpshared.127.0.0.1.nip.io"
+          - "jsreport.darueira-corpshared.local"
+        upstream:
+          nodes:
+            "jsreport.drr-corpshared-plat.svc.cluster.local:5488": 1
+          type: roundrobin
+
+
       # =========================================================================
       # 2. Tenant Isolated Services - Host-based Reverse Proxy Routes
       # =========================================================================

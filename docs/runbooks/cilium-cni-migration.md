@@ -1,6 +1,6 @@
 # Runbook: Migração de CNI — Calico → Cilium
 
-**Status:** Fases 0, 1 e 2 executadas e validadas em 2026-09-22. Enforcement das 4 políticas de controle (`obs`/`mgmt`/`plat`/`secr-internal`) já está **live** (aconteceu sem querer na Fase 1, debugado e corrigido na Fase 2 — ver achado crítico abaixo). Falta só a política de **tenant** (Fase 3, audit mode) e o enforcement formal (Fase 4, que na prática já vale pras 4 namespaces de controle).
+**Status:** Fases 0, 1 e 2 executadas e validadas em 2026-09-22. Enforcement das 4 políticas de controle (`obs`/`mgmt`/`plat`/`secr-internal`) já está **live** (aconteceu sem querer na Fase 1, debugado e corrigido na Fase 2 — ver achado crítico abaixo). `policy-audit-mode` está `Disabled` globalmente desde a Fase 1 (nunca chegou a ser ligado formalmente) — ou seja, todo rollout de tenant na Fase 3 já está indo direto pra enforcement real, não pra um modo audit de verdade; tratar cada apply de tenant como enforcement ao vivo. Fase 3 em andamento: 1 de 9 namespaces de tenant migrado (`drr-tnt-swfabrik-latam-dev`, validado). Falta o restante dos tenants (Fase 3) e o enforcement formal (Fase 4, que na prática já vale pras 4 namespaces de controle e para o tenant já migrado).
 **Objetivo:** Fechar a Deviation #1 do `specs/01-initial-spec.md` (§11) — isolamento de rede declarado (5 `CiliumNetworkPolicy` já versionadas) mas não aplicado, porque o cluster roda Calico e não há agente Cilium ativo.
 **Escopo:** Cluster single-node MicroK8s (`darueira-privatecloud-platform`), uso de estudo pessoal, sem outros consumidores.
 
@@ -165,12 +165,31 @@ microk8s kubectl exec -n kube-system "$CIL_POD" -- hubble observe --namespace <n
 
 Ajustar a política se algo aparecer bloqueado indevidamente (porta faltando, label errado, entidade faltando) e reaplicar. Testar DNS explicitamente com um pod novo (`nslookup kubernetes.default.svc.cluster.local`) antes de considerar o namespace validado — não confiar só na ausência de drops na amostra do Hubble, como o caso do `obs` provou.
 
+### `drr-tnt-swfabrik-latam-dev` (2026-09-22)
+
+Primeiro namespace de tenant migrado. Confirmou a suspeita da linha acima: a política de tenant sofria do mesmo bug do `corpshared-obs` (DNS só com `toEndpoints` específico, sem fallback). Aplicado o mesmo fix (`toEntities: [cluster, world]`) em `tnt-tenant-base/network-policy-template.yaml` antes de aplicar no cluster.
+
+- Nota: `policy-audit-mode` já estava `Disabled` globalmente (enforcement real, não audit) — mesma situação "sem querer" descrita no achado crítico da Fase 2. Não há modo audit formal rodando neste cluster desde a Fase 1; todo rollout de tenant está, na prática, indo direto pra enforcement.
+- `hubble observe --namespace drr-tnt-swfabrik-latam-dev --verdict DROPPED` (amostra de ~2h pós-apply): nenhum drop.
+- Pod de teste novo (`dns-test-latam`, `busybox:1.36`, `securityContext` compatível com PodSecurity `restricted`) resolveu `kubernetes.default.svc.cluster.local` com sucesso.
+- Hubble confirmou o fluxo: `dns-test-latam -> kube-system/coredns-...:53 policy-verdict:L3-L4 EGRESS ALLOWED (UDP)`, `FORWARDED` nos dois sentidos.
+- `tenant-keycloak` nesse namespace tem histórico crônico de restarts (139 em 19 dias, não relacionado — ver padrão similar ao Postgres central na Fase 1); o restart mais próximo da aplicação da política (16:06-16:09) já estava ~45min depois do apply (15:21) e o boot seguinte completou normalmente (DB conectado, Keycloak `started`), então não foi causado pela política.
+
 Checklist por namespace:
 - [x] `corpshared-obs`
 - [x] `corpshared-mgmt`
 - [x] `corpshared-secr-internal`
 - [x] `corpshared-plat`
-- [ ] Tenants (listar conforme forem migrados)
+- [x] `drr-tnt-swfabrik-latam-dev`
+- [ ] `drr-tnt-swfabrik-europe-dev`
+- [ ] `drr-tnt-swfabrik-europe-marketplaces-dev`
+- [ ] `drr-tnt-acme-storefront-dev`
+- [ ] `drr-tnt-acme-storefront-staging`
+- [ ] `drr-tnt-acme-storefront-prod`
+- [ ] `drr-tnt-globex-logistics-dev`
+- [ ] `drr-tnt-globex-logistics-prod`
+- [ ] `drr-tnt-darueira-corp-platform-core-prod`
+- [ ] `drr-tnt-base-template` (template namespace — confirmar se recebe workload real ou pode ser pulado)
 
 ---
 

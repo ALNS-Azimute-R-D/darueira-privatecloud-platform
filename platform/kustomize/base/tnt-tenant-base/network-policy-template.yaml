@@ -25,9 +25,19 @@ spec:
     - toEndpoints:
         - matchLabels:
             darueira.io/tier: tenant-workload
-    # Allow DNS resolution
+    # Allow DNS resolution.
+    # NOTE (2026-09-22): `toEntities: [cluster]` alone was proven insufficient
+    # to reach CoreDNS's ClusterIP in this cluster (KubeProxyReplacement is
+    # disabled, so kube-proxy/iptables does the Service DNAT, and Cilium
+    # doesn't resolve the pre-DNAT ClusterIP as `cluster` alone) — see the
+    # corpshared-obs fix in network-policy.yaml and docs/runbooks/
+    # cilium-cni-migration.md Fase 2 for the isolated test that found this.
+    # `world` was applied pre-emptively and validated empirically in
+    # drr-tnt-swfabrik-latam-dev (Fase 3): fresh test pod resolved DNS,
+    # Hubble confirmed `policy-verdict:L3-L4 EGRESS ALLOWED` to CoreDNS.
     - toEntities:
         - cluster
+        - world
       toPorts:
         - ports:
             - port: "53"

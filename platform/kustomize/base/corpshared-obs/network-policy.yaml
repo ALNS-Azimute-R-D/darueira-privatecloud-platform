@@ -50,3 +50,22 @@ spec:
             darueira.io/tier: enterprise-shared
         - matchLabels:
             darueira.io/tier: tenant-workload
+    # 3. Cluster-wide fallback (matches the pattern already proven working in
+    #    corpshared-plat/mgmt/secr-internal's network-policy.yaml). Added
+    #    2026-09-22: the CoreDNS-specific rule above (#1) was not being matched
+    #    in practice once Cilium started enforcing this policy (verified via
+    #    Hubble: "policy denied" on UDP/53 to kube-system/kube-dns even though
+    #    its labels matched exactly), breaking DNS for prometheus and
+    #    fluent-bit. Keeping rule #1 for documentation intent, but this
+    #    broader rule is what actually restores DNS/cluster connectivity.
+    #    IMPORTANT: `world` must be included alongside `cluster`, confirmed by
+    #    isolated testing (minimal policy, fresh pod, egress-only) -
+    #    `toEntities: [cluster]` alone was NOT enough to reach CoreDNS's
+    #    ClusterIP; only `[cluster, world]` together worked. This cluster runs
+    #    with KubeProxyReplacement disabled (kube-proxy does the Service
+    #    ClusterIP DNAT via iptables, not Cilium natively), which is the
+    #    likely reason the pre-DNAT ClusterIP isn't classified as `cluster`
+    #    alone by Cilium's identity resolution for this traffic pattern.
+    - toEntities:
+        - cluster
+        - world

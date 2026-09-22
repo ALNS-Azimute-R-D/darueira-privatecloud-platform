@@ -1,6 +1,6 @@
 # Runbook: Migração de CNI — Calico → Cilium
 
-**Status:** Fase 0 e Fase 1 executadas e validadas em 2026-09-22. Fases 2–4 (Hubble contínuo, rollout de política em audit, enforcement) ainda pendentes.
+**Status:** Fases 0, 1 e 2 executadas e validadas em 2026-09-22. Enforcement das 4 políticas de controle (`obs`/`mgmt`/`plat`/`secr-internal`) já está **live** (aconteceu sem querer na Fase 1, debugado e corrigido na Fase 2 — ver achado crítico abaixo). Falta só a política de **tenant** (Fase 3, audit mode) e o enforcement formal (Fase 4, que na prática já vale pras 4 namespaces de controle).
 **Objetivo:** Fechar a Deviation #1 do `specs/01-initial-spec.md` (§11) — isolamento de rede declarado (5 `CiliumNetworkPolicy` já versionadas) mas não aplicado, porque o cluster roda Calico e não há agente Cilium ativo.
 **Escopo:** Cluster single-node MicroK8s (`darueira-privatecloud-platform`), uso de estudo pessoal, sem outros consumidores.
 
@@ -104,19 +104,38 @@ Checklist:
 ## Fase 2 — Observabilidade com Hubble
 
 ```bash
-cilium hubble enable --ui
-cilium hubble ui   # abre port-forward local pra UI
+# UI via helm upgrade (não precisa de sudo, é só chamada à API do cluster):
+microk8s helm3 upgrade cilium cilium/cilium --version v1.15.2 --namespace kube-system \
+  --reuse-values --set hubble.ui.enabled=true
+
+# hubble CLI já vem embutido no pod do agente, não depende do plugin do addon
+# (que fica com permissão só pra root):
+CIL_POD=$(microk8s kubectl get pods -n kube-system -l k8s-app=cilium -o jsonpath='{.items[0].metadata.name}')
+microk8s kubectl exec -n kube-system "$CIL_POD" -- hubble observe --last 40
 ```
 
-Deixar rodando um tempo e observar os fluxos reais entre namespaces antes de aplicar qualquer política — isso valida (ou contradiz) as suposições que já estão escritas nos 5 arquivos de `network-policy.yaml`.
+### 🔴 Achado crítico (2026-09-22): políticas antigas já estavam em enforcement
+
+**As 4 `CiliumNetworkPolicy` de `corpshared-{mgmt,obs,plat,secr-internal}` já existiam no cluster há 35 dias** (aplicadas via GitOps/kustomize muito antes desta migração), mas ficaram **dormentes** o tempo todo porque Calico não entende esse CRD. **No instante em que o Cilium ficou ativo na Fase 1, essas 4 políticas entraram em enforcement real — sem passar por nenhum modo audit.** A Fase 3 planejada (rollout controlado) foi pulada sem querer pra essas 4 namespaces; só a política de tenant (`tnt-tenant-base/network-policy-template.yaml`) continua genuinamente não aplicada.
+
+**Ação obrigatória antes da Fase 1 em qualquer repetição futura**: rodar `kubectl get ciliumnetworkpolicies -A` **antes** do cutover. Se já existir alguma, ela vai "ligar" sozinha assim que o agente subir — trate isso como parte da Fase 1, não da Fase 3.
+
+**Bug real encontrado e corrigido**: a política do `corpshared-obs` tinha egress **só** com uma regra específica pro CoreDNS (`toEndpoints` com `matchLabels` exatos de namespace+k8s-app) — e essa regra, apesar de labels batendo certinho, **não casava** (confirmado via `hubble observe --verdict DROPPED`: `policy-verdict:none EGRESS DENIED`, destino classificado como `world` mesmo sendo um IP de pod do cluster). As outras 3 políticas "funcionavam" só porque tinham, de brinde, uma regra ampla `toEntities: [cluster, world]` que cobre DNS como efeito colateral.
+
+Isolei a causa com um teste mínimo (`endpointSelector: {}` + só `egress: toEntities: cluster`, pod novo, nunca tocado pelo Calico): **`toEntities: [cluster]` sozinho não é suficiente** pra alcançar o ClusterIP do CoreDNS — precisa de `[cluster, world]` juntos. Motivo provável: este cluster roda com `KubeProxyReplacement: False` (kube-proxy faz o DNAT do ClusterIP via iptables, não o Cilium nativamente), e o Cilium não reconhece o IP pré-NAT como identidade `cluster` sozinha nesse cenário.
+
+**Fix aplicado**: `platform/kustomize/base/corpshared-obs/network-policy.yaml` ganhou uma 3ª regra de egress `toEntities: [cluster, world]`, igual ao padrão já usado (sem essa dor) nas outras 3 políticas. Restaurou DNS pro `prometheus`, `fluent-bit` e, como bônus, **tirou o `opensearch-dashboards` de um `CrashLoopBackOff` que já durava 35 dias** (não era a causa histórica — Calico não aplicava nada — mas piorava/travava os restarts de hoje).
 
 Checklist:
-- [ ] Hubble relay + UI rodando
-- [ ] Fluxos entre `corpshared-plat` ↔ tenants ↔ `corpshared-obs` observados por pelo menos algumas horas de uso normal
+- [x] Hubble relay + UI rodando
+- [x] Fluxos observados e política pré-existente auditada em produção real (via debug ao vivo, não modo audit formal)
+- [x] Bug de DNS no `corpshared-obs` encontrado e corrigido
 
 ---
 
 ## Fase 3 — Rollout das políticas em modo audit
+
+**Status (2026-09-22): as 4 políticas de controle (`obs`, `mgmt`, `plat`, `secr-internal`) já estão live e validadas** (ver achado na Fase 2 — entraram em enforcement direto na Fase 1, sem audit mode formal, e foram debugadas/corrigidas ao vivo). O que falta desta fase é só a política de tenant (`tnt-tenant-base/network-policy-template.yaml`), que nunca foi aplicada em nenhum namespace `drr-tnt-*` e continua genuinamente pendente — essa sim deve seguir o processo formal de audit mode abaixo, já que é território não testado.
 
 O modo audit do Cilium é global ao agente (não é por-namespace), mas como cada `CiliumNetworkPolicy` só passa a ser avaliada nos endpoints que ela seleciona, dá pra fazer rollout incremental por namespace **mesmo com audit ligado globalmente**: sem política, o namespace continua em "allow all"; com política + audit, ele começa a logar o que *seria* bloqueado, sem bloquear de fato.
 
@@ -126,30 +145,31 @@ cilium config set policy-audit-mode Enabled
 # ou, via Helm values do addon: policyAuditMode: true
 ```
 
-Ordem de rollout sugerida (do menos crítico pro mais crítico):
+Ordem de rollout restante:
 
-1. `corpshared-obs` (observabilidade — menor impacto se algo falhar)
-2. `corpshared-mgmt` (Backstage, ArgoCD, Tekton)
-3. `corpshared-secr-internal` (OpenBao — atenção redobrada, é o cofre de segredos)
-4. `corpshared-plat` (maior superfície: Postgres, MinIO, Redpanda, RabbitMQ, Temporal, NiFi, jsreport, Clavex, Roundcube)
-5. Namespaces de tenant (`drr-tnt-<tenant>-<env>`), um de cada vez, começando pelo menos usado
+1. ~~`corpshared-obs`~~ — feito (Fase 2)
+2. ~~`corpshared-mgmt`~~ — já estava live, sem drop encontrado
+3. ~~`corpshared-secr-internal`~~ — já estava live, sem drop encontrado
+4. ~~`corpshared-plat`~~ — já estava live, sem drop encontrado
+5. **Namespaces de tenant (`drr-tnt-<tenant>-<env>`)** — pendente, um de cada vez, começando pelo menos usado. **Atenção**: a política de tenant tem a mesma estrutura de egress "só endpoints específicos" que causou o bug do `corpshared-obs` (sem `toEntities: [cluster, world]` de fallback) — bem provável que precise do mesmo fix antes de aplicar. Testar em audit mode primeiro, não assumir que vai funcionar.
 
-Pra cada namespace:
+Pra cada namespace de tenant:
 
 ```bash
-microk8s kubectl apply -f platform/kustomize/base/<namespace>/network-policy.yaml
+microk8s kubectl apply -f platform/kustomize/base/tnt-tenant-base/network-policy-template.yaml
 
 # Observar no Hubble (CLI ou UI) por "would-drop" / policy-verdict
-hubble observe --namespace <namespace> --verdict AUDIT
+CIL_POD=$(microk8s kubectl get pods -n kube-system -l k8s-app=cilium -o jsonpath='{.items[0].metadata.name}')
+microk8s kubectl exec -n kube-system "$CIL_POD" -- hubble observe --namespace <namespace> --verdict DROPPED
 ```
 
-Ajustar a política se algo aparecer bloqueado indevidamente (porta faltando, label errado, entidade faltando) e reaplicar.
+Ajustar a política se algo aparecer bloqueado indevidamente (porta faltando, label errado, entidade faltando) e reaplicar. Testar DNS explicitamente com um pod novo (`nslookup kubernetes.default.svc.cluster.local`) antes de considerar o namespace validado — não confiar só na ausência de drops na amostra do Hubble, como o caso do `obs` provou.
 
 Checklist por namespace:
-- [ ] `corpshared-obs`
-- [ ] `corpshared-mgmt`
-- [ ] `corpshared-secr-internal`
-- [ ] `corpshared-plat`
+- [x] `corpshared-obs`
+- [x] `corpshared-mgmt`
+- [x] `corpshared-secr-internal`
+- [x] `corpshared-plat`
 - [ ] Tenants (listar conforme forem migrados)
 
 ---

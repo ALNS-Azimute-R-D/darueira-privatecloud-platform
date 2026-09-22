@@ -8,12 +8,62 @@ spec:
     matchLabels:
       darueira.io/tier: enterprise-shared
   ingress:
-    # 1. Allow OTLP ingestion from all internal platform and tenant workloads
-    - fromEndpoints:
+    # 1. Allow OTLP ingestion from all internal platform and tenant workloads.
+    # NOTE (2026-09-23): a namespaced CiliumNetworkPolicy implicitly scopes
+    # plain matchLabels to its own namespace (the `any:` label-source prefix
+    # does NOT bypass this — confirmed empirically via `cilium policy
+    # selectors`, which still showed the auto-injected
+    # `k8s.io.kubernetes.pod.namespace` constraint alongside `any:...`).
+    # The only mechanism that works is explicitly setting
+    # `k8s:io.kubernetes.pod.namespace` to the target namespace per entry,
+    # so this rule enumerates every enterprise-shared and tenant namespace
+    # that legitimately sends OTLP/logs here. New tenant namespace = must
+    # add an entry here (and to the egress scrape rule below) manually —
+    # no generic "any namespace" selector exists in a namespaced
+    # CiliumNetworkPolicy. See docs/runbooks/cilium-cni-migration.md Fase 3.
+    - fromEndpoints: &cross-ns-obs-sources
         - matchLabels:
             darueira.io/tier: enterprise-shared
+            k8s:io.kubernetes.pod.namespace: drr-corpshared-obs
+        - matchLabels:
+            darueira.io/tier: enterprise-shared
+            k8s:io.kubernetes.pod.namespace: drr-corpshared-mgmt
+        - matchLabels:
+            darueira.io/tier: enterprise-shared
+            k8s:io.kubernetes.pod.namespace: drr-corpshared-plat
+        - matchLabels:
+            darueira.io/tier: enterprise-shared
+            k8s:io.kubernetes.pod.namespace: drr-corpshared-secr-internal
         - matchLabels:
             darueira.io/tier: tenant-workload
+            k8s:io.kubernetes.pod.namespace: drr-tnt-acme-storefront-dev
+        - matchLabels:
+            darueira.io/tier: tenant-workload
+            k8s:io.kubernetes.pod.namespace: drr-tnt-acme-storefront-staging
+        - matchLabels:
+            darueira.io/tier: tenant-workload
+            k8s:io.kubernetes.pod.namespace: drr-tnt-acme-storefront-prod
+        - matchLabels:
+            darueira.io/tier: tenant-workload
+            k8s:io.kubernetes.pod.namespace: drr-tnt-base-template
+        - matchLabels:
+            darueira.io/tier: tenant-workload
+            k8s:io.kubernetes.pod.namespace: drr-tnt-darueira-corp-platform-core-prod
+        - matchLabels:
+            darueira.io/tier: tenant-workload
+            k8s:io.kubernetes.pod.namespace: drr-tnt-globex-logistics-dev
+        - matchLabels:
+            darueira.io/tier: tenant-workload
+            k8s:io.kubernetes.pod.namespace: drr-tnt-globex-logistics-prod
+        - matchLabels:
+            darueira.io/tier: tenant-workload
+            k8s:io.kubernetes.pod.namespace: drr-tnt-swfabrik-europe-dev
+        - matchLabels:
+            darueira.io/tier: tenant-workload
+            k8s:io.kubernetes.pod.namespace: drr-tnt-swfabrik-europe-marketplaces-dev
+        - matchLabels:
+            darueira.io/tier: tenant-workload
+            k8s:io.kubernetes.pod.namespace: drr-tnt-swfabrik-latam-dev
       toPorts:
         - ports:
             - port: "4317"
@@ -30,7 +80,8 @@ spec:
               protocol: TCP
             - port: "9200"
               protocol: TCP
-    # 2. Allow intra-observability traffic
+    # 2. Allow intra-observability traffic (same-namespace by design, no
+    #    explicit namespace needed — default scoping is correct here).
     - fromEndpoints:
         - matchLabels:
             darueira.io/subsystem: observability
@@ -44,12 +95,10 @@ spec:
         - ports:
             - port: "53"
               protocol: UDP
-    # 2. Allow intra-observability and scrape platform services
-    - toEndpoints:
-        - matchLabels:
-            darueira.io/tier: enterprise-shared
-        - matchLabels:
-            darueira.io/tier: tenant-workload
+    # 2. Allow intra-observability and scrape platform/tenant services.
+    #    Same enumerated cross-namespace set as ingress rule 1 above,
+    #    reused via YAML anchor to avoid the two lists drifting apart.
+    - toEndpoints: *cross-ns-obs-sources
     # 3. Cluster-wide fallback (matches the pattern already proven working in
     #    corpshared-plat/mgmt/secr-internal's network-policy.yaml). Added
     #    2026-09-22: the CoreDNS-specific rule above (#1) was not being matched

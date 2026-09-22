@@ -1,6 +1,6 @@
 # Runbook: Migração de CNI — Calico → Cilium
 
-**Status:** Fases 0, 1 e 2 executadas e validadas em 2026-09-22. Enforcement das 4 políticas de controle (`obs`/`mgmt`/`plat`/`secr-internal`) já está **live** (aconteceu sem querer na Fase 1, debugado e corrigido na Fase 2 — ver achado crítico abaixo). `policy-audit-mode` está `Disabled` globalmente desde a Fase 1 (nunca chegou a ser ligado formalmente) — ou seja, todo rollout de tenant na Fase 3 já está indo direto pra enforcement real, não pra um modo audit de verdade; tratar cada apply de tenant como enforcement ao vivo. Fase 3 em andamento: 1 de 9 namespaces de tenant migrado (`drr-tnt-swfabrik-latam-dev`, validado). Falta o restante dos tenants (Fase 3) e o enforcement formal (Fase 4, que na prática já vale pras 4 namespaces de controle e para o tenant já migrado).
+**Status:** Fases 0, 1 e 2 executadas e validadas em 2026-09-22. Enforcement das 4 políticas de controle (`obs`/`mgmt`/`plat`/`secr-internal`) já está **live** (aconteceu sem querer na Fase 1, debugado e corrigido na Fase 2 — ver achado crítico abaixo). `policy-audit-mode` está `Disabled` globalmente desde a Fase 1 (nunca chegou a ser ligado formalmente) — ou seja, todo rollout de tenant na Fase 3 já está indo direto pra enforcement real, não pra um modo audit de verdade; tratar cada apply de tenant como enforcement ao vivo. **2026-09-23: achado crítico #2** (ver seção própria abaixo) — as 5 políticas tinham um bug de escopo de namespace que quebrava silenciosamente todo o cross-namespace pretendido pelo design; corrigido nas 5 e revalidado nos 2 tenants já migrados. Fase 3 em andamento: 2 de 9 namespaces de tenant migrados (`drr-tnt-swfabrik-latam-dev`, `drr-tnt-swfabrik-europe-dev`, ambos validados). Falta o restante dos tenants (Fase 3) e o enforcement formal (Fase 4, que na prática já vale pras 4 namespaces de controle e para os 2 tenants já migrados).
 **Objetivo:** Fechar a Deviation #1 do `specs/01-initial-spec.md` (§11) — isolamento de rede declarado (5 `CiliumNetworkPolicy` já versionadas) mas não aplicado, porque o cluster roda Calico e não há agente Cilium ativo.
 **Escopo:** Cluster single-node MicroK8s (`darueira-privatecloud-platform`), uso de estudo pessoal, sem outros consumidores.
 
@@ -175,13 +175,41 @@ Primeiro namespace de tenant migrado. Confirmou a suspeita da linha acima: a pol
 - Hubble confirmou o fluxo: `dns-test-latam -> kube-system/coredns-...:53 policy-verdict:L3-L4 EGRESS ALLOWED (UDP)`, `FORWARDED` nos dois sentidos.
 - `tenant-keycloak` nesse namespace tem histórico crônico de restarts (139 em 19 dias, não relacionado — ver padrão similar ao Postgres central na Fase 1); o restart mais próximo da aplicação da política (16:06-16:09) já estava ~45min depois do apply (15:21) e o boot seguinte completou normalmente (DB conectado, Keycloak `started`), então não foi causado pela política.
 
+### 🔴 Achado crítico #2 (2026-09-23): as 5 políticas nunca cruzaram namespace de verdade
+
+Ao migrar `drr-tnt-swfabrik-europe-dev` (segundo tenant), o Hubble mostrou drops reais e ativos: `food-market-*`, `bookanything-maps-generator` e `caseforce-legalhub-mgmt` sendo bloqueados tentando alcançar RabbitMQ (`5672`) e Temporal (`7233`) em `drr-corpshared-plat`, apesar da regra de egress "Allow communication to Central Shared Services" (`toEndpoints: matchLabels: darueira.io/tier: enterprise-shared`) existir exatamente pra isso.
+
+**Causa raiz**: um `CiliumNetworkPolicy` (recurso namespaced) escopa implicitamente todo `fromEndpoints`/`toEndpoints` com `matchLabels` ao **próprio namespace da política**, injetando automaticamente `k8s:io.kubernetes.pod.namespace: <namespace-da-política>` em cada seletor. Como nenhuma das 5 políticas (`corpshared-{obs,mgmt,plat,secr-internal}` + `tnt-tenant-base`) declarava namespace explicitamente nesses seletores, toda regra baseada em `darueira.io/tier` ou `app.kubernetes.io/name` que deveria cruzar namespace **nunca casou com nada fora do próprio namespace da política** — desde que essas políticas foram escritas, antes desta migração.
+
+Confirmado empiricamente via `cilium endpoint get <id> -o json` → `status.policy.realized.allowed-egress-identities`: a identidade do RabbitMQ (`drr-corpshared-plat`) não aparecia na lista permitida do endpoint do tenant, mesmo os labels batendo perfeitamente.
+
+**Por que isso não tinha sido pego nas Fases 2/3 anteriores**: as 4 políticas de controle (`obs`/`mgmt`/`plat`/`secr-internal`) têm uma regra de fallback `fromEntities: [cluster, host]` (ingress, sem restrição de porta) que mascarava o bug — qualquer coisa vinda de dentro do cluster passava por ali mesmo com a regra baseada em label quebrada. A política de tenant **não tem esse fallback genérico** (só tem `toEntities: [cluster, world]` para DNS, porta 53), então foi o primeiro lugar onde o bug causou um drop real e visível.
+
+**Tentativa de fix errada, documentada pra não repetir**: a primeira hipótese foi usar o prefixo de label-source `any:` (ex.: `any:darueira.io/tier: enterprise-shared`), que a documentação do Cilium associa a "ignorar o namespace". **Não funcionou** — confirmado via `cilium policy selectors`, que mostrou o seletor resultante como `{any.darueira.io/tier: enterprise-shared, k8s.io.kubernetes.pod.namespace: drr-tnt-swfabrik-europe-dev}`: o namespace da política continuou sendo auto-injetado *junto* com o `any:`, não substituído por ele.
+
+**Fix que realmente funciona**: declarar `k8s:io.kubernetes.pod.namespace: <namespace-alvo>` explicitamente dentro do próprio `matchLabels`, ao lado do label de tier/nome. Isso sobrepõe a auto-injeção do Cilium (confirmado via `cilium endpoint get` mostrando a identidade-alvo passando a aparecer em `allowed-egress-identities`/`allowed-ingress-identities`, e via tráfego real `FORWARDED` no Hubble). Como não existe um "casa com qualquer namespace" genérico nesse mecanismo, cada seletor cross-namespace vira uma lista de `matchLabels` — um item por namespace-alvo conhecido.
+
+**Onde isso foi aplicado** (todos usando namespace explícito, decisão registrada: enumerar os namespaces atuais em vez de migrar pra `CiliumClusterwideNetworkPolicy` — ver trade-off abaixo):
+- `corpshared-mgmt` e `corpshared-plat`: ingress + egress `enterprise-shared` agora enumeram os outros 3 namespaces `corpshared-*` (reutilizado via YAML anchor `&sibling-enterprise-shared` dentro de cada arquivo, já que ingress e egress precisam da mesma lista).
+- `corpshared-obs`: ingress (OTLP) + egress (scrape) agora enumeram os 4 namespaces `corpshared-*` (incluindo o próprio `drr-corpshared-obs` — **regressão que eu mesmo introduzi e corrigi na hora**: a primeira versão do fix excluiu `drr-corpshared-obs` da lista assumindo que a regra separada de "intra-observability" cobriria tráfego same-namespace tipo `fluent-bit -> opensearch:9200`, mas essa regra só casa `darueira.io/subsystem: observability` como label de **pod**, que `fluent-bit` não tem — ele só carrega `darueira.io/tier: enterprise-shared`. Causou um drop real por ~1min até ser corrigido) + os 10 namespaces `drr-tnt-*` atuais (reutilizado via anchor `&cross-ns-obs-sources`).
+- `tnt-tenant-base/network-policy-template.yaml`: a regra do `apisix-gateway` (ingress, porta 8000) agora fixa `k8s:io.kubernetes.pod.namespace: drr-corpshared-plat` (único namespace onde o gateway roda). A regra de `enterprise-shared` (egress) enumera os 4 namespaces `corpshared-*`. As regras `tenant-workload` (ingress/egress, tráfego intra-tenant) foram **deixadas como estavam de propósito** — o escopo automático ao próprio namespace é o comportamento correto ali, já que isola tenants diferentes entre si mesmo compartilhando o mesmo label de tier.
+- `corpshared-secr-internal`: sem mudança — não usa `matchLabels` cross-namespace em nenhuma regra (só `fromEntities`/`toEntities`).
+
+**Trade-off consciente**: enumerar namespaces funciona bem pros 4 `corpshared-*` (fixos, baixa cadência de mudança) e pro `apisix-gateway` (1 namespace fixo), mas pras 2 regras do `corpshared-obs` que precisam casar `tenant-workload` de qualquer tenant, significa que **criar um tenant novo exige lembrar de adicionar o namespace dele nessas 2 regras** (ambas usam o mesmo anchor `&cross-ns-obs-sources`, então é uma edição só). Decisão registrada (2026-09-23): manter enumeração por agora (plataforma de estudo pessoal, baixo número de tenants); migrar pra `CiliumClusterwideNetworkPolicy` fica como melhoria futura se o número de tenants crescer o suficiente pra doer.
+
+**Também descoberto no processo, sem impacto de fix necessário agora**: a regra de ingress de `corpshared-plat` restringe portas mas nunca incluiu a porta `7233` (Temporal) nem `tenant-workload` na lista de fontes — funciona hoje só porque a regra de fallback `fromEntities: [cluster, host]` (sem restrição de porta) cobre isso. Ou seja, a intenção de "least privilege" dessa regra específica já era, na prática, só documentação, não enforcement real — registrado aqui, não corrigido (fora do escopo do bug de hoje).
+
+**Lição de processo**: depois de um `kubectl apply` numa `CiliumNetworkPolicy`, esperar ~15-20s antes de tirar conclusão de um teste de drop/allow — o tempo de propagação até o mapa BPF do endpoint afetado gerou pelo menos um falso "ainda quebrado" nesta sessão (o `fluent-bit -> opensearch` citado acima já estava corrigido, só não tinha propagado ainda quando testei a primeira vez).
+
+**Achado não relacionado, registrado mas não corrigido**: `bookanything-monolith-backend-01` em `drr-tnt-swfabrik-europe-dev` está em `CrashLoopBackOff` há ~7h, mas **não é causado pela política de rede** — confirmado que é timeout de aplicação (1s) contra o `opensearch.drr-corpshared-obs` cujos health checks de filesystem estão levando 5-11s (mesmo sintoma de I/O em disco saturado já registrado pro Postgres central na Fase 1). Fora do escopo desta migração; fica registrado pra investigação futura de capacidade de disco.
+
 Checklist por namespace:
-- [x] `corpshared-obs`
-- [x] `corpshared-mgmt`
+- [x] `corpshared-obs` (revalidado após achado crítico #2)
+- [x] `corpshared-mgmt` (revalidado após achado crítico #2)
 - [x] `corpshared-secr-internal`
-- [x] `corpshared-plat`
-- [x] `drr-tnt-swfabrik-latam-dev`
-- [ ] `drr-tnt-swfabrik-europe-dev`
+- [x] `corpshared-plat` (revalidado após achado crítico #2)
+- [x] `drr-tnt-swfabrik-latam-dev` (revalidado após achado crítico #2)
+- [x] `drr-tnt-swfabrik-europe-dev`
 - [ ] `drr-tnt-swfabrik-europe-marketplaces-dev`
 - [ ] `drr-tnt-acme-storefront-dev`
 - [ ] `drr-tnt-acme-storefront-staging`

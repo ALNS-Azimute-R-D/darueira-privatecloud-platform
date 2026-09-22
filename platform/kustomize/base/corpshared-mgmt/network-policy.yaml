@@ -6,9 +6,22 @@ metadata:
 spec:
   endpointSelector: {}
   ingress:
-    - fromEndpoints:
+    # NOTE (2026-09-23): explicit `k8s:io.kubernetes.pod.namespace` per
+    # entry required — a namespaced CiliumNetworkPolicy implicitly scopes
+    # plain matchLabels to its own namespace, and the `any:` label-source
+    # prefix does NOT bypass that (confirmed empirically, see
+    # docs/runbooks/cilium-cni-migration.md Fase 3). Was masked here by the
+    # fromEntities fallback below.
+    - fromEndpoints: &sibling-enterprise-shared
         - matchLabels:
             darueira.io/tier: enterprise-shared
+            k8s:io.kubernetes.pod.namespace: drr-corpshared-obs
+        - matchLabels:
+            darueira.io/tier: enterprise-shared
+            k8s:io.kubernetes.pod.namespace: drr-corpshared-plat
+        - matchLabels:
+            darueira.io/tier: enterprise-shared
+            k8s:io.kubernetes.pod.namespace: drr-corpshared-secr-internal
       toPorts:
         - ports:
             - port: "7007"
@@ -21,9 +34,7 @@ spec:
         - host
         - cluster
   egress:
-    - toEndpoints:
-        - matchLabels:
-            darueira.io/tier: enterprise-shared
+    - toEndpoints: *sibling-enterprise-shared
     - toEntities:
         - cluster
         - kube-apiserver

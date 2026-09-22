@@ -5,14 +5,26 @@ metadata:
 spec:
   endpointSelector: {}
   ingress:
-    # Allow traffic within the same tenant environment
+    # Allow traffic within the same tenant environment (same-namespace by
+    # design, no explicit namespace needed — this is intentionally scoped
+    # to the tenant's own namespace so different tenants can't reach each
+    # other despite sharing the tenant-workload label).
     - fromEndpoints:
         - matchLabels:
             darueira.io/tier: tenant-workload
-    # Allow traffic from API Gateway DataPlane strictly to Envoy PEP (Port 8000)
+    # Allow traffic from API Gateway DataPlane strictly to Envoy PEP (Port 8000).
+    # NOTE (2026-09-23): apisix-gateway lives in drr-corpshared-plat, a
+    # different namespace from every tenant. A namespaced
+    # CiliumNetworkPolicy implicitly scopes plain matchLabels to its own
+    # namespace — the `any:` label-source prefix does NOT bypass this
+    # (confirmed empirically, see docs/runbooks/cilium-cni-migration.md
+    # Fase 3). Explicit `k8s:io.kubernetes.pod.namespace` is the only
+    # mechanism that works; without it this rule matched nothing and
+    # silently blocked all gateway->tenant ingress on port 8000.
     - fromEndpoints:
         - matchLabels:
             app.kubernetes.io/name: apisix-gateway
+            k8s:io.kubernetes.pod.namespace: drr-corpshared-plat
       toPorts:
         - ports:
             - port: "8000"
@@ -21,7 +33,8 @@ spec:
     - fromEntities:
         - host
   egress:
-    # Allow traffic within same tenant environment
+    # Allow traffic within same tenant environment (same-namespace by
+    # design — see NOTE on the matching ingress rule above).
     - toEndpoints:
         - matchLabels:
             darueira.io/tier: tenant-workload
@@ -44,7 +57,29 @@ spec:
               protocol: UDP
             - port: "53"
               protocol: TCP
-    # Allow communication to Central Shared Services (OpenBao, IdP, APM)
+    # Allow communication to Central Shared Services (OpenBao, IdP, APM).
+    # NOTE (2026-09-23): enterprise-shared services live in
+    # drr-corpshared-{mgmt,obs,plat,secr-internal}, never in the tenant's
+    # own namespace. Without explicit `k8s:io.kubernetes.pod.namespace`
+    # per entry, this rule matched nothing: caught live in
+    # drr-tnt-swfabrik-europe-dev via Hubble (EGRESS DENIED to
+    # RabbitMQ:5672 and Temporal:7233 in drr-corpshared-plat, confirmed via
+    # `cilium endpoint get` showing the target identity absent from
+    # allowed-egress-identities). The `any:` label-source prefix does NOT
+    # fix this — confirmed empirically via `cilium policy selectors`, which
+    # still showed the namespace auto-injected alongside `any:...`. Same
+    # bug found and fixed across all 5 policies — see
+    # docs/runbooks/cilium-cni-migration.md Fase 3.
     - toEndpoints:
         - matchLabels:
             darueira.io/tier: enterprise-shared
+            k8s:io.kubernetes.pod.namespace: drr-corpshared-mgmt
+        - matchLabels:
+            darueira.io/tier: enterprise-shared
+            k8s:io.kubernetes.pod.namespace: drr-corpshared-obs
+        - matchLabels:
+            darueira.io/tier: enterprise-shared
+            k8s:io.kubernetes.pod.namespace: drr-corpshared-plat
+        - matchLabels:
+            darueira.io/tier: enterprise-shared
+            k8s:io.kubernetes.pod.namespace: drr-corpshared-secr-internal

@@ -307,6 +307,7 @@ ROUTES = [
             "nodes": {"central-minio.drr-corpshared-plat.svc.cluster.local:9001": 1},
             "type": "roundrobin"
         },
+        "enable_websocket": True,
         "plugins": {"prometheus": {}}
     },
     {
@@ -542,6 +543,7 @@ ROUTES = [
             "nodes": {"tenant-minio.drr-tnt-acme.svc.cluster.local:9001": 1},
             "type": "roundrobin"
         },
+        "enable_websocket": True,
         "plugins": {"prometheus": {}}
     },
     {
@@ -607,6 +609,26 @@ ROUTES = [
             "nodes": {"tenant-keycloak.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8080": 1},
             "pass_host": "pass"
         },
+        "plugins": {"prometheus": {}}
+    },
+    {
+        "id": "route-host-swfabrik-europe-minio",
+        "name": "Tenant SWFabrik Europe MinIO Console",
+        "desc": "Dedicated Object Storage S3 Console for Tenant SWFabrik Europe",
+        "uri": "/*",
+        "hosts": [
+            "minio.swfabrik-europe.127.0.0.1.nip.io",
+            "minio.swfabrik-europe.192.168.178.84.nip.io",
+            "minio.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+            "minio.darueira-tnt-swfabrik-europe.192.168.178.84.nip.io",
+            "minio.swfabrik-europe.local",
+            "minio.darueira-tnt-swfabrik-europe.local"
+        ],
+        "upstream": {
+            "type": "roundrobin",
+            "nodes": {"tenant-minio.drr-tnt-swfabrik-europe-dev.svc.cluster.local:9001": 1}
+        },
+        "enable_websocket": True,
         "plugins": {"prometheus": {}}
     },
     {

@@ -1,6 +1,6 @@
 # Runbook: Migração de CNI — Calico → Cilium
 
-**Status:** Planejado, não executado.
+**Status:** Fase 0 e Fase 1 executadas e validadas em 2026-09-22. Fases 2–4 (Hubble contínuo, rollout de política em audit, enforcement) ainda pendentes.
 **Objetivo:** Fechar a Deviation #1 do `specs/01-initial-spec.md` (§11) — isolamento de rede declarado (5 `CiliumNetworkPolicy` já versionadas) mas não aplicado, porque o cluster roda Calico e não há agente Cilium ativo.
 **Escopo:** Cluster single-node MicroK8s (`darueira-privatecloud-platform`), uso de estudo pessoal, sem outros consumidores.
 
@@ -45,35 +45,59 @@ microk8s kubectl get applications -n argocd -o wide > ~/backups/argocd-apps-befo
 ```
 
 Checklist:
-- [ ] Dump Postgres central
-- [ ] Dump(s) Mongo por tenant relevante
-- [ ] `pods-before.txt`, `microk8s-status-before.txt` salvos
-- [ ] Estado ArgoCD (Synced/Healthy) registrado como baseline
+- [x] Dump Postgres central (76MB, sem erro)
+- [x] Dump(s) Mongo por tenant relevante — **cuidado**: `MONGO_INITDB_ROOT_*` só se aplica na primeira inicialização do volume; se o secret for rotacionado depois, `mongodump` autenticado com o secret atual pode falhar mesmo o pod usando `secretKeyRef` corretamente. Aconteceu com um dos dois tenants nesta execução; não bloqueou a migração (dado físico é o que importa, ver premissas), mas fica registrado.
+- [x] Dump Postgres **por tenant**, não só o central — achado nesta execução: tem `tenant-postgres` rodando em pelo menos 2 namespaces de tenant além do banco central; varra `kubectl get pods -A | grep -i postgres` antes de dar a Fase 0 por concluída, não confie só no óbvio.
+- [x] `pods-before.txt`, `microk8s-status-before.txt` salvos
+- [x] Estado ArgoCD (Synced/Healthy) registrado como baseline
 
 ---
 
 ## Fase 1 — Cutover do CNI
 
+> ⚠️ **`microk8s disable calico` não existe neste cluster.** No MicroK8s, o Calico dessa instalação não é um addon separado — é o CNI padrão embutido, ligado no init do cluster. Não há o que desabilitar por nome; o próprio addon `cilium` cuida de remover o `cni.yaml` do Calico como parte do `microk8s enable cilium` (só quando `$SNAP_DATA/var/lock/ha-cluster` e `$SNAP_DATA/args/cni-network/cni.yaml` existem — confirme os dois antes de rodar, senão o Cilium sobe **junto** com o Calico ainda ativo).
+
 ```bash
 microk8s status | grep -iE "cilium|calico"   # confirmar estado atual
 
-microk8s disable calico       # ajustar nome exato do addon se divergir
+# Pré-checagem obrigatória (evita rodar com os dois CNIs ativos ao mesmo tempo):
+ls /var/snap/microk8s/current/var/lock/ha-cluster
+ls /var/snap/microk8s/current/args/cni-network/cni.yaml
+
 microk8s enable cilium
 ```
 
-Esperado: reinício em cascata de boa parte dos pods (IP de pod muda com o CNI). Em cluster de 1 nó isso deve durar poucos minutos.
+`microk8s enable cilium` chama `sudo` internamente (pra mexer nas flags do `kube-apiserver`). **Isso precisa rodar num terminal interativo de verdade** — nem o Bash do Claude Code nem o `!` do chat têm TTY suficiente pro `sudo` pedir senha; ambos falham com `sudo: a terminal is required`. Rode num terminal separado.
+
+Esperado: reinício em cascata de boa parte dos pods (IP de pod muda com o CNI). **Na prática (execução real), isso não aconteceu** — o Cilium conseguiu "adotar" os veths já existentes do Calico (endpoint restore), então a maioria dos pods manteve o mesmo `AGE`/`RESTARTS` sem reiniciar. Confirme via `CiliumEndpoints`:
 
 ```bash
 microk8s kubectl get pods -A -o wide -w   # observar até tudo voltar a Running
 cilium status --wait                       # se o Cilium CLI estiver instalado
+microk8s kubectl get ciliumendpoints -A --no-headers | wc -l   # deve bater com a contagem de pods reais (exclui cilium/cilium-operator)
 ```
 
 **Neste ponto, sem nenhuma `CiliumNetworkPolicy` aplicada, o comportamento default é "permite tudo"** — equivalente ao que já temos hoje efetivamente com o Calico. Prioridade aqui é só restaurar conectividade total, não aplicar isolamento ainda.
 
+### Gotchas confirmados na execução real (2026-09-22)
+
+1. **Interface `vxlan.calico` órfã.** O addon do Cilium remove o manifesto K8s do Calico, mas não remove a interface de rede `vxlan.calico` que fica no host. Ela aparecia na lista de dispositivos de "Direct Routing" do Cilium e quebrava rotas específicas pod→host (ex.: Hubble Relay não conseguia falar com o agente). Fix:
+   ```bash
+   sudo ip link delete vxlan.calico
+   microk8s kubectl delete pod -n kube-system -l k8s-app=cilium   # força o agente redetectar os devices
+   ```
+2. **UFW bloqueia portas novas do Hubble.** Este host usa UFW com allowlist explícita por porta (padrão: cada porta do MicroK8s tem sua própria regra `<porta>/tcp ALLOW IN Anywhere`). O addon do Cilium **não** adiciona regras de UFW pras portas que introduz. Sem isso, tráfego pod→host pra essas portas cai no deny padrão (sintoma: `nc -zv` trava em "Connection timed out", não "refused" — indica firewall, não porta fechada). Fix:
+   ```bash
+   sudo ufw allow 4244/tcp comment 'Cilium Hubble peer service'
+   sudo ufw allow 4245/tcp comment 'Cilium Hubble relay gRPC API'
+   ```
+   Regras antigas com `on vxlan.calico`/`on cali+` (interface-based) ficam órfãs/inertes depois da migração — não atrapalham, mas não servem mais pra nada.
+3. **Cascata do Postgres central não é causada pelo Cilium, mas pode coincidir no tempo.** Durante a migração, o `central-postgres-0` reiniciou (padrão crônico pré-existente: dezenas de restarts ao longo de semanas, provavelmente por I/O lento em disco a 80%+ de uso) e ficou ~20 min preso num `fsync` do diretório de dados no boot. Isso derrubou em cascata tudo que depende dele (Keycloak, Forgejo, Backstage, jsreport, Temporal UI, Clavex, Stalwart) e, por tabela, o ArgoCD (`Unknown` sync status por não alcançar o Forgejo interno). **Não force restart do Postgres nesse estado** — pode corromper o `fsync` em andamento. Deixe terminar sozinho; os dependentes se recuperam automaticamente quando ele volta (exceto pods presos em `CrashLoopBackOff` com backoff longo, que se beneficiam de um restart manual pra pular a espera).
+
 Checklist:
-- [ ] Todos os pods voltaram a `Running`/`Ready` (comparar contagem com `pods-before.txt`)
-- [ ] `cilium status` saudável
-- [ ] Smoke test manual: abrir 3–4 URLs `nip.io` de serviços diferentes (ex.: Grafana, Keycloak, um app de tenant) e confirmar que respondem
+- [x] Todos os pods voltaram a `Running`/`Ready` (exceto 2 pods com problema crônico pré-existente, não relacionado à migração)
+- [x] `cilium status` saudável (`Controller Status: 521/521 healthy`)
+- [x] Smoke test manual: ArgoCD com todas as 25 apps `Synced`/`Healthy`, Forgejo respondendo `200 OK`
 
 ---
 
@@ -160,8 +184,12 @@ cilium config set policy-audit-mode Enabled   # volta a só logar, para de bloqu
 microk8s kubectl delete -f platform/kustomize/base/<namespace>/network-policy.yaml
 
 # Rollback completo de CNI (último recurso)
+# Não existe "microk8s enable calico" como addon — Calico é o CNI padrão de fábrica.
+# Reverter de verdade exigiria reinstalar o cluster ou restaurar o cni.yaml.disabled
+# manualmente (movido para args/cni-network/cni.yaml.disabled pelo próprio addon do
+# Cilium durante o cutover) e reaplicar. Não testado nesta execução — se precisar,
+# tratar como reconstrução de cluster, não como um "disable/enable" simétrico.
 microk8s disable cilium
-microk8s enable calico
 ```
 
 Como o storage é independente do CNI, o rollback de CNI não arrisca dado — só reconectividade, mesma lógica do cutover inicial.

@@ -7,6 +7,9 @@
 
 An enterprise-grade, on-premise **Private Cloud and Internal Developer Platform (IDP)** designed for high-performance workloads, multi-tenancy, spec-driven development (SDD), and native Zero Trust security running on Canonical MicroK8s.
 
+> [!IMPORTANT]
+> **Target vs. running state.** This document describes the target architecture. Some pieces are not yet active on the running cluster: the CNI is currently Calico (Cilium and its network policies are not enforced), MetalLB is not enabled, SPIRE runs only as a server placeholder, and the Envoy + OPA sidecars are deployed on only part of the workloads. See [`specs/01-initial-spec.md` Section 11](specs/01-initial-spec.md) for the verified status matrix.
+
 ---
 
 ## 1. Architectural Highlights
@@ -27,6 +30,10 @@ An enterprise-grade, on-premise **Private Cloud and Internal Developer Platform 
   - Continuous delivery and state reconciliation via **ArgoCD**.
 - **Internal Developer Portal**:
   - **Spotify Backstage** for software catalog, golden path templates, and TechDocs.
+- **Source Control & Artifacts**: **Forgejo** Git server (Tekton webhooks) and **Sonatype Nexus OSS** (Docker, Helm, Maven).
+- **Business Integration Services**: **Temporal** (workflows), **Apache NiFi** (data flows), **jsreport** (reporting) and **Clavex** (eIDAS 2.0 / EUDI Wallet), all behind Keycloak OIDC where supported.
+- **Observability**: OpenTelemetry Collector, Prometheus, Grafana, Jaeger, Fluent Bit and OpenSearch in `drr-corpshared-obs`.
+- **Messaging**: Redpanda (Kafka API) with Kafbat UI, and RabbitMQ 4.
 
 ---
 
@@ -36,27 +43,35 @@ An enterprise-grade, on-premise **Private Cloud and Internal Developer Platform 
 +-----------------------------------------------------------------------------------+
 |                     ENTERPRISE SHARED SERVICES (CONTROL PLANE)                    |
 |   Namespaces: drr-corpshared-mgmt | drr-corpshared-plat | drr-corpshared-secr-internal |
+|               drr-corpshared-obs                                                  |
 +-----------------------------------------------------------------------------------+
-|  * Master IdP: Authentik Central (OIDC / OAuth2 / SAML)                           |
+|  * Master IdP: Authentik Central + Keycloak (OIDC / OAuth2 / SAML / LDAP)         |
+|  * Authorization: OpenFGA + drr-iam-authz-svc                                     |
 |  * Universal Artifact Registry: Sonatype Nexus OSS (Docker, Helm, Maven)          |
-|  * Corporate Mail Server: Stalwart Mail Server (SMTP, IMAP)                       |
-|  * Master PKI / Vault: OpenBao Master + SPIRE Server                              |
+|  * Git Server: Forgejo                                                            |
+|  * Corporate Mail Server: Stalwart Mail Server + Roundcube Webmail                |
+|  * Master PKI / Vault: OpenBao Master + cert-manager + SPIRE Server (placeholder) |
 |  * Developer Portal: Spotify Backstage                                            |
+|  * Edge Gateway: Apache APISIX                                                    |
+|  * Business Integration: Temporal, Apache NiFi, jsreport, Clavex                  |
+|  * Messaging: Redpanda (Kafka API) + RabbitMQ                                     |
 |  * Central Persistence: Central PostgreSQL + Central MinIO (S3 Blobs)             |
 |  * Declarative CI/CD & GitOps: Tekton Pipelines & Triggers + ArgoCD               |
+|  * Observability (obs): OTel Collector, Prometheus, Grafana, Jaeger, OpenSearch   |
 +-----------------------------------------------------------------------------------+
                                          |
                                          | SPIFFE mTLS / OpenFGA ReBAC
                                          v
 +-----------------------------------------------------------------------------------+
 |                             TENANT ENVIRONMENT PLANE                              |
-|          Namespaces: drr-tnt-{tenant-id}-{project-id}-{env} (Dev, Staging, Prod)      |
+|          Namespaces: drr-tnt-{tenant-id}-{env} (Dev, Staging, Prod) - ADR-0013    |
 +-----------------------------------------------------------------------------------+
 |  * Edge & Ingress: Apache APISIX DataPlane                                        |
 |  * In-Pod Enforcement: Envoy Proxy PEP + OPA PDP Sidecars (ext_authz :9191)       |
 |  * Dynamic Secrets: OpenBao Tenant Mounts via SPIFFE SVID                          |
-|  * Tenant Storage: MinIO Dedicated Buckets + CloudNative-PG / MongoDB              |
-|  * Event Streaming & Messaging: Apache Kafka (Strimzi) + RabbitMQ                 |
+|  * Tenant Storage: MinIO Dedicated Buckets + PostgreSQL / MongoDB / MySQL         |
+|  * Tenant IAM: dedicated Keycloak per tenant environment                          |
+|  * Event Streaming & Messaging: shared Redpanda (Kafka API) + RabbitMQ            |
 |  * Workload Identity: SPIRE Agent Pod Attestation                                 |
 +-----------------------------------------------------------------------------------+
 ```
@@ -87,13 +102,19 @@ darueira-privatecloud-platform/
 │   │   └── tekton-pipelines/        # Tekton Pipeline & Task Definitions
 │   └── kustomize/
 │       └── base/
-│           ├── corpshared-mgmt/     # Backstage, ArgoCD, Tekton Engine
-│           ├── corpshared-plat/     # Central Postgres, MinIO, Nexus, Stalwart, Authentik
-│           ├── corpshared-secr-internal/ # OpenBao Master, SPIRE Server
-│           └── tnt-tenant-base/     # Tenant baseline (Envoy PEP, OPA PDP patch, Quotas)
+│           ├── corpshared-mgmt/     # Backstage, ArgoCD, Tekton Engine, operator, env-orchestrator
+│           ├── corpshared-plat/     # Postgres, MinIO, Nexus, Forgejo, Stalwart, Authentik, Keycloak,
+│           │                        # OpenFGA, APISIX, Redpanda, RabbitMQ, Temporal, NiFi, jsreport, Clavex
+│           ├── corpshared-obs/      # OTel Collector, Prometheus, Grafana, Jaeger, Fluent Bit, OpenSearch
+│           ├── corpshared-secr-internal/ # OpenBao Master, cert-manager, SPIRE Server
+│           └── tnt-tenant-base/     # Tenant baseline (Keycloak, MinIO, OpenBao, Postgres, MongoDB,
+│                                    # Envoy PEP, OPA PDP patch, Quotas)
+├── scripts/                         # bootstrap_*.py / validate_*.py automation (IAM, APISIX, SPIRE, CI/CD...)
+├── workspace/                       # Tenant application and Helm chart repos (swfabrik-europe, swfabrik-latam)
+├── docs/checkpoints/                # Handoff notes between working sessions
 ├── specs/
-│   ├── 01-initial-spec.md           # Master Platform Specification
-│   └── adr/                         # Architecture Decision Records (ADR 0001 - 0004)
+│   ├── 01-initial-spec.md           # Master Platform Specification (Section 11: implementation status)
+│   └── adr/                         # Architecture Decision Records (ADR 0001 - 0013)
 ├── AGY.md                           # Antigravity Agent Guidelines & SDD Protocols
 ├── Makefile                         # Developer Automation Targets
 └── README.md                        # Project Documentation
@@ -121,7 +142,7 @@ Run the OpenFGA test suite validating inheritance, deployer boundaries, and stri
 ```bash
 make test-authz
 ```
-*Output: 4/4 test suites passing, 136/136 checks passing.*
+*Output (verified 2026-09-21): 4/4 test suites passing, 136/136 checks passing.*
 
 ### Step 2: Validate Kustomize Manifests
 Validate that all enterprise control plane and tenant base manifests render correctly:
@@ -136,10 +157,12 @@ make microk8s-setup
 ```
 
 ### Step 4: Bootstrap Enterprise Control Plane
-Initialize core namespaces (`drr-corpshared-secr-internal`, `drr-corpshared-plat`, `drr-corpshared-mgmt`) and deploy baseline services (Authentik, Central Postgres, Central MinIO, OpenBao, Backstage, Tekton, ArgoCD):
+Initialize core namespaces (`drr-corpshared-secr-internal`, `drr-corpshared-plat`, `drr-corpshared-mgmt`, `drr-corpshared-obs`) and deploy baseline services (Authentik, Central Postgres, Central MinIO, OpenBao, Backstage, Tekton, ArgoCD):
 ```bash
 make bootstrap-control-plane
 ```
+
+Each subsystem then has a `bootstrap-<name>` / `validate-<name>` target pair (`make help` lists them): `apisix`, `authentik`, `stalwart`, `iam`, `tenant-keycloak`, `nexus`, `forgejo`, `backstage`, `openfga`, `spire`, `sidecars`, `brokers`, `tekton`, `argocd`, `observability`, `platform-services`.
 
 ### Step 5: Build Platform Services & Images
 Build local binaries and container images tagged for the local MicroK8s registry (`localhost:32000`):
@@ -199,6 +222,11 @@ make proxy
 | **Developer Portal** | Spotify Backstage | [https://backstage.darueira-corpshared.127.0.0.1.nip.io](https://backstage.darueira-corpshared.127.0.0.1.nip.io) | [http://backstage...](http://backstage.darueira-corpshared.127.0.0.1.nip.io) | *(SSO Authentik)*                                                                               |
 | **GitOps Engine** | ArgoCD Console | [https://argocd.darueira-corpshared.127.0.0.1.nip.io](https://argocd.darueira-corpshared.127.0.0.1.nip.io) | [http://argocd...](http://argocd.darueira-corpshared.127.0.0.1.nip.io) | **User**: `admin`<br>**Password**: `dev-password`                                               |
 | **CI/CD Pipelines** | Tekton Dashboard | [https://tekton.darueira-corpshared.127.0.0.1.nip.io](https://tekton.darueira-corpshared.127.0.0.1.nip.io) | [http://tekton...](http://tekton.darueira-corpshared.127.0.0.1.nip.io) | *(Direct Access)*                                                                               |
+| **Workflow Engine** | Temporal Web UI | [https://temporal.darueira-corpshared.127.0.0.1.nip.io](https://temporal.darueira-corpshared.127.0.0.1.nip.io) | [http://temporal...](http://temporal.darueira-corpshared.127.0.0.1.nip.io) | *(SSO Keycloak)* |
+| **Data Flow** | Apache NiFi | [https://nifi.darueira-corpshared.127.0.0.1.nip.io](https://nifi.darueira-corpshared.127.0.0.1.nip.io) | [http://nifi...](http://nifi.darueira-corpshared.127.0.0.1.nip.io) | *(SSO Keycloak)* |
+| **Reporting** | jsreport Studio | [https://reports.darueira-corpshared.127.0.0.1.nip.io](https://reports.darueira-corpshared.127.0.0.1.nip.io) | [http://reports...](http://reports.darueira-corpshared.127.0.0.1.nip.io) | *(SSO Keycloak)* |
+| **Digital Identity** | Clavex (eIDAS 2.0 / EUDI) | [https://clavex.darueira-corpshared.127.0.0.1.nip.io](https://clavex.darueira-corpshared.127.0.0.1.nip.io) | [http://clavex...](http://clavex.darueira-corpshared.127.0.0.1.nip.io) | *(see `clavex.yaml`)* |
+| **Webmail** | Roundcube | [https://webmail.darueira-corpshared.127.0.0.1.nip.io](https://webmail.darueira-corpshared.127.0.0.1.nip.io) | [http://webmail...](http://webmail.darueira-corpshared.127.0.0.1.nip.io) | *(see `webmail.yaml`)* |
 | **Corporate Mail** | Stalwart Mail Admin | [https://mail.darueira-corpshared.127.0.0.1.nip.io](https://mail.darueira-corpshared.127.0.0.1.nip.io) | [http://mail...](http://mail.darueira-corpshared.127.0.0.1.nip.io) | **User**: `admin`<br>**Password**: `darueira-admin123`                                          |
 | **Git Server** | Forgejo Git | [https://git.darueira-corpshared.127.0.0.1.nip.io](https://git.darueira-corpshared.127.0.0.1.nip.io) | [http://git...](http://git.darueira-corpshared.127.0.0.1.nip.io) | *(Self-Registration / HTTP & SSH :2222)*                                                       |
 | **Kafka Manager** | Kafbat UI (Redpanda) | [https://kafka.darueira-corpshared.127.0.0.1.nip.io](https://kafka.darueira-corpshared.127.0.0.1.nip.io) | [http://kafka...](http://kafka.darueira-corpshared.127.0.0.1.nip.io) | *(Direct Access / Dynamic Config)*                                                              |
@@ -208,7 +236,7 @@ make proxy
 
 ### 7.3 Isolated Tenant Admin Consoles (Example: Tenant `acme`)
 
-Every tenant provisioned on the platform automatically receives dedicated, isolated instances of Vault, Keycloak, and MinIO:
+Every tenant environment receives dedicated, isolated instances of OpenBao, Keycloak, MinIO, PostgreSQL and MongoDB (MySQL is also deployed on the running tenants). APISIX exposes the Vault, Keycloak and MinIO consoles; the example below uses tenant `acme`, and the `swfabrik-europe` tenant follows the same pattern with `*.swfabrik-europe.127.0.0.1.nip.io` hosts:
 
 | Tenant Service | Clean HTTPS URL (Port 443) | Clean HTTP URL (Port 80) | Default Credentials |
 |---|---|---|---|

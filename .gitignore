@@ -35,6 +35,11 @@ node_modules/
 *.swp
 *.swo
 
+# Python cache
+__pycache__/
+**/__pycache__/
+*.pyc
+
 # Build artifacts
 dist/
 package-lock.json

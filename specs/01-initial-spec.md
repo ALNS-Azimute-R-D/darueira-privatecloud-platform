@@ -18,8 +18,8 @@ Inspired by enterprise platform architectures (such as Tesla Cloud Platform - TC
   - **Kubernetes Engine**: **Canonical MicroK8s** (snap-based local system daemon).
   - **Container Runtime**: `containerd` / Docker
   - **Storage**: MinIO (S3-compatible Object Storage), Local Persistent Volumes
-- **CNI & Mesh**: **Cilium CNI** (eBPF routing, L3-L7 NetworkPolicies, WireGuard node-to-node encryption, kube-proxy replacement).
-- **LoadBalancer / Ingress**: MicroK8s MetalLB + Apache APISIX Ingress Controller.
+- **CNI & Mesh**: **Cilium CNI** (eBPF routing, L3-L7 NetworkPolicies, WireGuard node-to-node encryption, kube-proxy replacement). *Target state; the running cluster still uses MicroK8s' default Calico CNI (see Section 11).*
+- **LoadBalancer / Ingress**: Apache APISIX Gateway exposed via NodePort (`30080` HTTP / `30443` HTTPS) and reached through `make proxy` / `make proxy-80`. MicroK8s MetalLB is the target LoadBalancer and is not enabled yet (see Section 11).
 - **Future Hybrid Target**: Remote VPS (Hostinger) for staging/production external simulation.
 
 ---
@@ -64,17 +64,26 @@ Inspired by enterprise platform architectures (such as Tesla Cloud Platform - TC
 * **Secrets Management:** OpenBao / HashiCorp Vault (PKI, dynamic secrets, transit encryption)
 
 #### 3.1.2. Data & Messaging Services
-* **Databases:** PostgreSQL (Relational), MongoDB (Document)
+* **Databases:** PostgreSQL 17 (Relational), MongoDB 7 (Document), MySQL (per-tenant, used by tenant workloads)
+* **Object Storage:** MinIO (Central and per-Tenant)
 * **Event Streaming & Async Messaging:**
-    * Apache Kafka (Event streaming)
-    * RabbitMQ (AMQP message broker)
+    * Kafka API via Redpanda `v24.1.8` with Kafbat UI (ADR-0008)
+    * RabbitMQ 4 (AMQP message broker)
 
 #### 3.1.3. Observability & Operations
 * **Metrics & Dashboards:** Prometheus + Grafana
-* **Distributed Tracing:** OpenTelemetry + Jaeger
-* **Logs:** OpenSearch
-* **GitOps & Delivery:** ArgoCD + Tekton
+* **Distributed Tracing:** OpenTelemetry Collector + Jaeger
+* **Logs:** Fluent Bit (DaemonSet) + OpenSearch + OpenSearch Dashboards
+* **GitOps & Delivery:** Forgejo (Git) + Tekton (Pipelines, Triggers, Dashboard) + ArgoCD
 * **Developer Portal:** Backstage
+
+#### 3.1.4. Business Integration & Workflow Services (`drr-corpshared-plat`)
+* **Workflow Orchestration:** Temporal (server + Web UI, Keycloak OIDC, multi-tenant namespaces).
+* **Data Flow / ETL:** Apache NiFi (Keycloak OIDC, persistent authorizations, flows and repositories).
+* **Reporting:** jsreport (PostgreSQL store, Chrome PDF engine, S3 storage in Central MinIO, Keycloak OIDC).
+* **Digital Identity (eIDAS 2.0 / EUDI Wallet):** Clavex (server, UI and Redis).
+* **Webmail:** Roundcube in front of Stalwart Mail Server.
+* **Certificates:** cert-manager (`drr-corpshared-secr-internal`).
 
 ---
 
@@ -84,19 +93,29 @@ Following the MCCS / EDP / 50Hz trust domain separation model, the platform segr
 
 +-----------------------------------------------------------------------------------+
 |                     ENTERPRISE SHARED SERVICES (CONTROL PLANE)                    |
-|   Namespaces: drr-corpshared-mgmt | drr-corpshared-plat | drr-corpshared-secr-internal        |
+|   Namespaces: drr-corpshared-mgmt | drr-corpshared-plat | drr-corpshared-secr-internal |
+|               drr-corpshared-obs                                                  |
 +-----------------------------------------------------------------------------------+
-|  * Master Identity Provider: Authentik (Enterprise AD / EntraID Mock)             |
-|  * Master PKI & Root Vault: OpenBao Central (Root CA + Intermediate CAs)          |
+|  * Master Identity Provider: Authentik (Enterprise AD / EntraID Mock, LDAP outpost)|
+|  * Central Platform IAM: Keycloak (federated with Authentik)                      |
+|  * Master PKI & Root Vault: OpenBao Master + cert-manager + SPIRE Server          |
 |  * Universal Artifact & Image Registry: Sonatype Nexus OSS (Docker, Helm, Maven)  |
-|  * Corporate Mail Server: Stalwart Mail Server (SMTP, IMAP, JMAP via Authentik)   |
+|  * Git Server: Forgejo (HTTP + SSH :2222, Tekton webhooks)                        |
+|  * Corporate Mail Server: Stalwart Mail Server + Roundcube Webmail                |
 |  * Developer Portal (IDP): Spotify Backstage (Catalog, TechDocs, Golden Paths)   |
+|  * Edge API Gateway: Apache APISIX Gateway + Dashboard (etcd-backed)              |
+|  * Authorization: OpenFGA + drr-iam-authz-svc                                     |
+|  * Platform Services: drr-tenant-svc, drr-env-orchestrator-svc, darueira-operator |
+|  * Business Integration: Temporal, Apache NiFi, jsreport, Clavex (eIDAS/EUDI)     |
+|  * Messaging: Redpanda (Kafka API) + Kafbat UI, RabbitMQ                          |
 |  * Control Plane Storage & Persistence (Dedicated):                               |
-|      - Central MinIO: S3 Blobs for Nexus, Backstage TechDocs, Stalwart, Tekton    |
-|      - Central PostgreSQL: Dedicated DBs for Authentik, OpenFGA, Backstage, Mail  |
+|      - Central MinIO: S3 Blobs for Nexus, Backstage TechDocs, Stalwart, jsreport  |
+|      - Central PostgreSQL: Dedicated DBs for Authentik, Keycloak, OpenFGA, Git,   |
+|        Backstage, Mail, Temporal, jsreport                                        |
 |  * Declarative CI/CD Pipelines: Tekton Pipelines & Triggers                       |
 |  * GitOps Continuous Delivery: ArgoCD                                             |
-|  * Central APM & Observability: SigNoz, OpenSearch, Prometheus, Grafana           |
+|  * Central Observability (drr-corpshared-obs): OpenTelemetry Collector, Jaeger,   |
+|    Prometheus, Grafana, Fluent Bit, OpenSearch (+ Dashboards)                     |
 +-----------------------------------------------------------------------------------+
 |
 | SPIFFE mTLS / OpenFGA ReBAC / APISIX
@@ -109,13 +128,14 @@ v
 |  * Dedicated Tenant IAM: Keycloak (Instance per Tenant/Env: drr_tnt_keycloak_db)  |
 |  * Dedicated Secrets: OpenBao Tenant (Per-Env instance & SPIFFE X.509 SVID)       |
 |  * Dedicated Tenant S3 Storage: MinIO (Dedicated per Tenant/Env)                  |
-|  * Dedicated Data Stores: PostgreSQL (drr_tnt_bizapps_db with schm01..N) & Mongo  |
-|  * Message Brokers: RabbitMQ (Topic / VHost isolation) & Kafka (Strimzi)          |
+|  * Dedicated Data Stores: PostgreSQL (drr_tnt_bizapps_db with schm01..N), Mongo,  |
+|    MySQL (see Section 11: MySQL is deployed but not yet in tnt-tenant-base)       |
+|  * Message Brokers: RabbitMQ (Topic / VHost isolation) & Kafka API (Redpanda)     |
 |  * Workload Identity: SPIRE Agent (Injecting SVIDs into application pods)         |
 +-----------------------------------------------------------------------------------+
 
 ### 4.0 Tenant Infrastructure & Storage Isolation Rules (ADR-0013)
-1. **Namespace Standard**: `drr-tnt-<Tenant Name>-<Environment>` (e.g. `drr-tnt-swfabrik-europe-dev`).
+1. **Namespace Standard**: `drr-tnt-<Tenant Name>-<Environment>` (e.g. `drr-tnt-swfabrik-europe-dev`). Section 7 and legacy namespaces (`drr-tnt-acme-storefront-dev`, `drr-tnt-swfabrik-europe-marketplaces-dev`) still use the older `drr-tnt-<tenant>-<project>-<env>` form; ADR-0013 is authoritative; the legacy namespaces still exist in the cluster and have not been migrated.
 2. **Project Environment Sharing**: A Tenant has default `dev` (and on-demand `stg`, `prd`). All Projects under a Tenant share the same Environments of that Tenant. Never create an Environment per Project.
 3. **Dedicated Baseline Services per Environment**: Each `drr-tnt-<tenant>-<env>` hosts its own `tenant-openbao`, `tenant-minio`, `tenant-postgres`, `tenant-mongodb`, and `tenant-keycloak`.
 4. **Storage Isolation**: Tenant workloads NEVER persist data in `drr-corpshared-*` services. All persistence targets the tenant's dedicated services.
@@ -150,12 +170,20 @@ v
 | **Central Platform IAM** | Keycloak Platform | Enterprise Shared | Federated with Authentik Master Directory (Upstream OIDC Brokering) |
 | **Tenant Application IAM** | Keycloak Tenant Instance | Tenant Environment | Dedicated per-tenant Keycloak managing business application users |
 | **Tenant Object Storage** | Tenant MinIO / Buckets | Tenant Environment | S3 API + Tenant IAM Policies |
-| **Tenant Relational DB** | PostgreSQL | Tenant Environment | CloudNative-PG Operator |
-| **Tenant NoSQL DB** | MongoDB | Tenant Environment | MongoDB Community Operator |
-| **Streaming Broker** | Apache Kafka | Tenant Environment | Strimzi Operator |
-| **Messaging Broker** | RabbitMQ | Tenant Environment | RabbitMQ Topology Operator |
-| **APM & Tracing** | SigNoz + OpenTelemetry | Enterprise Shared | OTel Collector with Tenant Tag Injection |
-| **Network & Security** | Cilium CNI + WireGuard| Platform-wide | eBPF L3-L7 Policies & Transparent Encryption |
+| **Tenant Relational DB** | PostgreSQL 17 | Tenant Environment | Plain StatefulSet (`tenant-postgres`); CloudNative-PG Operator is the target and is not installed |
+| **Tenant NoSQL DB** | MongoDB 7 | Tenant Environment | Plain StatefulSet (`tenant-mongodb`); MongoDB Community Operator is the target and is not installed |
+| **Tenant MySQL** | MySQL | Tenant Environment | Plain StatefulSet (`tenant-mysql`), PVs declared in `storage-pvs.yaml` |
+| **Streaming Broker** | Redpanda (Kafka API) + Kafbat UI | Enterprise Shared | ADR-0008; Strimzi Operator is not used |
+| **Messaging Broker** | RabbitMQ 4 | Enterprise Shared | Management console behind APISIX |
+| **APM & Tracing** | OpenTelemetry Collector + Jaeger | Enterprise Shared | OTel Collector with Tenant Tag Injection; SigNoz is not deployed |
+| **Workflow Engine** | Temporal | Enterprise Shared | Keycloak OIDC on Web UI, multi-tenant namespaces |
+| **Data Flow / ETL** | Apache NiFi | Enterprise Shared | Keycloak OIDC, APISIX routing |
+| **Reporting** | jsreport | Enterprise Shared | Keycloak OIDC, PostgreSQL store, S3 storage in Central MinIO |
+| **Digital Identity (eIDAS/EUDI)** | Clavex | Enterprise Shared | API and UI split by APISIX route priority |
+| **Webmail** | Roundcube | Enterprise Shared | Fronts Stalwart Mail Server |
+| **Certificates** | cert-manager | `secr-internal` | `ClusterIssuer` backed by OpenBao / internal Root CA |
+| **Log Shipping** | Fluent Bit | Enterprise Shared | DaemonSet forwarding to OpenSearch |
+| **Network & Security** | Cilium CNI + WireGuard| Platform-wide | Target: eBPF L3-L7 Policies & Transparent Encryption. Running CNI is Calico (Section 11) |
 
 ---
 
@@ -336,3 +364,40 @@ All platform and tenant pods export telemetry via standard OTLP environment vari
   - `drr.authz.tuple-events`: Event-driven ReBAC tuple mutations;
   - `drr.tenant.lifecycle-events`: Tenant, Project, and Environment provisioning events;
   - `drr.audit.security-events`: Zero Trust security and policy enforcement audit trails.
+
+---
+
+## 11. Implementation Status & Known Deviations (verified 2026-09-21)
+
+Sections 1-10 describe the **target architecture**. This section records what is actually running on the single-node MicroK8s cluster (verified against `microk8s status`, live workloads and `platform/kustomize/base/`), so that the spec stays a trustworthy source of truth. Update it whenever a gap is closed or a new one is found.
+
+### 11.1 Status Matrix
+
+| Area | Status | Evidence / Notes |
+| :--- | :--- | :--- |
+| Control plane namespaces (`mgmt`, `plat`, `secr-internal`, `obs`) | **Live** | All workloads `Running`; node at ~61% memory with ~35 tenant and platform workloads |
+| Identity: Authentik, Keycloak, OpenFGA, `drr-iam-authz-svc` | **Live** | ReBAC model tests: 4/4 suites, 136/136 checks (`make test-authz`); `authz/schema.fga` is identical to Section 6 |
+| CI/CD and delivery: Forgejo, Tekton, ArgoCD, Nexus, Backstage | **Live** | Tenant apps are built by Tekton and pulled from Nexus (`127.0.0.1:32082`) |
+| Shared services: Postgres, MinIO, Redpanda, RabbitMQ, Stalwart, Temporal, NiFi, jsreport, Clavex | **Live** | Manifests in `corpshared-plat/` |
+| Observability: OTel Collector, Prometheus, Grafana, Jaeger, OpenSearch, Fluent Bit | **Live** | Manifests in `corpshared-obs/` |
+| Platform CRDs (`tenants`, `projects`, `environments` in `darueira.io`) and `darueira-operator` | **Live** | One Tenant (`swfabrik-europe`), one Project (`marketplaces`), one Environment (`swfabrik-europe-dev`) |
+| Tenant baseline (Keycloak, MinIO, OpenBao, Postgres, MongoDB) | **Live** | `swfabrik-europe-dev`, `swfabrik-latam-dev` |
+| Tenant MySQL | **Partial** | `tenant-mysql` runs in both tenants and has PVs in `storage-pvs.yaml`, but no manifest exists in `tnt-tenant-base/` |
+| Edge routing (APISIX) | **Live, NodePort** | `apisix-gateway` NodePorts `30080`/`30443`; routes generated by `scripts/bootstrap_apisix_routes.py` |
+| MetalLB LoadBalancer | **Not enabled** | Addon is disabled; no `IPAddressPool` exists |
+| Cilium CNI, L3-L7 policies, WireGuard | **Not running** | Cilium addon is disabled and no Cilium pods exist; the running CNI is Calico (`calico-node`). Cilium CRDs are installed and `network-policy.yaml` files declare `CiliumNetworkPolicy` objects, but without a Cilium agent they are **not enforced**. Namespace default-deny is therefore not active |
+| SPIRE workload identity | **Placeholder** | Only `spire-server-placeholder` runs; there is no SPIRE Agent, so no SVIDs are issued (ADR-0012 is not yet realized) |
+| OpenBao dynamic secrets via SPIFFE auth | **Partial** | `openbao-master` and per-tenant `tenant-openbao` run; SPIFFE auth depends on SPIRE above |
+| Envoy PEP + OPA PDP sidecars (ADR-0003, Section 8) | **Partial** | Manifests and `workload-sidecar-patch.yaml` exist, but live pods do not run Envoy. Only `food-market-01-service` and `food-market-02-service` run an OPA container (`authzen-pdp-sidecar`, `openpolicyagent/opa:0.68.0`); platform services and the other tenant workloads have no sidecar |
+| Kafka event topics (`drr.authz.tuple-events`, etc., Section 8.5) | **Not verified** | Broker is live; topic provisioning and the tuple-sync consumer were not checked |
+| SigNoz, Strimzi, CloudNative-PG, MongoDB Community Operator | **Not used** | Replaced by Jaeger, Redpanda and plain StatefulSets (Section 5) |
+| HA and remote staging target (Hostinger VPS) | **Not implemented** | Single node, `high-availability: no` |
+
+### 11.2 Known Deviations To Resolve
+
+1. **Network isolation is declared but not enforced.** Either enable Cilium (per ADR-0004) or replace the `CiliumNetworkPolicy` objects with standard `NetworkPolicy` objects that Calico enforces.
+2. **Zero Trust identity is incomplete.** Deploy a real SPIRE Server and SPIRE Agent DaemonSet before relying on ADR-0012.
+3. **Sidecar coverage is inconsistent.** Decide between the Envoy + OPA pattern of ADR-0003 and the OPA-only `authzen-pdp-sidecar` pattern seen in `food-market-01/02`, then record the decision in an ADR.
+4. **`tenant-mysql` needs a manifest in `tnt-tenant-base/`** and a mention in ADR-0013, since it is not part of the documented tenant baseline.
+5. **Namespace naming.** Legacy `drr-tnt-<tenant>-<project>-<env>` namespaces coexist with the ADR-0013 form.
+6. **Plaintext development credentials** are listed in `README.md` for local convenience. They must not be reused outside this laptop lab.

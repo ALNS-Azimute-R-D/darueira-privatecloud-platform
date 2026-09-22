@@ -1,6 +1,6 @@
 # Runbook: Migração de CNI — Calico → Cilium
 
-**Status:** Fases 0, 1 e 2 executadas e validadas em 2026-09-22. Enforcement das 4 políticas de controle (`obs`/`mgmt`/`plat`/`secr-internal`) já está **live** (aconteceu sem querer na Fase 1, debugado e corrigido na Fase 2 — ver achado crítico abaixo). `policy-audit-mode` está `Disabled` globalmente desde a Fase 1 (nunca chegou a ser ligado formalmente) — ou seja, todo rollout de tenant na Fase 3 já está indo direto pra enforcement real, não pra um modo audit de verdade; tratar cada apply de tenant como enforcement ao vivo. **2026-09-23: achado crítico #2** (ver seção própria abaixo) — as 5 políticas tinham um bug de escopo de namespace que quebrava silenciosamente todo o cross-namespace pretendido pelo design; corrigido nas 5 e revalidado nos 2 tenants já migrados. Fase 3 em andamento: 2 de 9 namespaces de tenant migrados (`drr-tnt-swfabrik-latam-dev`, `drr-tnt-swfabrik-europe-dev`, ambos validados). Falta o restante dos tenants (Fase 3) e o enforcement formal (Fase 4, que na prática já vale pras 4 namespaces de controle e para os 2 tenants já migrados).
+**Status:** Fases 0, 1 e 2 executadas e validadas em 2026-09-22. Enforcement das 4 políticas de controle (`obs`/`mgmt`/`plat`/`secr-internal`) já está **live** (aconteceu sem querer na Fase 1, debugado e corrigido na Fase 2 — ver achado crítico abaixo). `policy-audit-mode` está `Disabled` globalmente desde a Fase 1 (nunca chegou a ser ligado formalmente) — ou seja, todo rollout de tenant na Fase 3 já está indo direto pra enforcement real, não pra um modo audit de verdade; tratar cada apply de tenant como enforcement ao vivo. **2026-09-23: achado crítico #2** (ver seção própria abaixo) — as 5 políticas tinham um bug de escopo de namespace que quebrava silenciosamente todo o cross-namespace pretendido pelo design; corrigido nas 5 e revalidado nos 2 tenants já migrados. **2026-09-23: cleanup de tenants fantasma** — 8 namespaces `drr-tnt-*` que não deveriam existir (6 gerados por um `ApplicationSet` com lista de demo/scaffold hardcoded, 2 estáticos sem fonte) foram apagados; a fonte (`platform/gitops/argocd-apps/applicationset-tenants.yaml`) foi corrigida pra parar o self-heal do ArgoCD de recriá-los — ver seção própria abaixo. Fase 3 concluída: os únicos 2 namespaces de tenant que de fato existem no cluster (`drr-tnt-swfabrik-latam-dev`, `drr-tnt-swfabrik-europe-dev`) estão migrados e validados. Falta só o enforcement formal (Fase 4, que na prática já vale pras 4 namespaces de controle e para os 2 tenants).
 **Objetivo:** Fechar a Deviation #1 do `specs/01-initial-spec.md` (§11) — isolamento de rede declarado (5 `CiliumNetworkPolicy` já versionadas) mas não aplicado, porque o cluster roda Calico e não há agente Cilium ativo.
 **Escopo:** Cluster single-node MicroK8s (`darueira-privatecloud-platform`), uso de estudo pessoal, sem outros consumidores.
 
@@ -210,14 +210,25 @@ Checklist por namespace:
 - [x] `corpshared-plat` (revalidado após achado crítico #2)
 - [x] `drr-tnt-swfabrik-latam-dev` (revalidado após achado crítico #2)
 - [x] `drr-tnt-swfabrik-europe-dev`
-- [ ] `drr-tnt-swfabrik-europe-marketplaces-dev`
-- [ ] `drr-tnt-acme-storefront-dev`
-- [ ] `drr-tnt-acme-storefront-staging`
-- [ ] `drr-tnt-acme-storefront-prod`
-- [ ] `drr-tnt-globex-logistics-dev`
-- [ ] `drr-tnt-globex-logistics-prod`
-- [ ] `drr-tnt-darueira-corp-platform-core-prod`
-- [ ] `drr-tnt-base-template` (template namespace — confirmar se recebe workload real ou pode ser pulado)
+
+Os demais namespaces `drr-tnt-*` que apareciam nesta lista (`swfabrik-europe-marketplaces-dev`, `acme-storefront-{dev,staging,prod}`, `globex-logistics-{dev,prod}`, `darueira-corp-platform-core-prod`, `base-template`) **não são tenants reais** — foram apagados em 2026-09-23, ver seção "Cleanup de tenants fantasma" abaixo. Rollout de tenant está completo com os 2 namespaces acima.
+
+### 🔴 Cleanup de tenants fantasma (2026-09-23)
+
+Ao validar `drr-tnt-swfabrik-europe-dev`, o usuário identificou que 8 dos 10 namespaces `drr-tnt-*` então existentes no cluster **não deveriam existir**: `drr-tnt-swfabrik-europe-marketplaces-dev`, `drr-tnt-acme-storefront-{dev,staging,prod}`, `drr-tnt-globex-logistics-{dev,prod}`, `drr-tnt-darueira-corp-platform-core-prod`, `drr-tnt-base-template`.
+
+Investigação antes de apagar qualquer coisa (nunca destrutivo sem checar primeiro):
+- Todos os 8 estavam **vazios** (0 pods, sem PVC/Secret/PV — só `ConfigMap`s de scaffold como `tenant-profile`, `envoy-sidecar-config`, `kube-root-ca.crt` auto-gerado). Confirmado com `kubectl get all,pvc,secret,configmap -n <ns>` em cada um e checagem de `claimRef` órfão em todos os PVs do cluster — nenhum.
+- 6 deles (`acme-storefront-{dev,staging,prod}`, `globex-logistics-{dev,prod}`, `darueira-corp-platform-core-prod`) eram gerenciados por um `ApplicationSet` (`tenant-workloads-appset`, em `drr-corpshared-mgmt`, definido em `platform/gitops/argocd-apps/applicationset-tenants.yaml` **neste repo**) com um gerador `list` carregando 6 elementos hardcoded de tenants demo/scaffold. Como a Application resultante tem `syncPolicy.automated.selfHeal: true`, apagar a Application/namespace direto no cluster **não funciona** — o ArgoCD recria tudo em segundos.
+- Os outros 2 (`swfabrik-europe-marketplaces-dev`, `base-template`) não tinham nenhuma `Application`/`ApplicationSet` associada — provavelmente criados manualmente em algum momento de experimentação. Apagar direto (`kubectl delete namespace`) foi suficiente e definitivo pra esses dois.
+
+**Fix aplicado**: `platform/gitops/argocd-apps/applicationset-tenants.yaml` teve os 6 elementos do gerador `list` esvaziados (`elements: []`), preservando o `ApplicationSet` como mecanismo reutilizável pra onboarding de tenants futuros — só sem os 6 demo hardcoded. Aplicado no cluster via `kubectl apply`, o que fez o ArgoCD deletar as 6 `Application`s automaticamente; os namespaces por trás delas ficaram órfãos (não foram prune'd junto) e precisaram de um segundo `kubectl delete namespace` manual depois do fix na fonte.
+
+Também corrigido no mesmo arquivo, drift encontrado entre o `ApplicationSet` ao vivo no cluster e a versão versionada neste repo: o template ao vivo já usava `name: tenant-{{tenant}}-{{project}}-{{env}}` / `namespace: drr-tnt-{{tenant}}-{{project}}-{{env}}` e `targetRevision: main`, enquanto a versão no git ainda tinha `{{tenant}}-{{env}}` (sem `{{project}}`, risco de colisão de nome entre tenants) e `targetRevision: master`. Alinhado o git com o que já estava funcionando ao vivo.
+
+**Efeito colateral corrigido**: a política do `corpshared-obs` (achado crítico #2 acima) tinha sido enumerada com os 10 namespaces de tenant que existiam no momento — incluindo os 8 fantasmas. Removidas essas 8 entradas da lista `&cross-ns-obs-sources`, deixando só os 2 tenants reais.
+
+Tenants reais confirmados no cluster após o cleanup: `drr-tnt-swfabrik-latam-dev`, `drr-tnt-swfabrik-europe-dev`.
 
 ---
 

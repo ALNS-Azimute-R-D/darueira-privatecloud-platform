@@ -34,33 +34,15 @@ spec:
         - matchLabels:
             darueira.io/tier: enterprise-shared
             k8s:io.kubernetes.pod.namespace: drr-corpshared-secr-internal
-        - matchLabels:
-            darueira.io/tier: tenant-workload
-            k8s:io.kubernetes.pod.namespace: drr-tnt-acme-storefront-dev
-        - matchLabels:
-            darueira.io/tier: tenant-workload
-            k8s:io.kubernetes.pod.namespace: drr-tnt-acme-storefront-staging
-        - matchLabels:
-            darueira.io/tier: tenant-workload
-            k8s:io.kubernetes.pod.namespace: drr-tnt-acme-storefront-prod
-        - matchLabels:
-            darueira.io/tier: tenant-workload
-            k8s:io.kubernetes.pod.namespace: drr-tnt-base-template
-        - matchLabels:
-            darueira.io/tier: tenant-workload
-            k8s:io.kubernetes.pod.namespace: drr-tnt-darueira-corp-platform-core-prod
-        - matchLabels:
-            darueira.io/tier: tenant-workload
-            k8s:io.kubernetes.pod.namespace: drr-tnt-globex-logistics-dev
-        - matchLabels:
-            darueira.io/tier: tenant-workload
-            k8s:io.kubernetes.pod.namespace: drr-tnt-globex-logistics-prod
+        # NOTE (2026-09-23): only enumerate tenant namespaces that are
+        # actually meant to exist. 8 stale/demo namespaces (acme-storefront
+        # x3, globex-logistics x2, darueira-corp-platform-core-prod,
+        # swfabrik-europe-marketplaces-dev, base-template) were deleted from
+        # the cluster — see docs/runbooks/cilium-cni-migration.md Fase 3 —
+        # do not re-add them here without confirming they're legitimate.
         - matchLabels:
             darueira.io/tier: tenant-workload
             k8s:io.kubernetes.pod.namespace: drr-tnt-swfabrik-europe-dev
-        - matchLabels:
-            darueira.io/tier: tenant-workload
-            k8s:io.kubernetes.pod.namespace: drr-tnt-swfabrik-europe-marketplaces-dev
         - matchLabels:
             darueira.io/tier: tenant-workload
             k8s:io.kubernetes.pod.namespace: drr-tnt-swfabrik-latam-dev

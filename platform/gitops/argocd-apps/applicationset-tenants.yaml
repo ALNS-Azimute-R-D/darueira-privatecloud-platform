@@ -7,42 +7,34 @@ metadata:
     darueira.io/tier: tenant-workload
 spec:
   generators:
+    # NOTE (2026-09-23): the 6 demo/scaffold elements this generator used to
+    # carry (darueira-corp/platform-core/prod, acme/storefront/{dev,staging,
+    # prod}, globex/logistics/{dev,prod}) were removed — those tenants were
+    # never meant to exist on this cluster. Their namespaces and generated
+    # Applications were deleted directly (kubectl) and, since this
+    # ApplicationSet has selfHeal:true, emptying this list is what stops
+    # ArgoCD from recreating them. Real tenants (swfabrik-latam,
+    # swfabrik-europe) are onboarded via their own dedicated
+    # `<tenant>-tenant-infra` Application, not through this generator.
     - list:
-        elements:
-          - tenant: "darueira-corp"
-            project: "platform-core"
-            env: "prod"
-          - tenant: "acme"
-            project: "storefront"
-            env: "dev"
-          - tenant: "acme"
-            project: "storefront"
-            env: "staging"
-          - tenant: "acme"
-            project: "storefront"
-            env: "prod"
-          - tenant: "globex"
-            project: "logistics"
-            env: "dev"
-          - tenant: "globex"
-            project: "logistics"
-            env: "prod"
+        elements: []
   template:
     metadata:
-      name: "tenant-{{tenant}}-{{env}}"
+      name: "tenant-{{tenant}}-{{project}}-{{env}}"
       labels:
         darueira.io/tenant: "{{tenant}}"
+        darueira.io/project: "{{project}}"
         darueira.io/environment: "{{env}}"
         darueira.io/tier: "tenant-workload"
     spec:
       project: darueira-tenants
       source:
         repoURL: "http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/darueira-corp/platform-core.git"
-        targetRevision: master
+        targetRevision: main
         path: "platform/kustomize/base/tnt-tenant-base"
       destination:
         server: "https://kubernetes.default.svc"
-        namespace: "drr-tnt-{{tenant}}-{{env}}"
+        namespace: "drr-tnt-{{tenant}}-{{project}}-{{env}}"
       syncPolicy:
         automated:
           prune: true

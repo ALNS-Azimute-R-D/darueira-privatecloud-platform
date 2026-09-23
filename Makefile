@@ -260,13 +260,20 @@ bootstrap-apisix: ## Seed all cluster routes and SSL certificates into APISIX Ga
 	sleep 2; \
 	python3 scripts/bootstrap_apisix_routes.py
 
+.PHONY: check-apisix-routes
+check-apisix-routes: ## Diff scripts/bootstrap_apisix_routes.py (source of truth) against live APISIX routes
+	@$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway 9180:9180 >/dev/null & PF=$$!; \
+	sleep 2; \
+	rc=0; APISIX_ADMIN_URL=http://127.0.0.1:9180/apisix/admin python3 scripts/bootstrap_apisix_routes.py --check || rc=$$?; \
+	kill $$PF; exit $$rc
+
 .PHONY: smoke-apisix-upstreams
 smoke-apisix-upstreams: ## TCP-probe every APISIX route upstream from the gateway's own network identity
 	@echo -e "${GREEN}==> Probing all APISIX upstreams from inside the apisix-gateway pod...${NC}"
-	@trap 'kill 0' EXIT; \
-	$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway 9180:9180 >/dev/null & \
+	@$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway 9180:9180 >/dev/null & PF=$$!; \
 	sleep 2; \
-	KUBECTL=$(KUBECTL) python3 scripts/smoke_apisix_upstreams.py
+	rc=0; KUBECTL="$(KUBECTL)" python3 scripts/smoke_apisix_upstreams.py || rc=$$?; \
+	kill $$PF; exit $$rc
 
 .PHONY: bootstrap-authentik
 bootstrap-authentik: ## Seed corporate users, groups, and LDAP provider into Authentik directory

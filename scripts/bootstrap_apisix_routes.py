@@ -1,3 +1,13 @@
+"""Single source of truth for APISIX routes (stored in etcd).
+
+Never create or edit routes by hand in the Admin API or APISIX Dashboard:
+change ROUTES here, then
+  make bootstrap-apisix      # PUT every route + SSL, DELETE STALE_ROUTE_IDS
+  make check-apisix-routes   # diff this file vs. etcd, exit 1 on any drift
+  make smoke-apisix-upstreams  # every upstream reachable from the gateway?
+To retire a route, move its id from ROUTES to STALE_ROUTE_IDS.
+The ConfigMap's apisix.yaml is NOT a route source (config_provider: etcd).
+"""
 import os
 import json
 import urllib.request
@@ -290,8 +300,8 @@ ROUTES = [
     },
     {
         "id": "route-host-minio-corp",
-        "name": "Central MinIO S3",
-        "desc": "Corporate Object Storage S3 Console",
+        "name": "Central MinIO S3 Console",
+        "desc": "Corporate Object Storage S3 Console (s3.* hosts: see route-host-s3-api)",
         "uri": "/*",
         "hosts": [
             "minio.darueira-corpshared.127.0.0.1.nip.io",
@@ -299,9 +309,7 @@ ROUTES = [
             "minio.darueira-corpshared.127.0.0.1.sslip.io",
             "minio.darueira-corpshared.local",
             "minio-corp.darueira-corpshared.127.0.0.1.nip.io",
-            "minio-corp.darueira-corpshared.local",
-            "s3.darueira-corpshared.127.0.0.1.nip.io",
-            "s3.darueira-corpshared.local"
+            "minio-corp.darueira-corpshared.local"
         ],
         "upstream": {
             "nodes": {"central-minio.drr-corpshared-plat.svc.cluster.local:9001": 1},
@@ -309,6 +317,22 @@ ROUTES = [
         },
         "enable_websocket": True,
         "plugins": {"prometheus": {}}
+    },
+    {
+        "id": "route-host-s3-api",
+        "name": "Central MinIO S3 API",
+        "desc": "Corporate Object Storage S3 API",
+        "uri": "/*",
+        "hosts": [
+            "s3.darueira-corpshared.127.0.0.1.nip.io",
+            "s3.darueira-corpshared.192.168.178.84.nip.io",
+            "s3.darueira-corpshared.127.0.0.1.sslip.io",
+            "s3.darueira-corpshared.local"
+        ],
+        "upstream": {
+            "nodes": {"central-minio.drr-corpshared-plat.svc.cluster.local:9000": 1},
+            "type": "roundrobin"
+        }
     },
     {
         "id": "route-host-grafana",
@@ -531,6 +555,169 @@ ROUTES = [
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}
+    },
+    {
+        "id": "route-tenant-keycloak-swfabrik-latam",
+        "uri": "/*",
+        "hosts": [
+            "keycloak.darueira-tnt-swfabrik-latam.127.0.0.1.nip.io",
+            "keycloak.darueira-tnt-swfabrik-latam.192.168.178.84.nip.io",
+            "keycloak.darueira-tnt-swfabrik-latam.127.0.0.1.sslip.io",
+            "keycloak.darueira-tnt-swfabrik-latam.local"
+        ],
+        "upstream": {
+            "nodes": {"tenant-keycloak.drr-tnt-swfabrik-latam-dev.svc.cluster.local:8080": 1},
+            "type": "roundrobin"
+        }
+    },
+    {
+        "id": "route-tenant-minio-swfabrik-latam",
+        "uri": "/*",
+        "hosts": [
+            "minio.darueira-tnt-swfabrik-latam.127.0.0.1.nip.io",
+            "minio.darueira-tnt-swfabrik-latam.192.168.178.84.nip.io",
+            "minio.darueira-tnt-swfabrik-latam.127.0.0.1.sslip.io",
+            "minio.darueira-tnt-swfabrik-latam.local"
+        ],
+        "upstream": {
+            "nodes": {"tenant-minio.drr-tnt-swfabrik-latam-dev.svc.cluster.local:9001": 1},
+            "type": "roundrobin"
+        },
+        "enable_websocket": True
+    },
+    {
+        "id": "route-host-swfabrik-latam-identity-studio",
+        "uri": "/*",
+        "hosts": [
+            "identity.swfabrik-latam.127.0.0.1.nip.io",
+            "identity.darueira-tnt-swfabrik-latam.127.0.0.1.nip.io",
+            "identity.swfabrik-latam.local",
+            "studio.swfabrik-latam.127.0.0.1.nip.io",
+            "studio.swfabrik-latam.local"
+        ],
+        "upstream": {
+            "nodes": {"app-identity-studio.drr-tnt-swfabrik-latam-dev.svc.cluster.local:80": 1},
+            "type": "roundrobin"
+        }
+    },
+    {
+        "id": "route-host-swfabrik-latam-checkout",
+        "uri": "/*",
+        "hosts": [
+            "checkout.swfabrik-latam.127.0.0.1.nip.io",
+            "checkout.darueira-tnt-swfabrik-latam.127.0.0.1.nip.io",
+            "checkout.swfabrik-latam.local",
+            "api.checkout.swfabrik-latam.127.0.0.1.nip.io"
+        ],
+        "upstream": {
+            "nodes": {"checkout-service.drr-tnt-swfabrik-latam-dev.svc.cluster.local:8080": 1},
+            "type": "roundrobin"
+        }
+    },
+    {
+        "id": "route-host-clavex-api",
+        "uris": [
+            "/api/*",
+            "/healthz",
+            "/readyz",
+            "/.well-known/*",
+            "/swfabrik-europe/*",
+            "/*/authorize",
+            "/*/token",
+            "/*/userinfo",
+            "/*/logout",
+            "/*/.well-known/*",
+            "/*/introspect",
+            "/*/revoke",
+            "/*/jwks.json",
+            "/*/register",
+            "/*/device_authorization",
+            "/*/bc-authorize",
+            "/oid4vci/*",
+            "/oid4vp/*"
+        ],
+        "priority": 10,
+        "hosts": [
+            "clavex.darueira-corpshared.127.0.0.1.nip.io",
+            "clavex.darueira-corpshared.192.168.178.84.nip.io",
+            "clavex.darueira-corpshared.127.0.0.1.sslip.io",
+            "clavex.darueira-corpshared.local",
+            "eudi.darueira-corpshared.127.0.0.1.nip.io",
+            "eudi.darueira-corpshared.local"
+        ],
+        "upstream": {
+            "nodes": {"clavex.drr-corpshared-plat.svc.cluster.local:8080": 1},
+            "type": "roundrobin"
+        }
+    },
+    {
+        "id": "route-host-clavex-ui",
+        "uri": "/*",
+        "priority": 1,
+        "hosts": [
+            "clavex.darueira-corpshared.127.0.0.1.nip.io",
+            "clavex.darueira-corpshared.192.168.178.84.nip.io",
+            "clavex.darueira-corpshared.127.0.0.1.sslip.io",
+            "clavex.darueira-corpshared.local",
+            "eudi.darueira-corpshared.127.0.0.1.nip.io",
+            "eudi.darueira-corpshared.local"
+        ],
+        "upstream": {
+            "nodes": {"clavex-ui.drr-corpshared-plat.svc.cluster.local:8080": 1},
+            "type": "roundrobin"
+        }
+    },
+    {
+        "id": "route-host-jsreport",
+        "name": "jsreport Corporate Reporting & Document Generation Server",
+        "uri": "/*",
+        "hosts": [
+            "reports.darueira-corpshared.127.0.0.1.nip.io",
+            "reports.darueira-corpshared.192.168.178.84.nip.io",
+            "reports.darueira-corpshared.127.0.0.1.sslip.io",
+            "reports.darueira-corpshared.local",
+            "jsreport.darueira-corpshared.127.0.0.1.nip.io",
+            "jsreport.darueira-corpshared.local"
+        ],
+        "upstream": {
+            "nodes": {"jsreport.drr-corpshared-plat.svc.cluster.local:5488": 1},
+            "type": "roundrobin"
+        }
+    },
+    {
+        "id": "route-host-nifi",
+        "name": "Apache NiFi Corporate Data Pipelines UI",
+        "uri": "/*",
+        "hosts": [
+            "nifi.darueira-corpshared.127.0.0.1.nip.io",
+            "nifi.darueira-corpshared.192.168.178.84.nip.io",
+            "nifi.darueira-corpshared.127.0.0.1.sslip.io",
+            "nifi.darueira-corpshared.local",
+            "pipelines.darueira-corpshared.127.0.0.1.nip.io",
+            "pipelines.darueira-corpshared.local"
+        ],
+        "upstream": {
+            "nodes": {"apache-nifi.drr-corpshared-plat.svc.cluster.local:8443": 1},
+            "type": "roundrobin",
+            "scheme": "https"
+        }
+    },
+    {
+        "id": "route-host-temporal",
+        "name": "Temporal.io Corporate Workflow Engine UI",
+        "uri": "/*",
+        "hosts": [
+            "temporal.darueira-corpshared.127.0.0.1.nip.io",
+            "temporal.darueira-corpshared.192.168.178.84.nip.io",
+            "temporal.darueira-corpshared.127.0.0.1.sslip.io",
+            "temporal.darueira-corpshared.local",
+            "workflows.darueira-corpshared.127.0.0.1.nip.io",
+            "workflows.darueira-corpshared.local"
+        ],
+        "upstream": {
+            "nodes": {"temporal-ui-svc.drr-corpshared-plat.svc.cluster.local:8080": 1},
+            "type": "roundrobin"
+        }
     },
     {
         "id": "route-host-api-authz",
@@ -1270,7 +1457,57 @@ def seed_all(base_url=ADMIN_URL):
     print("\n=== REMOVING STALE APISIX ROUTES ===")
     for route_id in STALE_ROUTE_IDS:
         delete_resource(f"{base_url}/routes/{route_id}")
+
+    unmanaged = sorted(set(fetch_live_routes(base_url)) - {r["id"] for r in ROUTES})
+    if unmanaged:
+        print(f"\n[!] Routes in etcd but not in this script (add them to ROUTES or STALE_ROUTE_IDS): {unmanaged}")
     print("\n=== FINISHED SEEDING APISIX TO ETCD ===")
 
+def fetch_live_routes(base_url=ADMIN_URL):
+    req = urllib.request.Request(f"{base_url}/routes", headers={"X-API-KEY": ADMIN_KEY})
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        items = json.loads(resp.read().decode()).get("list", [])
+    # create_time/update_time are set by APISIX, never part of the spec.
+    return {
+        it["value"]["id"]: {k: v for k, v in it["value"].items() if k not in ("create_time", "update_time")}
+        for it in items
+    }
+
+def check_drift(base_url=ADMIN_URL):
+    """Compare ROUTES with what's live in etcd. Returns True when in sync.
+
+    This script is the single source of truth for APISIX routes: anything
+    created by hand in the Admin API/Dashboard shows up here as unmanaged
+    or drifted until it's folded back into ROUTES.
+    """
+    live = fetch_live_routes(base_url)
+    spec = {r["id"]: r for r in ROUTES}
+    canon = lambda v: json.dumps(v, sort_keys=True)
+
+    missing = sorted(set(spec) - set(live))
+    unmanaged = sorted(set(live) - set(spec) - set(STALE_ROUTE_IDS))
+    stale = sorted(set(live) & set(STALE_ROUTE_IDS))
+    drifted = {
+        rid: sorted(k for k in set(spec[rid]) | set(live[rid]) if canon(spec[rid].get(k)) != canon(live[rid].get(k)))
+        for rid in sorted(set(spec) & set(live))
+        if canon(spec[rid]) != canon(live[rid])
+    }
+
+    print(f"=== APISIX ROUTE DRIFT CHECK ({len(spec)} in script, {len(live)} in etcd) ===")
+    for label, ids in (("Missing from etcd (run seed)", missing),
+                       ("Unmanaged, in etcd only (add to ROUTES)", unmanaged),
+                       ("Stale, still in etcd (run seed)", stale)):
+        if ids:
+            print(f"{label}: {ids}")
+    for rid, keys in drifted.items():
+        print(f"Drifted (etcd differs from script): {rid} -> {keys}")
+
+    in_sync = not (missing or unmanaged or stale or drifted)
+    print("In sync." if in_sync else "\nOUT OF SYNC")
+    return in_sync
+
 if __name__ == "__main__":
+    import sys
+    if "--check" in sys.argv[1:]:
+        sys.exit(0 if check_drift() else 1)
     seed_all()

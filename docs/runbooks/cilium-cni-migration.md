@@ -1,10 +1,8 @@
 # Runbook: Migração de CNI — Calico → Cilium
 
-> **Retomar aqui (pausado em 2026-09-23, fim de sessão)**: só falta a **Fase 4 — Enforcement** (seção abaixo). Fase 3 está 100% concluída e commitada (`git log`: até `9495b82`, working tree limpa). Antes de rodar `cilium config set policy-audit-mode Disabled`, reler a checklist da Fase 4 e o achado crítico #2 (bug de escopo de namespace, já corrigido nas 5 políticas) — não deveria haver mais surpresa de drop, mas vale rodar `hubble observe --verdict DROPPED` numa janela curta em todos os namespaces afetados antes e depois de desligar o audit mode, do jeito que foi feito no resto da Fase 3.
->
-> **Atualização (2026-09-23, manhã seguinte)**: o cleanup de tenants fantasma de ontem estava incompleto — ver "Segunda onda do cleanup" logo abaixo da seção original. `drr-tnt-swfabrik-europe-marketplaces-dev` voltou sozinho (recriado por um operator da plataforma que não tínhamos mapeado ainda). Já resolvido na fonte certa. Fase 3 permanece com só 2 tenants reais.
+> **Migração concluída em 2026-09-23.** Fases 0-4 todas executadas e validadas. Nada pendente neste runbook — próximos passos de rede (WireGuard, kube-proxy replacement, L7/FQDN policies) são itens conscientemente adiados (ver seção 0), não deviations.
 
-**Status:** Fases 0, 1 e 2 executadas e validadas em 2026-09-22. Enforcement das 4 políticas de controle (`obs`/`mgmt`/`plat`/`secr-internal`) já está **live** (aconteceu sem querer na Fase 1, debugado e corrigido na Fase 2 — ver achado crítico abaixo). `policy-audit-mode` está `Disabled` globalmente desde a Fase 1 (nunca chegou a ser ligado formalmente) — ou seja, todo rollout de tenant na Fase 3 já está indo direto pra enforcement real, não pra um modo audit de verdade; tratar cada apply de tenant como enforcement ao vivo. **2026-09-23: achado crítico #2** (ver seção própria abaixo) — as 5 políticas tinham um bug de escopo de namespace que quebrava silenciosamente todo o cross-namespace pretendido pelo design; corrigido nas 5 e revalidado nos 2 tenants já migrados. **2026-09-23: cleanup de tenants fantasma** — 8 namespaces `drr-tnt-*` que não deveriam existir (6 gerados por um `ApplicationSet` com lista de demo/scaffold hardcoded, 2 estáticos sem fonte) foram apagados; a fonte (`platform/gitops/argocd-apps/applicationset-tenants.yaml`) foi corrigida pra parar o self-heal do ArgoCD de recriá-los — ver seção própria abaixo. Fase 3 concluída: os únicos 2 namespaces de tenant que de fato existem no cluster (`drr-tnt-swfabrik-latam-dev`, `drr-tnt-swfabrik-europe-dev`) estão migrados e validados. Falta só o enforcement formal (Fase 4, que na prática já vale pras 4 namespaces de controle e para os 2 tenants).
+**Status:** **Migração completa.** Fases 0, 1 e 2 executadas e validadas em 2026-09-22; Fases 3 e 4 em 2026-09-23. Enforcement real (`policy-audit-mode Disabled`) está ativo em todos os 6 namespaces com `CiliumNetworkPolicy`: os 4 de controle (`obs`/`mgmt`/`plat`/`secr-internal`) e os 2 tenants reais (`drr-tnt-swfabrik-latam-dev`, `drr-tnt-swfabrik-europe-dev`). Dois bugs reais de política foram encontrados e corrigidos no processo — **achado crítico #1** (Fase 2: fallback `toEntities: [cluster, world]` faltando para DNS) e **achado crítico #2** (Fase 3: bug de escopo de namespace que quebrava todo `matchLabels` cross-namespace nas 5 políticas) — ver seções próprias abaixo. Também foram encontrados e limpos, em duas ondas, 8 namespaces `drr-tnt-*` que não deveriam existir no cluster (6 recriados por um `ApplicationSet` do ArgoCD, 1 sem fonte identificada, e 1 — `swfabrik-europe-marketplaces-dev` — que voltou sozinho numa segunda onda por ter sido recriado por uma CRD do `darueira-operator` não mapeada na primeira limpeza) — ver seções "Cleanup de tenants fantasma". `specs/01-initial-spec.md` §11 (Deviations #1 e #5) e o status matrix foram atualizados para refletir o estado final.
 **Objetivo:** Fechar a Deviation #1 do `specs/01-initial-spec.md` (§11) — isolamento de rede declarado (5 `CiliumNetworkPolicy` já versionadas) mas não aplicado, porque o cluster roda Calico e não há agente Cilium ativo.
 **Escopo:** Cluster single-node MicroK8s (`darueira-privatecloud-platform`), uso de estudo pessoal, sem outros consumidores.
 
@@ -261,16 +259,25 @@ Tenants/projects/environments reais confirmados após a segunda onda: `Tenant/sw
 Depois que **todos** os namespaces tiverem passado pela Fase 3 sem "would-drop" inesperado:
 
 ```bash
-cilium config set policy-audit-mode Disabled
+# NOTE (2026-09-23): a sintaxe abaixo, copiada de docs antigas do Cilium,
+# dá `Error: Improper configuration format provided` nesta versão (v1.15.2).
+# O `cilium-dbg config` desta versão usa a forma `<option>=(enable|disable)`.
+CIL_POD=$(microk8s kubectl get pods -n kube-system -l k8s-app=cilium -o jsonpath='{.items[0].metadata.name}')
+microk8s kubectl exec -n kube-system "$CIL_POD" -- cilium config PolicyAuditMode=Disable
+microk8s kubectl exec -n kube-system "$CIL_POD" -- cilium config get PolicyAuditMode   # deve responder "Disabled"
 ```
 
-Isso ativa o enforcement real (`default-deny` + regras) em todos os namespaces com política de uma vez.
+Isso ativa o enforcement real (`default-deny` + regras) em todos os namespaces com política de uma vez. Na prática, neste cluster o audit mode já estava `Disabled` desde a Fase 1 (achado crítico da Fase 2) — rodar o comando aqui é só o passo formal/idempotente, o enforcement real já estava ativo o tempo todo.
+
+**Executado em 2026-09-23**: comando rodado, confirmado `Disabled`. `cilium status` reportou `Controller Status: 932/932 healthy`. Zero drops numa janela de 60s em todos os 6 namespaces com política (4 corpshared + 2 tenant), antes e depois. Teste de DNS com pod novo em `drr-tnt-swfabrik-latam-dev` resolveu normalmente. `ArgoCD` com todas as 19 apps `Synced`/`Healthy`.
+
+**Achado no meio do smoke test, não relacionado ao Cilium**: vários pods em `drr-corpshared-plat`/`drr-corpshared-mgmt` (`keycloak-server`, `stalwart-mail`, `clavex-server`, `jsreport`, `temporal-ui`, `apache-nifi`, `backstage`) estavam em `CrashLoopBackOff` e o ArgoCD com `SYNC: Unknown` em todas as apps. Causa: `central-postgres-0` e o `darueira-operator` reiniciaram no mesmo segundo (`05:59:21Z`) — mesmo padrão de cascata já documentado na Fase 1 (provável reinício do node/laptop de madrugada). Confirmado que o Postgres já estava saudável (`psql -U drr_admin -c "SELECT 1"` OK) antes de fazer qualquer coisa; os pods dependentes só estavam presos em backoff longo das tentativas durante o boot dele. `kubectl delete pod` nos 7 pods travados (mesma receita já documentada na Fase 1: "restart manual pra pular a espera") resolveu tudo — todos voltaram `Running 1/1` e o ArgoCD voltou a `Synced` em menos de 2 minutos.
 
 Checklist:
-- [ ] Todos os namespaces revisados sem drops inesperados em audit
-- [ ] Audit mode desligado
-- [ ] Smoke test completo pós-enforcement (repetir os mesmos testes manuais da Fase 1)
-- [ ] Hubble continua mostrando fluxos normais como `FORWARDED`, não `DROPPED`
+- [x] Todos os namespaces revisados sem drops inesperados em audit
+- [x] Audit mode desligado
+- [x] Smoke test completo pós-enforcement (repetir os mesmos testes manuais da Fase 1)
+- [x] Hubble continua mostrando fluxos normais como `FORWARDED`, não `DROPPED`
 
 ---
 
@@ -300,6 +307,6 @@ Como o storage é independente do CNI, o rollback de CNI não arrisca dado — s
 
 ## Pós-migração: atualizar documentação
 
-- [ ] `specs/01-initial-spec.md` §11 — marcar Deviation #1 (network isolation) como resolvida, com data.
-- [ ] Revisar ADR-0004 se o comportamento final divergir do que está descrito.
-- [ ] Registrar neste runbook a data real de execução e qualquer ajuste feito nas políticas durante o audit mode, pra virar histórico.
+- [x] `specs/01-initial-spec.md` §11 — Deviation #1 (network isolation) marcada como resolvida em 2026-09-23; Deviation #5 (namespace naming) também resolvida como efeito colateral do cleanup de tenants fantasma; status matrix (Cilium CNI, `darueira-operator`) atualizado.
+- [x] Revisado ADR-0004 — nada nele referenciava o estado pendente de audit mode/enforcement, não precisou de mudança.
+- [x] Runbook já registra a data real de execução de cada fase e todos os ajustes feitos nas políticas ao longo do processo (achados críticos #1 e #2, cleanup de tenants fantasma em duas ondas).

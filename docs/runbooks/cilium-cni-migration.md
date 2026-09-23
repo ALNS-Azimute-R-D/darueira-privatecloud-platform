@@ -1,6 +1,8 @@
 # Runbook: Migração de CNI — Calico → Cilium
 
 > **Retomar aqui (pausado em 2026-09-23, fim de sessão)**: só falta a **Fase 4 — Enforcement** (seção abaixo). Fase 3 está 100% concluída e commitada (`git log`: até `9495b82`, working tree limpa). Antes de rodar `cilium config set policy-audit-mode Disabled`, reler a checklist da Fase 4 e o achado crítico #2 (bug de escopo de namespace, já corrigido nas 5 políticas) — não deveria haver mais surpresa de drop, mas vale rodar `hubble observe --verdict DROPPED` numa janela curta em todos os namespaces afetados antes e depois de desligar o audit mode, do jeito que foi feito no resto da Fase 3.
+>
+> **Atualização (2026-09-23, manhã seguinte)**: o cleanup de tenants fantasma de ontem estava incompleto — ver "Segunda onda do cleanup" logo abaixo da seção original. `drr-tnt-swfabrik-europe-marketplaces-dev` voltou sozinho (recriado por um operator da plataforma que não tínhamos mapeado ainda). Já resolvido na fonte certa. Fase 3 permanece com só 2 tenants reais.
 
 **Status:** Fases 0, 1 e 2 executadas e validadas em 2026-09-22. Enforcement das 4 políticas de controle (`obs`/`mgmt`/`plat`/`secr-internal`) já está **live** (aconteceu sem querer na Fase 1, debugado e corrigido na Fase 2 — ver achado crítico abaixo). `policy-audit-mode` está `Disabled` globalmente desde a Fase 1 (nunca chegou a ser ligado formalmente) — ou seja, todo rollout de tenant na Fase 3 já está indo direto pra enforcement real, não pra um modo audit de verdade; tratar cada apply de tenant como enforcement ao vivo. **2026-09-23: achado crítico #2** (ver seção própria abaixo) — as 5 políticas tinham um bug de escopo de namespace que quebrava silenciosamente todo o cross-namespace pretendido pelo design; corrigido nas 5 e revalidado nos 2 tenants já migrados. **2026-09-23: cleanup de tenants fantasma** — 8 namespaces `drr-tnt-*` que não deveriam existir (6 gerados por um `ApplicationSet` com lista de demo/scaffold hardcoded, 2 estáticos sem fonte) foram apagados; a fonte (`platform/gitops/argocd-apps/applicationset-tenants.yaml`) foi corrigida pra parar o self-heal do ArgoCD de recriá-los — ver seção própria abaixo. Fase 3 concluída: os únicos 2 namespaces de tenant que de fato existem no cluster (`drr-tnt-swfabrik-latam-dev`, `drr-tnt-swfabrik-europe-dev`) estão migrados e validados. Falta só o enforcement formal (Fase 4, que na prática já vale pras 4 namespaces de controle e para os 2 tenants).
 **Objetivo:** Fechar a Deviation #1 do `specs/01-initial-spec.md` (§11) — isolamento de rede declarado (5 `CiliumNetworkPolicy` já versionadas) mas não aplicado, porque o cluster roda Calico e não há agente Cilium ativo.
@@ -231,6 +233,26 @@ Também corrigido no mesmo arquivo, drift encontrado entre o `ApplicationSet` ao
 **Efeito colateral corrigido**: a política do `corpshared-obs` (achado crítico #2 acima) tinha sido enumerada com os 10 namespaces de tenant que existiam no momento — incluindo os 8 fantasmas. Removidas essas 8 entradas da lista `&cross-ns-obs-sources`, deixando só os 2 tenants reais.
 
 Tenants reais confirmados no cluster após o cleanup: `drr-tnt-swfabrik-latam-dev`, `drr-tnt-swfabrik-europe-dev`.
+
+### Segunda onda do cleanup (2026-09-23, manhã seguinte): `darueira-operator`
+
+Ao retomar a sessão, `drr-tnt-swfabrik-europe-marketplaces-dev` (um dos 8 namespaces apagados no dia anterior) tinha voltado sozinho, criado 65s antes da checagem. O cleanup de ontem não tinha mapeado essa fonte porque ela não é ArgoCD — é um **operator Kubernetes próprio da plataforma** (`darueira-operator`, Deployment em `drr-corpshared-mgmt`, imagem `localhost:8082/darueira-operator:v1alpha1`, com 3 CRDs: `tenants.darueira.io`, `projects.darueira.io`, `environments.darueira.io`).
+
+**Como foi achado**: `kubectl get ns <namespace> -o yaml --show-managed-fields` mostrou `manager: darueira-operator` no lugar de `argocd-controller`/`kubectl-client-side-apply`. Os logs do operator (`kubectl logs -n drr-corpshared-mgmt deploy/darueira-operator`) confirmaram: o pod do operator reiniciou às 05:59:21 (tem histórico de 41 restarts em 34 dias — mesmo padrão crônico de I/O em disco já registrado neste runbook) e, no startup, reconcilia **todos** os `Environment` CRs existentes contra o estado atual do cluster — como o `Environment/swfabrik-europe-dev` (que referencia `Project/marketplaces` + `Tenant/swfabrik-europe`) ainda existia, o operator recriou o namespace que faltava.
+
+**Diferença importante em relação ao achado de ontem**: isso não era lixo de demo — o `Environment` CR tinha dados de configuração reais (`adminEmail`, `deployers`/`operators` do OpenFGA, `enableSidecarPEP: true`). Antes de apagar de novo, confirmei com o usuário se era engano ter incluído esse na lista de ontem ou se o projeto "marketplaces" realmente devia ser decomissionado — resposta: decomissionar, mas pela via certa (CRs, não o namespace direto).
+
+**Decomissionamento correto**:
+1. `kubectl delete environments.darueira.io swfabrik-europe-dev` — o operator RBAC inclui `environments/finalizers`, mas **na prática não implementa cleanup automático**: o delete retornou na hora (sem o hang característico de um finalizer bloqueante) e os logs só registraram `"Environment resource deleted"`, sem nenhuma ação de limpeza em seguida. O namespace continuou existindo.
+2. `kubectl delete namespace drr-tnt-swfabrik-europe-marketplaces-dev` — manual, já que o operator não faz.
+3. Confirmado que nenhum outro `Environment` referenciava `Project/marketplaces` (`kubectl get environments.darueira.io -A -o jsonpath=...projectRef...`) antes de `kubectl delete projects.darueira.io marketplaces`.
+4. `Tenant/swfabrik-europe` foi **mantido** — é o mesmo tenant real que já tem `drr-tnt-swfabrik-europe-dev` migrado; só o projeto "marketplaces" dentro dele foi removido.
+
+**Verificado, não corrigido agora** (fora do escopo desta migração, mas registrado): `drr-tnt-swfabrik-latam-dev` foi confirmado como não gerenciado por este operator (criado via `kubectl-client-side-apply` + `argocd-controller`), então não corre o mesmo risco de recriação. Não foi checado se `swfabrik-europe-dev` (o ambiente real) também tem um `Environment` CR próprio no operator — provavelmente sim, dado o padrão, mas como não estamos apagando esse namespace, não há risco a mitigar agora.
+
+**Lição de processo**: um cleanup baseado em apagar recursos do Kubernetes API direto (namespace, Application) só é permanente se a **fonte de reconciliação** for identificada primeiro — `kubectl get <resource> -o yaml --show-managed-fields` (campo `manager`) é a forma mais rápida de achar quem realmente é dono de um recurso quando não está óbvio, antes de assumir que é ArgoCD ou lixo manual.
+
+Tenants/projects/environments reais confirmados após a segunda onda: `Tenant/swfabrik-europe` (namespace `drr-tnt-swfabrik-europe-dev`), namespace `drr-tnt-swfabrik-latam-dev` (fora do operator). Nenhum `Project`/`Environment` órfão restante.
 
 ---
 

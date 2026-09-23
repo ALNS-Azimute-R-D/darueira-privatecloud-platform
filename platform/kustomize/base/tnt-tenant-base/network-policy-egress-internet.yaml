@@ -1,0 +1,31 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: tenant-egress-internet
+spec:
+  # Opt-in internet egress (HTTPS only) for tenant workloads that call
+  # external APIs. A pod gets it by carrying the label below in its pod
+  # template (set in the app's own Helm chart / GitOps repo); everything
+  # else in the tenant, data stores included, keeps tenant-isolation-policy's
+  # no-internet egress. Cilium policies are additive: a labelled pod gets
+  # the union of both policies' allows.
+  #
+  # Added 2026-09-23 (achado crítico #6): bookanything-monolith-backend-01
+  # enrichment (Gemini via *.googleapis.com, Wikimedia/Wikipedia flags and
+  # summaries, flagcdn, restcountries) got `policy-verdict:none EGRESS
+  # DENIED` to world:443; the geolocation-enricher Kafka consumer hung on
+  # the first state and its SVG/asset processing queue stalled behind it.
+  #
+  # Port 443 only, any destination: an FQDN allowlist (toFQDNs) would be
+  # tighter but needs Cilium's L7 DNS proxy, consciously deferred in
+  # docs/runbooks/cilium-cni-migration.md.
+  endpointSelector:
+    matchLabels:
+      darueira.io/egress-internet: "true"
+  egress:
+    - toEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

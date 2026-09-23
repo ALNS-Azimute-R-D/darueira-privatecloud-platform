@@ -62,6 +62,22 @@ spec:
               protocol: TCP
             - port: "8200" # tenant-openbao UI
               protocol: TCP
+    # Allow the corporate NiFi data pipeline to call back into tenant
+    # backends. The "BookAnything - GeoLocation Ingestion Pipeline" step
+    # "8. Ingest Backend & Summarize" POSTs straight to
+    # bookanything-monolith-backend-01:8060 (not via APISIX). Without this
+    # rule the SYN is dropped (Hubble: policy-verdict:none INGRESS DENIED),
+    # the flowfile fails silently (failure is auto-terminated) and the
+    # Temporal activity waits out its 25 min timeout — achado crítico #5.
+    # Same explicit-namespace requirement as the apisix-gateway rule above.
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: apache-nifi
+            k8s:io.kubernetes.pod.namespace: drr-corpshared-plat
+      toPorts:
+        - ports:
+            - port: "8060" # bookanything-monolith-backend-01
+              protocol: TCP
     # Allow SPIFFE / SPIRE attestation agent
     - fromEntities:
         - host

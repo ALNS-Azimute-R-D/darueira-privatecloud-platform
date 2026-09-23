@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - namespace-template.yaml
   - network-policy-template.yaml
+  - network-policy-egress-internet.yaml
   - resource-quota.yaml
   - envoy-sidecar-configmap.yaml
   - opa-policy-configmap.yaml

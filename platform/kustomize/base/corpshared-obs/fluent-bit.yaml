@@ -66,6 +66,14 @@ data:
         Kube_Token_File     /var/run/secrets/kubernetes.io/serviceaccount/token
         Kube_Tag_Prefix     kube.var.log.containers.
         Merge_Log           On
+        # Nest parsed JSON app logs under one key instead of the document
+        # root. At the root, every app's JSON keys (attr.*, raw_request.*,
+        # config.*, ...) became top-level fields: 1600+ in the index pattern
+        # vs. a 1000-field-per-index limit, and a 359 KB index-pattern that
+        # OpenSearch Dashboards kept re-saving with 409 conflicts. The index
+        # template (opensearch-index-config/) maps log_processed as
+        # flat_object, so it costs a single mapped field.
+        Merge_Log_Key       log_processed
         Keep_Log            On
         Labels              On
         Annotations         Off

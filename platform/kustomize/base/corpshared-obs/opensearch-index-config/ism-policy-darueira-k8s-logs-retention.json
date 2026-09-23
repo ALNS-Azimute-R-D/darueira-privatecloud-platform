@@ -1,0 +1,23 @@
+{
+  "policy": {
+    "description": "Delete darueira-k8s-logs-* daily indices older than 2 days",
+    "default_state": "hot",
+    "states": [
+      {
+        "name": "hot",
+        "actions": [],
+        "transitions": [
+          { "state_name": "delete", "conditions": { "min_index_age": "2d" } }
+        ]
+      },
+      {
+        "name": "delete",
+        "actions": [ { "delete": {} } ],
+        "transitions": []
+      }
+    ],
+    "ism_template": [
+      { "index_patterns": ["darueira-k8s-logs-*"], "priority": 100 }
+    ]
+  }
+}

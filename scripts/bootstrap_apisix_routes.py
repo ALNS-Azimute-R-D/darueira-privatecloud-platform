@@ -495,55 +495,41 @@ ROUTES = [
         "plugins": {"prometheus": {}}
     },
     {
-        "id": "route-host-tenant-vault",
-        "name": "Tenant ACME Vault",
-        "desc": "Dedicated Secrets Management for Tenant ACME",
+        "id": "route-host-swfabrik-europe-vault",
+        "name": "Tenant SWFabrik Europe Vault",
+        "desc": "Dedicated Secrets Management (OpenBao UI) for Tenant SWFabrik Europe",
         "uri": "/*",
         "hosts": [
-            "vault.darueira-tnt-acme.127.0.0.1.nip.io",
-            "vault.darueira-tnt-acme.192.168.178.84.nip.io",
-            "vault.darueira-tnt-acme.127.0.0.1.sslip.io",
-            "vault.darueira-tnt-acme.local"
+            "vault.swfabrik-europe.127.0.0.1.nip.io",
+            "vault.swfabrik-europe.192.168.178.84.nip.io",
+            "vault.darueira-tnt-swfabrik-europe.127.0.0.1.nip.io",
+            "vault.darueira-tnt-swfabrik-europe.192.168.178.84.nip.io",
+            "vault.swfabrik-europe.local",
+            "vault.darueira-tnt-swfabrik-europe.local"
         ],
         "upstream": {
-            "nodes": {"tenant-openbao.drr-tnt-acme.svc.cluster.local:8200": 1},
+            "nodes": {"tenant-openbao.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8200": 1},
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}
     },
     {
-        "id": "route-host-tenant-keycloak",
-        "name": "Tenant ACME Keycloak",
-        "desc": "Dedicated Identity Realm for Tenant ACME",
+        "id": "route-host-swfabrik-latam-vault",
+        "name": "Tenant SWFabrik LATAM Vault",
+        "desc": "Dedicated Secrets Management (OpenBao UI) for Tenant SWFabrik LATAM",
         "uri": "/*",
         "hosts": [
-            "keycloak.darueira-tnt-acme.127.0.0.1.nip.io",
-            "keycloak.darueira-tnt-acme.192.168.178.84.nip.io",
-            "keycloak.darueira-tnt-acme.127.0.0.1.sslip.io",
-            "keycloak.darueira-tnt-acme.local"
+            "vault.swfabrik-latam.127.0.0.1.nip.io",
+            "vault.swfabrik-latam.192.168.178.84.nip.io",
+            "vault.darueira-tnt-swfabrik-latam.127.0.0.1.nip.io",
+            "vault.darueira-tnt-swfabrik-latam.192.168.178.84.nip.io",
+            "vault.swfabrik-latam.local",
+            "vault.darueira-tnt-swfabrik-latam.local"
         ],
         "upstream": {
-            "nodes": {"tenant-keycloak.drr-tnt-acme.svc.cluster.local:8080": 1},
+            "nodes": {"tenant-openbao.drr-tnt-swfabrik-latam-dev.svc.cluster.local:8200": 1},
             "type": "roundrobin"
         },
-        "plugins": {"prometheus": {}}
-    },
-    {
-        "id": "route-host-tenant-minio",
-        "name": "Tenant ACME MinIO S3",
-        "desc": "Dedicated Object Storage S3 for Tenant ACME",
-        "uri": "/*",
-        "hosts": [
-            "minio.darueira-tnt-acme.127.0.0.1.nip.io",
-            "minio.darueira-tnt-acme.192.168.178.84.nip.io",
-            "minio.darueira-tnt-acme.127.0.0.1.sslip.io",
-            "minio.darueira-tnt-acme.local"
-        ],
-        "upstream": {
-            "nodes": {"tenant-minio.drr-tnt-acme.svc.cluster.local:9001": 1},
-            "type": "roundrobin"
-        },
-        "enable_websocket": True,
         "plugins": {"prometheus": {}}
     },
     {
@@ -571,7 +557,7 @@ ROUTES = [
             "api.tenant.darueira-corpshared.local"
         ],
         "upstream": {
-            "nodes": {"drr-tenant-svc.drr-corpshared-plat.svc.cluster.local:8080": 1},
+            "nodes": {"drr-tenant-svc.drr-corpshared-plat.svc.cluster.local:8081": 1},
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}
@@ -586,7 +572,7 @@ ROUTES = [
             "api.orchestrator.darueira-corpshared.local"
         ],
         "upstream": {
-            "nodes": {"drr-env-orchestrator-svc.drr-corpshared-mgmt.svc.cluster.local:8080": 1},
+            "nodes": {"drr-env-orchestrator-svc.drr-corpshared-mgmt.svc.cluster.local:8082": 1},
             "type": "roundrobin"
         },
         "plugins": {"prometheus": {}}
@@ -1204,6 +1190,28 @@ ROUTES = [
     }
 ]
 
+# Routes removed from ROUTES above. seed_all() only PUTs, so without an
+# explicit DELETE they would linger in etcd forever.
+# - route-host-tenant-{vault,keycloak,minio}: pointed at drr-tnt-acme, a
+#   ghost tenant namespace removed from the cluster (see
+#   docs/runbooks/cilium-cni-migration.md, "Cleanup de tenants fantasma").
+STALE_ROUTE_IDS = [
+    "route-host-tenant-vault",
+    "route-host-tenant-keycloak",
+    "route-host-tenant-minio",
+]
+
+def delete_resource(url):
+    req = urllib.request.Request(url, method="DELETE", headers={"X-API-KEY": ADMIN_KEY})
+    try:
+        with urllib.request.urlopen(req, timeout=10):
+            print(f"DELETED: {url}")
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            print(f"ABSENT: {url}")
+        else:
+            print(f"HTTPError {e.code} on {url}: {e.read().decode()}")
+
 def put_resource(url, payload):
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=data, method="PUT", headers={
@@ -1258,6 +1266,10 @@ def seed_all(base_url=ADMIN_URL):
     for route in ROUTES:
         route_id = route["id"]
         put_resource(f"{base_url}/routes/{route_id}", route)
+
+    print("\n=== REMOVING STALE APISIX ROUTES ===")
+    for route_id in STALE_ROUTE_IDS:
+        delete_resource(f"{base_url}/routes/{route_id}")
     print("\n=== FINISHED SEEDING APISIX TO ETCD ===")
 
 if __name__ == "__main__":

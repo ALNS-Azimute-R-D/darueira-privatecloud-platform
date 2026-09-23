@@ -1,8 +1,8 @@
 # Runbook: Migração de CNI — Calico → Cilium
 
-> **Migração concluída em 2026-09-23.** Fases 0-4 todas executadas e validadas, incluindo um achado crítico #3 pós-Fase 4 (portas administrativas faltando). Nada pendente neste runbook — próximos passos de rede (WireGuard, kube-proxy replacement, L7/FQDN policies) são itens conscientemente adiados (ver seção 0), não deviations.
+> **Migração concluída em 2026-09-23.** Fases 0-4 todas executadas e validadas, incluindo os achados críticos #3 e #4 pós-Fase 4 (portas administrativas e portas de apps de negócio faltando na regra do `apisix-gateway`). Nada pendente neste runbook — próximos passos de rede (WireGuard, kube-proxy replacement, L7/FQDN policies) são itens conscientemente adiados (ver seção 0), não deviations.
 
-**Status:** **Migração completa.** Fases 0, 1 e 2 executadas e validadas em 2026-09-22; Fases 3 e 4 em 2026-09-23. Enforcement real (`policy-audit-mode Disabled`) está ativo em todos os 6 namespaces com `CiliumNetworkPolicy`: os 4 de controle (`obs`/`mgmt`/`plat`/`secr-internal`) e os 2 tenants reais (`drr-tnt-swfabrik-latam-dev`, `drr-tnt-swfabrik-europe-dev`). Três bugs reais de política foram encontrados e corrigidos no processo — **achado crítico #1** (Fase 2: fallback `toEntities: [cluster, world]` faltando para DNS), **achado crítico #2** (Fase 3: bug de escopo de namespace que quebrava todo `matchLabels` cross-namespace nas 5 políticas) e **achado crítico #3** (pós-Fase 4: portas de interface administrativa — OpenSearch Dashboards, consoles de tenant — nunca tinham sido incluídas nas políticas) — ver seções próprias abaixo. Também foram encontrados e limpos, em duas ondas, 8 namespaces `drr-tnt-*` que não deveriam existir no cluster (6 recriados por um `ApplicationSet` do ArgoCD, 1 sem fonte identificada, e 1 — `swfabrik-europe-marketplaces-dev` — que voltou sozinho numa segunda onda por ter sido recriado por uma CRD do `darueira-operator` não mapeada na primeira limpeza) — ver seções "Cleanup de tenants fantasma". `specs/01-initial-spec.md` §11 (Deviations #1 e #5) e o status matrix foram atualizados para refletir o estado final.
+**Status:** **Migração completa.** Fases 0, 1 e 2 executadas e validadas em 2026-09-22; Fases 3 e 4 em 2026-09-23. Enforcement real (`policy-audit-mode Disabled`) está ativo em todos os 6 namespaces com `CiliumNetworkPolicy`: os 4 de controle (`obs`/`mgmt`/`plat`/`secr-internal`) e os 2 tenants reais (`drr-tnt-swfabrik-latam-dev`, `drr-tnt-swfabrik-europe-dev`). Quatro bugs reais de política foram encontrados e corrigidos no processo — **achado crítico #1** (Fase 2: fallback `toEntities: [cluster, world]` faltando para DNS), **achado crítico #2** (Fase 3: bug de escopo de namespace que quebrava todo `matchLabels` cross-namespace nas 5 políticas) e **achado crítico #3** (pós-Fase 4: portas de interface administrativa — OpenSearch Dashboards, consoles de tenant — nunca tinham sido incluídas nas políticas) e **achado crítico #4** (pós-Fase 4: portas de container dos apps de negócio dos tenants, para onde o APISIX roteia direto, também faltavam) — ver seções próprias abaixo. Também foram encontrados e limpos, em duas ondas, 8 namespaces `drr-tnt-*` que não deveriam existir no cluster (6 recriados por um `ApplicationSet` do ArgoCD, 1 sem fonte identificada, e 1 — `swfabrik-europe-marketplaces-dev` — que voltou sozinho numa segunda onda por ter sido recriado por uma CRD do `darueira-operator` não mapeada na primeira limpeza) — ver seções "Cleanup de tenants fantasma". `specs/01-initial-spec.md` §11 (Deviations #1 e #5) e o status matrix foram atualizados para refletir o estado final.
 **Objetivo:** Fechar a Deviation #1 do `specs/01-initial-spec.md` (§11) — isolamento de rede declarado (5 `CiliumNetworkPolicy` já versionadas) mas não aplicado, porque o cluster roda Calico e não há agente Cilium ativo.
 **Escopo:** Cluster single-node MicroK8s (`darueira-privatecloud-platform`), uso de estudo pessoal, sem outros consumidores.
 
@@ -299,6 +299,34 @@ Depois da Fase 4 concluída, o usuário reportou que interfaces administrativas 
 **Fix**: adicionada a porta `5601/TCP` na regra de ingress 1 do `corpshared-obs`; adicionadas `8080/TCP`, `9001/TCP` e `8200/TCP` na regra de ingress do `apisix-gateway` no template de tenant (mantendo a `8000/TCP` já existente). Reaplicado em `corpshared-obs` e nos 2 namespaces de tenant. Revalidado: todas as 5 portas abrem (`nc -zv` → `open`) nos dois tenants, zero drops residuais.
 
 **Lição de processo**: o smoke test da Fase 4 (Hubble sem drops + DNS + ArgoCD Synced) cobriu os caminhos que já tínhamos testado nas fases anteriores (egress de tenant, DNS, gateway→porta 8000), mas não testou **ingress em portas administrativas** — um caminho de tráfego diferente (browser → APISIX → serviço) que só apareceu quando o usuário testou de verdade. Ao validar uma política de rede, vale levantar o inventário completo de rotas/portas que **deveriam** funcionar (ex.: `scripts/bootstrap_apisix_routes.py` ou equivalente) antes de declarar "sem drops" como sinônimo de "tudo funciona" — ausência de drop numa amostra só prova que o que foi *exercitado* funciona.
+
+---
+
+### 🔴 Achado crítico #4 (2026-09-23): portas dos apps de negócio dos tenants bloqueadas para o APISIX
+
+Mesmo depois do fix do achado #3, o usuário reportou que os serviços dos tenants continuavam inacessíveis. O frontend do `foodmarket` carregava, mas as chamadas `/api/food0X/...` retornavam 504/499. Os logs do APISIX mostravam `upstream timed out (110: Connection timed out) while connecting to upstream`.
+
+**Causa raiz**: a regra de ingress do `apisix-gateway` no template de tenant partia do pressuposto de que o gateway só fala com o Envoy PEP (`8000`) mais os consoles admin (achado #3). Só que as rotas vivas do APISIX (`scripts/bootstrap_apisix_routes.py`) apontam direto para a porta de container de cada app de negócio. O Cilium avalia a porta **pós-DNAT** (a do container), não a do Service. Portas faltando:
+
+| App (europe) | Porta do container |
+| :--- | :--- |
+| `food-market-01…06-service` | `8081`–`8086` |
+| `bookanything-monolith-backend-01` | `8060` |
+| `fake-legal-partners-agencies-app` | `8085` |
+
+Os frontends/MFEs (Service `80` → container `8080`), o `caseforce` e os apps de latam funcionavam só porque o `8080` tinha sido liberado no achado #3 para o `tenant-keycloak`.
+
+**Confirmado empiricamente** com um container efêmero (`kubectl debug --profile=restricted`, busybox `nc -z`) **dentro do pod do `apisix-gateway`**, ou seja, com a mesma identidade Cilium do tráfego real: `8081`, `8084`, `8060` e `8085` davam TIMEOUT; `8080`, `9001`, `8200` e `5601` davam OPEN.
+
+**Fix**: a lista de portas da regra passou a ter `8000, 8060, 8080–8086, 9001, 8200`, com cada porta comentada com o app correspondente. A primeira tentativa foi usar a faixa `port: "8000"` + `endPort: 8099`, mas **o CRD do Cilium 1.15 não tem `endPort`** (o `--dry-run=server` retornou `strict decoding error: unknown field ...endPort`). Ficou um TODO para voltar à faixa quando o cluster estiver no Cilium ≥ 1.16. Aplicado nos 2 namespaces de tenant.
+
+**Validado**:
+- Novo probe com a identidade do gateway: todos os upstreams HTTP dos tenants (europe e latam) OPEN.
+- Datastores continuam fechados para o gateway: `27017`, `3306`, `5432` e a API S3 do MinIO `9000` dão TIMEOUT, como esperado.
+- HTTP ponta a ponta via APISIX: `foodmarket /api/food01|03|06/food-tradings` → 200, `bookanything-api` e `agency` `/swagger-ui` → 200. Os 404 de `api.food04 /` e `checkout /` vêm dos próprios apps (corpo FastAPI/Go, não o `Route Not Found` do APISIX).
+- Hubble sem drops envolvendo `drr-tnt-*`/`apisix`.
+
+**Lição de processo**: a lição do achado #3 (levantar o inventário de rotas antes de declarar "sem drops") foi aplicada só à metade: foram verificadas as rotas *administrativas*, não **todas** as rotas com upstream em namespace de tenant. O inventário tem que vir da Admin API do APISIX (`GET /apisix/admin/routes`), filtrando os upstreams `*.drr-tnt-*`, e não de uma leitura seletiva do script. Com lista explícita de portas, **todo app novo numa porta fora da lista vai falhar do mesmo jeito**, em silêncio. Esse probe agora está automatizado em `make smoke-apisix-upstreams` (`scripts/smoke_apisix_upstreams.py`). Ele lê todas as rotas da Admin API e testa, em paralelo, cada upstream a partir de um container efêmero dentro do pod do `apisix-gateway`; retorna exit 1 se algum não abrir. **Rode-o depois de qualquer mudança de `CiliumNetworkPolicy` ou de rota.** Na primeira execução (2026-09-23) ele achou mais 5 upstreams quebrados, nenhum deles de política de rede: 3 rotas órfãs para `drr-tnt-acme` (removidas) e 2 rotas com porta errada — `api.tenant` apontava para `:8080`, mas o `drr-tenant-svc` escuta na `8081`; `api.orchestrator` apontava para `:8080`, mas o `drr-env-orchestrator-svc` escuta na `8082`. Tudo corrigido em `scripts/bootstrap_apisix_routes.py`. Resultado final: 50/50 upstreams OPEN.
 
 ---
 

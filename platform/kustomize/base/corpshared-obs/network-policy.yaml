@@ -8,7 +8,10 @@ spec:
     matchLabels:
       darueira.io/tier: enterprise-shared
   ingress:
-    # 1. Allow OTLP ingestion from all internal platform and tenant workloads.
+    # 1. Allow OTLP ingestion + admin/UI access (Grafana, Jaeger, Prometheus,
+    #    OpenSearch Dashboards) from all internal platform and tenant
+    #    workloads, since APISIX (apisix-gateway, in drr-corpshared-plat,
+    #    tier enterprise-shared) proxies admin interfaces through here too.
     # NOTE (2026-09-23): a namespaced CiliumNetworkPolicy implicitly scopes
     # plain matchLabels to its own namespace (the `any:` label-source prefix
     # does NOT bypass this — confirmed empirically via `cilium policy
@@ -61,6 +64,8 @@ spec:
             - port: "16686"
               protocol: TCP
             - port: "9200"
+              protocol: TCP
+            - port: "5601" # OpenSearch Dashboards (admin UI) — see rule comment above
               protocol: TCP
     # 2. Allow intra-observability traffic (same-namespace by design, no
     #    explicit namespace needed — default scoping is correct here).

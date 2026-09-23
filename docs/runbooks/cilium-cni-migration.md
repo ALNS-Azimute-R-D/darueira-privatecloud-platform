@@ -1,8 +1,8 @@
 # Runbook: Migração de CNI — Calico → Cilium
 
-> **Migração concluída em 2026-09-23.** Fases 0-4 todas executadas e validadas. Nada pendente neste runbook — próximos passos de rede (WireGuard, kube-proxy replacement, L7/FQDN policies) são itens conscientemente adiados (ver seção 0), não deviations.
+> **Migração concluída em 2026-09-23.** Fases 0-4 todas executadas e validadas, incluindo um achado crítico #3 pós-Fase 4 (portas administrativas faltando). Nada pendente neste runbook — próximos passos de rede (WireGuard, kube-proxy replacement, L7/FQDN policies) são itens conscientemente adiados (ver seção 0), não deviations.
 
-**Status:** **Migração completa.** Fases 0, 1 e 2 executadas e validadas em 2026-09-22; Fases 3 e 4 em 2026-09-23. Enforcement real (`policy-audit-mode Disabled`) está ativo em todos os 6 namespaces com `CiliumNetworkPolicy`: os 4 de controle (`obs`/`mgmt`/`plat`/`secr-internal`) e os 2 tenants reais (`drr-tnt-swfabrik-latam-dev`, `drr-tnt-swfabrik-europe-dev`). Dois bugs reais de política foram encontrados e corrigidos no processo — **achado crítico #1** (Fase 2: fallback `toEntities: [cluster, world]` faltando para DNS) e **achado crítico #2** (Fase 3: bug de escopo de namespace que quebrava todo `matchLabels` cross-namespace nas 5 políticas) — ver seções próprias abaixo. Também foram encontrados e limpos, em duas ondas, 8 namespaces `drr-tnt-*` que não deveriam existir no cluster (6 recriados por um `ApplicationSet` do ArgoCD, 1 sem fonte identificada, e 1 — `swfabrik-europe-marketplaces-dev` — que voltou sozinho numa segunda onda por ter sido recriado por uma CRD do `darueira-operator` não mapeada na primeira limpeza) — ver seções "Cleanup de tenants fantasma". `specs/01-initial-spec.md` §11 (Deviations #1 e #5) e o status matrix foram atualizados para refletir o estado final.
+**Status:** **Migração completa.** Fases 0, 1 e 2 executadas e validadas em 2026-09-22; Fases 3 e 4 em 2026-09-23. Enforcement real (`policy-audit-mode Disabled`) está ativo em todos os 6 namespaces com `CiliumNetworkPolicy`: os 4 de controle (`obs`/`mgmt`/`plat`/`secr-internal`) e os 2 tenants reais (`drr-tnt-swfabrik-latam-dev`, `drr-tnt-swfabrik-europe-dev`). Três bugs reais de política foram encontrados e corrigidos no processo — **achado crítico #1** (Fase 2: fallback `toEntities: [cluster, world]` faltando para DNS), **achado crítico #2** (Fase 3: bug de escopo de namespace que quebrava todo `matchLabels` cross-namespace nas 5 políticas) e **achado crítico #3** (pós-Fase 4: portas de interface administrativa — OpenSearch Dashboards, consoles de tenant — nunca tinham sido incluídas nas políticas) — ver seções próprias abaixo. Também foram encontrados e limpos, em duas ondas, 8 namespaces `drr-tnt-*` que não deveriam existir no cluster (6 recriados por um `ApplicationSet` do ArgoCD, 1 sem fonte identificada, e 1 — `swfabrik-europe-marketplaces-dev` — que voltou sozinho numa segunda onda por ter sido recriado por uma CRD do `darueira-operator` não mapeada na primeira limpeza) — ver seções "Cleanup de tenants fantasma". `specs/01-initial-spec.md` §11 (Deviations #1 e #5) e o status matrix foram atualizados para refletir o estado final.
 **Objetivo:** Fechar a Deviation #1 do `specs/01-initial-spec.md` (§11) — isolamento de rede declarado (5 `CiliumNetworkPolicy` já versionadas) mas não aplicado, porque o cluster roda Calico e não há agente Cilium ativo.
 **Escopo:** Cluster single-node MicroK8s (`darueira-privatecloud-platform`), uso de estudo pessoal, sem outros consumidores.
 
@@ -278,6 +278,27 @@ Checklist:
 - [x] Audit mode desligado
 - [x] Smoke test completo pós-enforcement (repetir os mesmos testes manuais da Fase 1)
 - [x] Hubble continua mostrando fluxos normais como `FORWARDED`, não `DROPPED`
+
+---
+
+### 🔴 Achado crítico #3 (2026-09-23): interfaces administrativas nunca tinham porta liberada
+
+Depois da Fase 4 concluída, o usuário reportou que interfaces administrativas não estavam acessíveis: serviços de tenant em geral, e o OpenSearch corporativo. Não era uma regressão da Fase 4 — o enforcement já estava live desde a Fase 1/3; essas portas simplesmente nunca tinham sido testadas antes.
+
+**Causa raiz**: as políticas cobriam as portas de **API/dados** de cada serviço, mas o APISIX (`scripts/bootstrap_apisix_routes.py`) expõe as **interfaces administrativas** em portas diferentes, nunca incluídas nas políticas:
+
+| Interface admin | Rota aponta para | Porta faltando | Política |
+| :--- | :--- | :--- | :--- |
+| OpenSearch Dashboards | `opensearch-dashboards.drr-corpshared-obs:5601` | `5601` | `corpshared-obs` (regra de ingress 1 tinha `9200` — a API — mas não `5601`, o Dashboard) |
+| Tenant Keycloak (admin console) | `tenant-keycloak.<tenant>:8080` | `8080` | `tnt-tenant-base` (regra de ingress do `apisix-gateway` só tinha `8000`) |
+| Tenant MinIO (console) | `tenant-minio.<tenant>:9001` | `9001` | idem |
+| Tenant OpenBao (UI) | `tenant-openbao.<tenant>:8200` | `8200` | idem (corrigido preventivamente, mesma classe de bug, ainda não testado ao vivo) |
+
+**Confirmado empiricamente** antes de corrigir: pod de teste com label `apisix-gateway` (mesma origem real do tráfego), `nc -zv` em cada porta → `Connection timed out`; Hubble confirmou `policy-verdict:none INGRESS DENIED` para os 3 primeiros alvos. Testados preventivamente ArgoCD (`:80`), Tekton Dashboard (`:9097`), Nexus (`:8082`) e Webmail (`:80`) — esses já funcionavam, cobertos pelas regras `fromEntities` de fallback de `corpshared-mgmt`/`corpshared-plat`.
+
+**Fix**: adicionada a porta `5601/TCP` na regra de ingress 1 do `corpshared-obs`; adicionadas `8080/TCP`, `9001/TCP` e `8200/TCP` na regra de ingress do `apisix-gateway` no template de tenant (mantendo a `8000/TCP` já existente). Reaplicado em `corpshared-obs` e nos 2 namespaces de tenant. Revalidado: todas as 5 portas abrem (`nc -zv` → `open`) nos dois tenants, zero drops residuais.
+
+**Lição de processo**: o smoke test da Fase 4 (Hubble sem drops + DNS + ArgoCD Synced) cobriu os caminhos que já tínhamos testado nas fases anteriores (egress de tenant, DNS, gateway→porta 8000), mas não testou **ingress em portas administrativas** — um caminho de tráfego diferente (browser → APISIX → serviço) que só apareceu quando o usuário testou de verdade. Ao validar uma política de rede, vale levantar o inventário completo de rotas/portas que **deveriam** funcionar (ex.: `scripts/bootstrap_apisix_routes.py` ou equivalente) antes de declarar "sem drops" como sinônimo de "tudo funciona" — ausência de drop numa amostra só prova que o que foi *exercitado* funciona.
 
 ---
 

@@ -12,7 +12,10 @@ spec:
     - fromEndpoints:
         - matchLabels:
             darueira.io/tier: tenant-workload
-    # Allow traffic from API Gateway DataPlane strictly to Envoy PEP (Port 8000).
+    # Allow traffic from API Gateway DataPlane (Envoy PEP, port 8000) and
+    # from admin/console UIs that APISIX proxies straight to tenant
+    # services: tenant-keycloak (8080), tenant-minio console (9001),
+    # tenant-openbao (8200).
     # NOTE (2026-09-23): apisix-gateway lives in drr-corpshared-plat, a
     # different namespace from every tenant. A namespaced
     # CiliumNetworkPolicy implicitly scopes plain matchLabels to its own
@@ -20,7 +23,9 @@ spec:
     # (confirmed empirically, see docs/runbooks/cilium-cni-migration.md
     # Fase 3). Explicit `k8s:io.kubernetes.pod.namespace` is the only
     # mechanism that works; without it this rule matched nothing and
-    # silently blocked all gateway->tenant ingress on port 8000.
+    # silently blocked all gateway->tenant ingress, on port 8000 and then
+    # again on the admin ports added here (achado crítico #3 — the admin
+    # ports were never in this rule at all, port list only had 8000).
     - fromEndpoints:
         - matchLabels:
             app.kubernetes.io/name: apisix-gateway
@@ -28,6 +33,12 @@ spec:
       toPorts:
         - ports:
             - port: "8000"
+              protocol: TCP
+            - port: "8080" # tenant-keycloak admin console
+              protocol: TCP
+            - port: "9001" # tenant-minio console
+              protocol: TCP
+            - port: "8200" # tenant-openbao UI
               protocol: TCP
     # Allow SPIFFE / SPIRE attestation agent
     - fromEntities:

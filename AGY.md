@@ -97,3 +97,8 @@ When executing requests in this repository:
 - ❌ **NEVER** expose administrative endpoints without APISIX route policies and mTLS/OIDC validation.
 - ❌ **NEVER** generate Docker-compose files for core workloads; local development is 100% Kubernetes-native on MicroK8s.
 - ✅ **ALWAYS** define resource requests/limits and Cilium NetworkPolicies for every provisioned namespace.
+
+---
+
+## 6. Multi-Agent Collaboration (Antigravity + Claude + André)
+- Follow the collaboration protocol in `CLAUDE.md`, section "Multi-agent collaboration": task ownership/status on the shared board `docs/roadmap/backlog-melhorias.md`, one branch or worktree per agent, a single agent at a time running mutating cluster actions, and handoff notes in the backlog when finishing an item.

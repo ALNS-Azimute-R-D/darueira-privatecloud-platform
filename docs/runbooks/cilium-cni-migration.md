@@ -379,7 +379,13 @@ Depois do achado #5, as GeoLocations eram criadas, mas os Assets (SVGs de mapa, 
 
 **Causa de fundo (confirmada)**: o DaemonSet monta `/var/run/cilium` a partir do hostPath `/var/snap/microk8s/current/var/run/cilium`, que está **em disco**. No Cilium padrão esse diretório vem de `/var/run/cilium` do host, que é **tmpfs**: sobrevive a restarts do agente (o comportamento que se quer) e é apagado no reboot. Aqui ele sobrevive ao reboot, e os endpoints de sandboxes mortas são restaurados.
 
-**Pendência (vai se repetir a cada reboot até ser corrigida)**: trocar o hostPath desse volume por um caminho em tmpfs (ex.: `/run/cilium`) no manifesto/config do Cilium do MicroK8s. É uma mudança no DaemonSet (restart do agente), então fazer numa janela planejada. Até lá, depois de cada reboot, rodar a limpeza acima seguida do restart do agente.
+**Correção do diagnóstico (2026-09-24, tarde)**: o vazamento voltou (IPAM 85 → 168) **sem reboot**. O host estava de pé desde 22/09, e o gatilho foi o `microk8s stop`/`start` da noite anterior. O `microk8s stop` chama `kill_all_container_shims` (SIGKILL no containerd e no kubelite), e todas as sandboxes morrem sem `CNI DEL`, exatamente como num reboot. Portanto **qualquer stop/start do MicroK8s vaza cerca de 80 IPs**.
+
+**Por que tmpfs não resolve**: o wrapper do containerd do MicroK8s (`/snap/microk8s/current/run-containerd-with-args`) faz `export CILIUM_SOCK="${SNAP_DATA}/var/run/cilium/cilium.sock"`. O plugin `cilium-cni` só encontra o agente nesse caminho, que é fixo no snap (read-only). Logo, o diretório não pode ser movido para `/run/cilium`. E um tmpfs só seria limpo no reboot, não no stop/start.
+
+**Correção aplicada**: `scripts/setup_host_cilium_state_cleanup.sh` (rodar com `sudo`, idempotente, tem `--uninstall`) instala um `ExecStartPre` no `snap.microk8s.daemon-containerd.service`. Esse passo apaga os diretórios de endpoint em `.../var/run/cilium/state/<id>[_next|_stale|_next_fail]` **somente se nenhum shim de pod do MicroK8s estiver vivo**, ou seja, depois de um reboot ou de um `microk8s stop`. Num restart só do containerd (`KillMode=process` mantém os shims e os pods), o estado fica intacto e os endpoints vivos são restaurados normalmente. Templates e globals não são tocados. Log: `journalctl -t cilium-state-cleanup`.
+
+**Validação pendente**: no próximo `microk8s stop`/`start`, conferir `journalctl -t cilium-state-cleanup` ("removed N stale Cilium endpoint state dirs") e `cilium status | grep IPAM` (deve ficar em torno do número de pods, sem `[restored]` órfãos). Se ainda vazar, o procedimento manual acima continua valendo.
 
 ---
 

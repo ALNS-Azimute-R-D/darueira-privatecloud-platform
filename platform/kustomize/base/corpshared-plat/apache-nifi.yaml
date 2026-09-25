@@ -130,6 +130,12 @@ spec:
               sed -i -e 's|^nifi.provenance.repository.directory.default=.*|nifi.provenance.repository.directory.default=/opt/nifi/nifi-current/data/provenance_repository|' /opt/nifi/nifi-current/conf/nifi.properties
               sed -i -e 's|^nifi.database.directory=.*|nifi.database.directory=/opt/nifi/nifi-current/data/database_repository|' /opt/nifi/nifi-current/conf/nifi.properties
 
+              # The archive limit is measured against the WHOLE partition, which the PVC shares with
+              # every other PV on the host HDD (83% used on 2026-09-25). At the default 50% NiFi
+              # blocked all content writes ("waiting for archive cleanup"), so ConsumeKafka stalled,
+              # got kicked out of its consumer group and import workflows hung.
+              sed -i -e 's|^nifi.content.repository.archive.max.usage.percentage=.*|nifi.content.repository.archive.max.usage.percentage=90%|' /opt/nifi/nifi-current/conf/nifi.properties
+
               # Periodic backup hook: sync conf changes to persistent storage every 30s
               (
                 while true; do

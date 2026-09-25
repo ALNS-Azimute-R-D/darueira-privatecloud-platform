@@ -66,6 +66,12 @@ Os 24 PVs stateful estão nesse disco. O NiFi já está segurando escritas
 (`nifi.content.repository.archive.max.usage.percentage=50%`: "waiting for archive cleanup").
 Falta investigar o que está consumindo o disco antes que algum serviço pare.
 
+**2026-09-25 (Claude):** isso já parou um serviço. O limite de 50% é medido contra a partição
+inteira, e o NiFi bloqueou todas as gravações de conteúdo ("waiting for archive cleanup"). O
+ConsumeKafka travou, foi expulso do consumer group (`max.poll.interval.ms`) e o workflow USA ficou
+parado 10 min. Paliativo: `archive.max.usage.percentage=90%` no `apache-nifi.yaml`. Falta a causa de
+fundo: descobrir quem ocupa os 459G e migrar os PVs para o NVMe (item 10).
+
 ### 17. Conexões esgotadas no central-postgres `[dono: Claude — status: feito]`
 Em 25/09 o Backstage entrou em CrashLoopBackOff com `FATAL 53300 too_many_connections`:
 `max_connections=100` e 103 conexões abertas, 61 delas idle do Temporal (pool SQL sem limite
@@ -163,7 +169,9 @@ em tmpfs (RAM), só limpo no reboot. Desligar o debug ou rotacionar o log.
     províncias do sistema inteiro.
     Teste offline: `make test-nifi-scripts`, 14 cenários, passando no Groovy 3.0.23 do NiFi.
     Aplicado e verificado com `make check-nifi-scripts`.
-    Falta validar num import real.
+    Validado em 25/09 com o workflow USA `geo-import-3400f097…`: COMPLETED, nível 1 com 50 criados,
+    1 atualizado e 0 falhas. Os 51 estados ficaram sob o USA com `gid`, e o backend não reiniciou
+    (pico de ~980Mi de 2Gi).
 16. **Validar o cleanup do Cilium** no próximo `microk8s stop` / `start`:
     `journalctl -t cilium-state-cleanup` deve mostrar "removed N stale Cilium endpoint state dirs",
     e `cilium status | grep IPAM` deve ficar em torno de 85, não 168.

@@ -206,8 +206,10 @@ spec:
               value: "2VaOLGpOAxvyHfJ8zn5wHwVcQZ1t70PO"
             - name: NIFI_JVM_HEAP_INIT
               value: "1024m"
+            # 3g heap: step 8 parses whole GADM GeoJSON files (USA level 1 has 51 large
+            # geometries) in memory. The 4Gi limit leaves ~1 GB for metaspace/direct buffers.
             - name: NIFI_JVM_HEAP_MAX
-              value: "2048m"
+              value: "3072m"
             - name: NIFI_FLOW_CONFIGURATION_FILE
               value: "/opt/nifi/nifi-current/data/flow.json.gz"
             - name: NIFI_FLOWFILE_REPOSITORY_DIRECTORY
@@ -229,10 +231,10 @@ spec:
           resources:
             requests:
               cpu: 250m
-              memory: 1024Mi
+              memory: 2048Mi
             limits:
               cpu: 2000m
-              memory: 3072Mi
+              memory: 4096Mi
           volumeMounts:
             - name: nifi-data
               mountPath: /opt/nifi/nifi-current/data

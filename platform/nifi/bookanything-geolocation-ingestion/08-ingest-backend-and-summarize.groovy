@@ -3,7 +3,7 @@
 // Process group: "BookAnything - GeoLocation Ingestion Pipeline"
 //
 // Source of truth for the live processor's "Script Body". Apply with:
-//   scripts/apply_nifi_script_body.sh "8. Ingest Backend & Summarize" \
+//   scripts/apply_nifi_script_body.py "8. Ingest Backend & Summarize" \
 //     platform/nifi/bookanything-geolocation-ingestion/08-ingest-backend-and-summarize.groovy
 //
 // Reads a GADM GeoJSON flowfile, creates/updates GeoLocations in the tenant
@@ -21,12 +21,28 @@
 //     errorMessage instead of issuing hundreds of doomed POSTs;
 //   - exceptions still produce a summary (with errorMessage) on "success", so
 //     the workflow always gets an answer.
+//
+// Parent resolution (2026-09-25): no more hardcoded country->region map or
+// country names. The parent of every record is looked up in the backend data:
+//   - country  -> REGION: flowfile attribute "parentFriendlyId" if set, else the
+//     REGION whose additionalDetailsMap.memberCountriesIso3 contains the ISO3
+//     code (seeded from platform/data/geolocation/continents-regions-un-m49.json
+//     by scripts/seed_geolocation_reference_data.py), else the parent the
+//     country already has;
+//   - province -> COUNTRY by exact friendlyId (created on the fly, named from
+//     the GADM "COUNTRY" property, if it does not exist yet);
+//   - city / district -> the province / city of THIS country that matches the
+//     feature's GID_1/GID_2 (stored as "gid" since this version), else its HASC
+//     prefix, else its accent/space-insensitive NAME_1/NAME_2.
+// A feature whose parent cannot be resolved is counted as failed instead of
+// being created without a parent.
 // =============================================================================
 import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.text.Normalizer
 import java.util.concurrent.Executors
 import java.util.concurrent.Callable
 import java.util.concurrent.TimeUnit
@@ -97,25 +113,104 @@ def getJson = { String url ->
     return null
 }
 
-def regionFriendlyIdFor = { String slug ->
-    (slug in ["DEU", "DE", "AUT", "CHE", "FRA", "NLD", "BEL", "ITA", "ESP", "PRT", "GBR"]) ? "WEU" : "SAM"
+def enc = { String v -> URLEncoder.encode(v ?: '', 'UTF-8') }
+
+// All pages of a GET list endpoint (Spring Page JSON: content + page.totalPages).
+def getAllPages = { String baseUrl ->
+    def sep = baseUrl.contains('?') ? '&' : '?'
+    def all = []
+    int pageIdx = 0
+    int totalPages = 1
+    while (pageIdx < totalPages) {
+        def res = getJson("${baseUrl}${sep}page=${pageIdx}&size=1000")
+        if (res == null) return null
+        all.addAll(res.content ?: [])
+        totalPages = res.page?.totalPages ?: 0
+        pageIdx++
+    }
+    return all
 }
 
-def findRegionId = {
-    def target = regionFriendlyIdFor(countrySlug)
-    def resp = getJson("${backendBaseUrl}/api/v1/geolocations/region?size=50")
-    def match = resp?.content?.find { it.friendlyId == target || it.alias == target }
-    if (match == null && resp?.content) {
-        log.warn("${logPrefix} region '${target}' not found, falling back to first region '${resp.content[0]?.friendlyId}'")
+// Accent-, case- and whitespace-insensitive key: "São Paulo" / "SaoPaulo" -> "saopaulo".
+def normalizeName = { String v ->
+    v == null ? null : Normalizer.normalize(v, Normalizer.Form.NFD).replaceAll("\\p{M}", "").toLowerCase().replaceAll("[^a-z0-9]", "")
+}
+def present = { v -> v != null && v.toString() && v.toString() != "NA" }
+
+// Exact friendlyId match within a type (never "first result" fallbacks).
+def findByFriendlyId = { String geoType, String friendlyId ->
+    def res = getJson("${backendBaseUrl}/api/v1/geolocations/${geoType}/search-by-friendlyid?friendlyId=${enc(friendlyId)}&size=10")
+    return res?.content?.find { it.friendlyId == friendlyId }
+}
+
+// Parent REGION of a country: explicit override, then reference-data membership,
+// then the region the country already has. Returns [id:, via:] or null.
+def resolveRegionForCountry = { String iso3 ->
+    def regions = getAllPages("${backendBaseUrl}/api/v1/geolocations/region") ?: []
+    def override = flowFile.getAttribute('parentFriendlyId')
+    if (override) {
+        def r = regions.find { it.friendlyId == override }
+        if (r == null) throw new IllegalStateException("parentFriendlyId '${override}' is not an existing REGION.")
+        return [id: r.id, via: "attribute parentFriendlyId=${override}"]
     }
-    return match?.id ?: (resp?.content ? resp.content[0]?.id : null)
+    def member = regions.find { (it.additionalDetailsMap?.memberCountriesIso3 ?: []).contains(iso3) }
+    if (member != null) return [id: member.id, via: "region ${member.friendlyId} (memberCountriesIso3)"]
+    def existingCountry = findByFriendlyId("country", iso3)
+    if (existingCountry?.parentId != null) return [id: existingCountry.parentId, via: "existing parent of country ${iso3}"]
+    return null
+}
+
+def noRegionMessage = { String iso3 ->
+    "No REGION lists '${iso3}' in additionalDetailsMap.memberCountriesIso3. Add it to " +
+    "platform/data/geolocation/continents-regions-un-m49.json and run scripts/seed_geolocation_reference_data.py, " +
+    "or set the flowfile attribute parentFriendlyId."
+}
+
+// Lookup index over candidate parent records: gid, hasc, iso and
+// normalized name/alias -> id. Keys that map to more than one record are dropped
+// so an ambiguous name never picks an arbitrary parent.
+def buildParentIndex = { List records ->
+    def index = [:]
+    def ambiguous = [] as Set
+    def put = { String prefix, value, id ->
+        if (!present(value)) return
+        def key = prefix + value
+        if (index.containsKey(key) && index[key] != id) ambiguous << key else index[key] = id
+    }
+    records.each { r ->
+        def d = r.additionalDetailsMap ?: [:]
+        put("gid:", d.gid, r.id)
+        put("hasc:", d.hasc, r.id)
+        put("iso:", d.iso, r.id)
+        put("name:", normalizeName(r.name), r.id)
+        if (normalizeName(r.alias) != normalizeName(r.name)) put("name:", normalizeName(r.alias), r.id)
+    }
+    ambiguous.each { index.remove(it) }
+    return index
+}
+
+// HASC of the parent level: "BR.SP.SA" -> "BR.SP".
+def parentHasc = { String hasc ->
+    if (!present(hasc)) return null
+    def parts = hasc.split("\\.")
+    return parts.size() > 1 ? parts[0..-2].join(".") : null
+}
+
+def resolveFeatureParent = { Map index, Map props, int level ->
+    def gid = level == 2 ? props.GID_1 : props.GID_2
+    def hasc = parentHasc(level == 2 ? props.HASC_2 : props.HASC_3)
+    def name = level == 2 ? props.NAME_1 : props.NAME_2
+    return (present(gid) ? index["gid:" + gid] : null) ?:
+           (present(hasc) ? index["hasc:" + hasc] : null) ?:
+           (level == 2 && present(props.ISO_1) ? index["iso:" + props.ISO_1] : null) ?:
+           (present(name) ? index["name:" + normalizeName(name)] : null)
 }
 
 def buildSummary = { String errorMessage ->
     def failed = failedCounter.get()
     def message = errorMessage
     if (message == null && failed > 0) {
-        message = "${failed} backend call(s) failed. First errors: " + errorSamples.join(" | ")
+        message = "${failed} record(s) failed. First errors: " + errorSamples.join(" | ")
     }
     def summary = [
         jobId          : jobId,
@@ -150,57 +245,55 @@ try {
 
     def features = json?.features ?: []
 
-    // 1. Resolve parents and hierarchy caches
+    // 1. Resolve parents
     def resolvedParentId = null
-    def provincesMap = [:]
+    def parentIndex = [:]
 
     if (type == "country") {
-        resolvedParentId = findRegionId()
-        if (resolvedParentId == null) {
-            throw new IllegalStateException("No REGION found in backend (expected friendlyId '${regionFriendlyIdFor(countrySlug)}'). Create the continent/region hierarchy before importing countries.")
-        }
-    } else if (type == "province") {
-        def cResp = getJson("${backendBaseUrl}/api/v1/geolocations/country/search-by-friendlyid?friendlyId=${URLEncoder.encode(countrySlug, 'UTF-8')}")
-        def match = cResp?.content?.find { it.friendlyId == countrySlug || it.alias == countrySlug }
-        resolvedParentId = match?.id ?: (cResp?.content ? cResp.content[0]?.id : null)
-
-        if (resolvedParentId == null) {
-            // Country not imported yet: create a minimal one under its region.
-            def regId = findRegionId()
-            if (regId == null) {
-                throw new IllegalStateException("Country '${countrySlug}' not found and no REGION exists to create it under. Create the continent/region hierarchy first.")
-            }
-            def countryName = countrySlug == "BRA" ? "Brazil" : (countrySlug == "DEU" ? "Germany" : countrySlug)
+        def region = resolveRegionForCountry(countrySlug)
+        if (region == null) throw new IllegalStateException(noRegionMessage(countrySlug))
+        resolvedParentId = region.id
+        log.info("${logPrefix} parent region id=${region.id} via ${region.via}")
+    } else {
+        def country = findByFriendlyId("country", countrySlug)
+        if (country == null && type == "province") {
+            // Country not imported yet: create a minimal one under its region,
+            // named from the GADM features themselves.
+            def region = resolveRegionForCountry(countrySlug)
+            if (region == null) throw new IllegalStateException("Country '${countrySlug}' does not exist yet and: " + noRegionMessage(countrySlug))
+            def countryName = features.collect { it.get('properties')?.COUNTRY }.find { present(it) } ?: countrySlug
             def r = http("POST", "${backendBaseUrl}/api/v1/geolocations/country", [
                 name                : countryName,
                 alias               : countrySlug,
                 friendlyId          : countrySlug,
-                parentId            : regId,
-                additionalDetailsMap: [source: "GADM-4.1-AutoParent", importedAt: new Date().toString(), level: 0]
+                parentId            : region.id,
+                additionalDetailsMap: [source: "GADM-4.1-AutoParent", importedAt: new Date().toString(), level: 0, gid: countrySlug]
             ])
             if (r.code in 200..299) {
-                resolvedParentId = new JsonSlurper().parseText(r.body)?.id
-                log.info("${logPrefix} auto-created parent country '${countrySlug}' id=${resolvedParentId}")
+                country = new JsonSlurper().parseText(r.body)
+                log.info("${logPrefix} auto-created parent country '${countrySlug}' (${countryName}) id=${country?.id} via ${region.via}")
             } else {
                 recordFailure("POST country ${countrySlug} (auto-parent)", r.code, r.body)
             }
         }
-        if (resolvedParentId == null) {
-            throw new IllegalStateException("Could not resolve parent country '${countrySlug}' for provinces.")
+        if (country?.id == null) {
+            throw new IllegalStateException("Country '${countrySlug}' not found in backend; import level 0 (or level 1) before level ${locationLevel}.")
         }
-    } else if (type == "city") {
-        def pResp = getJson("${backendBaseUrl}/api/v1/geolocations/province?size=200")
-        pResp?.content?.each { p ->
-            if (p.name) {
-                provincesMap[p.name.replaceAll("\\s+", "")] = p.id
-                provincesMap[p.name.toLowerCase()] = p.id
-                provincesMap[p.name] = p.id
+
+        if (type == "province") {
+            resolvedParentId = country.id
+        } else {
+            // Candidate parents are limited to THIS country, so equal province or
+            // city names in other countries can never be picked.
+            def provinces = getAllPages("${backendBaseUrl}/api/v1/geolocations/province/search-by-name?parentId=${country.id}&namePrefix=") ?: []
+            if (provinces.isEmpty()) throw new IllegalStateException("Country '${countrySlug}' has no provinces; import level 1 before level ${locationLevel}.")
+            def candidates = provinces
+            if (type == "district") {
+                candidates = provinces.collectMany { p -> getAllPages("${backendBaseUrl}/api/v1/geolocations/city/search-by-name?parentId=${p.id}&namePrefix=") ?: [] }
+                if (candidates.isEmpty()) throw new IllegalStateException("Country '${countrySlug}' has no cities; import level 2 before level ${locationLevel}.")
             }
-            if (p.alias) provincesMap[p.alias] = p.id
-            if (p.friendlyId) provincesMap[p.friendlyId] = p.id
-        }
-        if (provincesMap.isEmpty()) {
-            throw new IllegalStateException("No provinces found in backend; import level 1 before level 2.")
+            parentIndex = buildParentIndex(candidates)
+            log.info("${logPrefix} indexed ${candidates.size()} candidate parent(s) for ${type} records")
         }
     }
 
@@ -221,30 +314,41 @@ try {
 
     def tasks = features.collect { feature ->
         return { ->
-            def props = feature.properties ?: [:]
+            def props = feature.get('properties') ?: [:]   // not .properties / ['properties']: newer Groovy resolves those to Object.getProperties()
             def name = countrySlug
             def alias = countrySlug
             def friendlyId = countrySlug
             def featureParentId = resolvedParentId
 
+            def gid = null
             if (locationLevel == 0) {
-                name = props.COUNTRY ?: (countrySlug == "DEU" ? "Germany" : (countrySlug == "BRA" ? "Brazil" : countrySlug))
+                name = props.COUNTRY ?: countrySlug
                 alias = props.GID_0 ?: countrySlug
                 friendlyId = alias
+                gid = props.GID_0
             } else if (locationLevel == 1) {
                 name = props.NAME_1 ?: props.COUNTRY ?: countrySlug
-                alias = (props.ISO_1 && props.ISO_1 != "NA") ? props.ISO_1 : ((props.HASC_1 && props.HASC_1 != "NA") ? props.HASC_1 : (props.GID_1 ?: countrySlug))
-                friendlyId = (props.ISO_1 && props.ISO_1 != "NA") ? props.ISO_1 : ((props.HASC_1 && props.HASC_1 != "NA") ? props.HASC_1 : (props.GID_1 ?: alias))
+                alias = present(props.ISO_1) ? props.ISO_1 : (present(props.HASC_1) ? props.HASC_1 : (props.GID_1 ?: countrySlug))
+                friendlyId = alias
+                gid = props.GID_1
             } else if (locationLevel == 2) {
                 name = props.NAME_2 ?: props.NAME_1 ?: countrySlug
                 alias = props.GID_2 ?: props.NAME_2 ?: countrySlug
                 friendlyId = props.GID_2 ?: alias
-                def provClean = (props.NAME_1 ?: '').replaceAll("\\s+", "")
-                featureParentId = provincesMap[provClean] ?: provincesMap[props.ISO_1] ?: provincesMap[props.HASC_1]
+                gid = props.GID_2
+                featureParentId = resolveFeatureParent(parentIndex, props, 2)
             } else {
                 name = props.NAME_3 ?: props.NAME_2 ?: countrySlug
                 alias = props.GID_3 ?: props.NAME_3 ?: countrySlug
                 friendlyId = props.GID_3 ?: alias
+                gid = props.GID_3
+                featureParentId = resolveFeatureParent(parentIndex, props, 3)
+            }
+
+            if (featureParentId == null) {
+                def parentRef = locationLevel == 2 ? "${props.GID_1} / ${props.NAME_1}" : "${props.GID_2} / ${props.NAME_2}"
+                recordFailure("${type} ${friendlyId}", -1, "no parent found for ${parentRef}")
+                return null
             }
 
             def payload = [
@@ -257,7 +361,8 @@ try {
                     source    : "GADM-4.1",
                     importedAt: new Date().toString(),
                     level     : locationLevel,
-                    hasc      : props.HASC_2 ?: props.HASC_1 ?: null,
+                    gid       : gid,
+                    hasc      : [props.HASC_3, props.HASC_2, props.HASC_1].find { present(it) },
                     iso       : props.ISO_1 ?: null,
                     ibge      : props.CC_2 ?: null,
                     engtype   : props.ENGTYPE_2 ?: props.ENGTYPE_1 ?: null,

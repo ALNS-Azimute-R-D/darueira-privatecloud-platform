@@ -105,19 +105,54 @@ A activity `processCountryLocationViaNiFi` espera um `CompletableFuture` em mem�
 morre por heartbeat timeout. Alternativas: activity assíncrona com completion por task token, ou
 um signal no workflow a partir do consumer Kafka.
 
-### 21. Backend como GraalVM native image `[dono: Claude — status: em andamento]`
+### 21. Backend como GraalVM native image `[dono: Claude — status: em andamento, pausado para reboot em 25/09 ~15:40]`
 O Pod JVM usava ~930 MiB. O `Dockerfile` agora gera um executável native (o JVM ficou em
-`Dockerfile.jvm`): 144–152 MiB e startup de ~2,5 s no cluster. PRs no `bookanything-platform`:
-- #13: build native;
-- #14: epoll do gRPC;
-- #15: proxies dos stubs do Temporal e detalhes de erro do protobuf, aguardando merge.
+`Dockerfile.jvm`): 144–297 MiB e startup de 1,2–2,5 s no cluster.
 
-Cada tipo acessado por reflection que falte só aparece em runtime. Por isso há um teste local de
-ponta a ponta (binário native + `temporal server start-dev` + Postgres do tenant) que exercita o
-disparo e as activities antes de ir ao cluster.
-Falta validar no cluster: fluxo NiFi/Kafka, MinIO, JSReport, enriquecimento. Depois, reduzir o limite
-de memória do chart (2Gi → ~1Gi) e remover o `JAVA_TOOL_OPTIONS`, que o native ignora.
-Build: ~13,6 GB de RAM, ~12 min local e ~25 min no Kaniko.
+**PRs no `bookanything-platform` (Forgejo):**
+- #13 (build native), #14 (epoll do gRPC) e #15 (proxies dos stubs do Temporal e errordetails do
+  protobuf): mergeados e em produção, imagem `2026.0925.144234`.
+- **Próximo:** branch `fix/backend-native-minio-reflection` (commit `6750d86`, já no Forgejo, **sem PR
+  ainda**). Varre `io.minio` e registra construtores, métodos e campos. **Não foi compilado nem
+  testado**: a build local foi interrompida para o reboot.
+
+**Último teste real, o import DEU `geo-import-a3a47b81…`** (falhou no MinIO):
+- funcionaram o Temporal, o gatilho do NiFi via Kafka, a resposta do NiFi (`Updated=1`), o consumer
+  de enriquecimento e o PDF do JSReport (63 KB);
+- falhou o upload no MinIO: `class io.minio.BucketExistsArgs must have no argument constructor`;
+- memória durante o import: 297 MiB.
+
+**Retomar assim:**
+1. Depois do reboot, conferir o cluster: IPAM do Cilium (item 16) e
+   `journalctl -t cilium-state-cleanup`.
+2. Compilar o native da branch **com limite de recursos** (a build sem limite travou a máquina em
+   25/09), a partir de `1-backends/bookanything-monolith-backend-01`:
+   `NATIVE_IMAGE_OPTIONS="--parallelism=8 -J-Xmx8g" nice -n 10 ./mvnw -Pnative native:compile -DskipTests -Dkotlin.compiler.daemon=false "-Dspring-boot.aot.jvmArguments=-Dspring.profiles.active=darueira-k8s"`
+   com o JAVA_HOME em `~/.sdkman/candidates/java/25.2.4-graalce`. Não rodar enquanto o Kaniko do
+   Tekton estiver buildando.
+3. Teste local de ponta a ponta com o binário native, contra estes serviços:
+   - Postgres (`svc/tenant-postgres` 15432) e Keycloak (`svc/tenant-keycloak` 18080) do tenant, via
+     port-forward;
+   - MinIO do tenant (`MINIO_URL`), MinIO corporativo (`CORPORATE_MINIO_ENDPOINT`) e JSReport
+     (`JSREPORT_BASE_URL`), via port-forward;
+   - Temporal local: `temporal server start-dev --headless --port 17233 -n corporate-core` (o CLI é
+     copiado do pod do temporal-server);
+   - exercitar `POST /api/v1/geolocations/workflows/{geoLocationId}/artifacts-and-report` (DEU = #82).
+
+   Procurar nos logs `MissingReflection|MissingResource|Panic|InstantiationException|must have no
+   argument constructor`, e não só o resultado HTTP.
+4. Se passar: abrir o PR, André faz o merge (a pipeline leva ~26 min) e dispara o DEU de novo.
+5. Depois: reduzir o limite de memória do chart (2Gi → ~1Gi) e remover o `JAVA_TOOL_OPTIONS`.
+
+**Lições:**
+- Cada tipo que falta registrar para reflection só aparece em runtime. O teste local de ponta a
+  ponta pega a maioria antes do cluster.
+- O Spring AOT sobrescreve o `reachability-metadata.json` de `<group>/<artifact>`; os hints manuais
+  ficam em `native-overrides/` ou no `NativeRuntimeHints`.
+
+### 23. Probe do tenant-mongodb pesada
+A probe abre um `mongosh` inteiro a cada verificação (275% de CPU observado em 25/09; 39 e 31
+restarts). Trocar por uma probe TCP ou por um comando mais leve.
 
 ### 22. Handler global de exceções do backend não loga
 Os erros 500 voltam com a mensagem no corpo, mas nada aparece no log do Pod: foi assim que o disparo

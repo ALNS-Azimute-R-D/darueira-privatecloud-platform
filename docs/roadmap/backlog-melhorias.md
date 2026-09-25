@@ -105,6 +105,24 @@ A activity `processCountryLocationViaNiFi` espera um `CompletableFuture` em mem�
 morre por heartbeat timeout. Alternativas: activity assíncrona com completion por task token, ou
 um signal no workflow a partir do consumer Kafka.
 
+### 21. Backend como GraalVM native image `[dono: Claude — status: em andamento]`
+O Pod JVM usava ~930 MiB. O `Dockerfile` agora gera um executável native (o JVM ficou em
+`Dockerfile.jvm`): 144–152 MiB e startup de ~2,5 s no cluster. PRs no `bookanything-platform`:
+- #13: build native;
+- #14: epoll do gRPC;
+- #15: proxies dos stubs do Temporal e detalhes de erro do protobuf, aguardando merge.
+
+Cada tipo acessado por reflection que falte só aparece em runtime. Por isso há um teste local de
+ponta a ponta (binário native + `temporal server start-dev` + Postgres do tenant) que exercita o
+disparo e as activities antes de ir ao cluster.
+Falta validar no cluster: fluxo NiFi/Kafka, MinIO, JSReport, enriquecimento. Depois, reduzir o limite
+de memória do chart (2Gi → ~1Gi) e remover o `JAVA_TOOL_OPTIONS`, que o native ignora.
+Build: ~13,6 GB de RAM, ~12 min local e ~25 min no Kaniko.
+
+### 22. Handler global de exceções do backend não loga
+Os erros 500 voltam com a mensagem no corpo, mas nada aparece no log do Pod: foi assim que o disparo
+do DEU falhou em silêncio no native. Logar a exceção (com stack) no handler.
+
 ---
 
 ## 🟠 Média prioridade

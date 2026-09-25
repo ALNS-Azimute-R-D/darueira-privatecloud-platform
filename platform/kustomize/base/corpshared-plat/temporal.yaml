@@ -97,6 +97,22 @@ spec:
               value: "127.0.0.1:7233"
             - name: NUM_HISTORY_SHARDS
               value: "4"
+            # SQL pool limits. The auto-setup defaults (20 open / 20 idle per pool, and one pool per
+            # service running in this process) kept ~60 idle connections on central-postgres and
+            # exhausted its max_connections for every other platform DB (Backstage crashlooped
+            # with 53300 too_many_connections on 2026-09-25).
+            - name: SQL_MAX_CONNS
+              value: "15"
+            - name: SQL_MAX_IDLE_CONNS
+              value: "3"
+            - name: SQL_MAX_CONN_TIME
+              value: "15m"
+            - name: SQL_VIS_MAX_CONNS
+              value: "5"
+            - name: SQL_VIS_MAX_IDLE_CONNS
+              value: "1"
+            - name: SQL_VIS_MAX_CONN_TIME
+              value: "15m"
           resources:
             requests:
               cpu: 200m

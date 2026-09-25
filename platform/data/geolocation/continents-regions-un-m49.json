@@ -1,0 +1,101 @@
+{
+  "_comment": [
+    "Reference hierarchy for tb_geo_location (CONTINENT -> REGION), based on the UN M49 geoscheme",
+    "(https://unstats.un.org/unsd/methodology/m49/). The Americas are one continent (AME, as already",
+    "used live) with the four M49 sub-regions; Sub-Saharan Africa is split into its M49 intermediate",
+    "regions. Each region lists its member countries as ISO 3166-1 alpha-3 codes (= GADM GID_0), which",
+    "NiFi step 8 uses to find the parent REGION of an imported country. Taiwan (TWN) and the GADM-only",
+    "codes (XKO, XAD, XNC, XCA, XPI, XSP, XCL, Z01-Z09) are not in M49 and are assigned by geography.",
+    "friendlyIds are looked up per type (REGION vs COUNTRY), so a region code equal to some ISO3 code",
+    "(e.g. MAF) is not ambiguous.",
+    "Seeded by scripts/seed_geolocation_reference_data.py (idempotent)."
+  ],
+  "continents": [
+    {
+      "friendlyId": "AFR", "name": "Africa", "m49Code": "002",
+      "regions": [
+        { "friendlyId": "NAF", "name": "Northern Africa", "m49Code": "015",
+          "countries": ["DZA", "EGY", "LBY", "MAR", "SDN", "TUN", "ESH"] },
+        { "friendlyId": "EAF", "name": "Eastern Africa", "m49Code": "014",
+          "countries": ["IOT", "BDI", "COM", "DJI", "ERI", "ETH", "ATF", "KEN", "MDG", "MWI", "MUS", "MYT",
+                        "MOZ", "REU", "RWA", "SYC", "SOM", "SSD", "UGA", "TZA", "ZMB", "ZWE"] },
+        { "friendlyId": "MAF", "name": "Middle Africa", "m49Code": "017",
+          "countries": ["AGO", "CMR", "CAF", "TCD", "COG", "COD", "GNQ", "GAB", "STP"] },
+        { "friendlyId": "SAF", "name": "Southern Africa", "m49Code": "018",
+          "countries": ["BWA", "SWZ", "LSO", "NAM", "ZAF"] },
+        { "friendlyId": "WAF", "name": "Western Africa", "m49Code": "011",
+          "countries": ["BEN", "BFA", "CPV", "CIV", "GMB", "GHA", "GIN", "GNB", "LBR", "MLI", "MRT", "NER",
+                        "NGA", "SHN", "SEN", "SLE", "TGO"] }
+      ]
+    },
+    {
+      "friendlyId": "AME", "name": "Americas", "m49Code": "019",
+      "regions": [
+        { "friendlyId": "NAR", "name": "Northern America", "m49Code": "021",
+          "countries": ["BMU", "CAN", "GRL", "SPM", "USA"] },
+        { "friendlyId": "CAM", "name": "Central America", "m49Code": "013",
+          "countries": ["BLZ", "CRI", "SLV", "GTM", "HND", "MEX", "NIC", "PAN", "XCL"] },
+        { "friendlyId": "CAR", "name": "Caribbean", "m49Code": "029",
+          "countries": ["AIA", "ATG", "ABW", "BHS", "BRB", "BES", "VGB", "CYM", "CUB", "CUW", "DMA", "DOM",
+                        "GRD", "GLP", "HTI", "JAM", "MTQ", "MSR", "PRI", "BLM", "KNA", "LCA", "MAF", "VCT",
+                        "SXM", "TTO", "TCA", "VIR"] },
+        { "friendlyId": "SAM", "name": "South America", "m49Code": "005",
+          "countries": ["ARG", "BOL", "BVT", "BRA", "CHL", "COL", "ECU", "FLK", "GUF", "GUY", "PRY", "PER",
+                        "SGS", "SUR", "URY", "VEN"] }
+      ]
+    },
+    {
+      "friendlyId": "ANT", "name": "Antarctica", "m49Code": "010",
+      "regions": [
+        { "friendlyId": "ATA", "name": "Antarctica", "m49Code": "010",
+          "countries": ["ATA"] }
+      ]
+    },
+    {
+      "friendlyId": "ASI", "name": "Asia", "m49Code": "142",
+      "regions": [
+        { "friendlyId": "CAS", "name": "Central Asia", "m49Code": "143",
+          "countries": ["KAZ", "KGZ", "TJK", "TKM", "UZB", "XCA"] },
+        { "friendlyId": "EAS", "name": "Eastern Asia", "m49Code": "030",
+          "countries": ["CHN", "HKG", "MAC", "PRK", "JPN", "MNG", "KOR", "TWN", "Z02", "Z03", "Z08"] },
+        { "friendlyId": "SEA", "name": "South-eastern Asia", "m49Code": "035",
+          "countries": ["BRN", "KHM", "IDN", "LAO", "MYS", "MMR", "PHL", "SGP", "THA", "TLS", "VNM", "XPI",
+                        "XSP"] },
+        { "friendlyId": "SAS", "name": "Southern Asia", "m49Code": "034",
+          "countries": ["AFG", "BGD", "BTN", "IND", "IRN", "MDV", "NPL", "PAK", "LKA", "Z01", "Z04", "Z05",
+                        "Z06", "Z07", "Z09"] },
+        { "friendlyId": "WAS", "name": "Western Asia", "m49Code": "145",
+          "countries": ["ARM", "AZE", "BHR", "CYP", "GEO", "IRQ", "ISR", "JOR", "KWT", "LBN", "OMN", "QAT",
+                        "SAU", "PSE", "SYR", "TUR", "ARE", "YEM", "XAD", "XNC"] }
+      ]
+    },
+    {
+      "friendlyId": "EUR", "name": "Europe", "m49Code": "150",
+      "regions": [
+        { "friendlyId": "EEU", "name": "Eastern Europe", "m49Code": "151",
+          "countries": ["BLR", "BGR", "CZE", "HUN", "POL", "MDA", "ROU", "RUS", "SVK", "UKR"] },
+        { "friendlyId": "NEU", "name": "Northern Europe", "m49Code": "154",
+          "countries": ["ALA", "DNK", "EST", "FRO", "FIN", "GGY", "ISL", "IRL", "IMN", "JEY", "LVA", "LTU",
+                        "NOR", "SJM", "SWE", "GBR"] },
+        { "friendlyId": "SEU", "name": "Southern Europe", "m49Code": "039",
+          "countries": ["ALB", "AND", "BIH", "HRV", "GIB", "GRC", "VAT", "ITA", "MLT", "MNE", "MKD", "PRT",
+                        "SMR", "SRB", "SVN", "ESP", "XKO"] },
+        { "friendlyId": "WEU", "name": "Western Europe", "m49Code": "155",
+          "countries": ["AUT", "BEL", "FRA", "DEU", "LIE", "LUX", "MCO", "NLD", "CHE"] }
+      ]
+    },
+    {
+      "friendlyId": "OCE", "name": "Oceania", "m49Code": "009",
+      "regions": [
+        { "friendlyId": "ANZ", "name": "Australia and New Zealand", "m49Code": "053",
+          "countries": ["AUS", "CXR", "CCK", "HMD", "NZL", "NFK"] },
+        { "friendlyId": "MEL", "name": "Melanesia", "m49Code": "054",
+          "countries": ["FJI", "NCL", "PNG", "SLB", "VUT"] },
+        { "friendlyId": "MIC", "name": "Micronesia", "m49Code": "057",
+          "countries": ["GUM", "KIR", "MHL", "FSM", "NRU", "MNP", "PLW", "UMI"] },
+        { "friendlyId": "PLY", "name": "Polynesia", "m49Code": "061",
+          "countries": ["ASM", "COK", "PYF", "NIU", "PCN", "WSM", "TKL", "TON", "TUV", "WLF"] }
+      ]
+    }
+  ]
+}

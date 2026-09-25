@@ -275,6 +275,22 @@ smoke-apisix-upstreams: ## TCP-probe every APISIX route upstream from the gatewa
 	rc=0; KUBECTL="$(KUBECTL)" python3 scripts/smoke_apisix_upstreams.py || rc=$$?; \
 	kill $$PF; exit $$rc
 
+NIFI_GEO_DIR := platform/nifi/bookanything-geolocation-ingestion
+
+.PHONY: test-nifi-scripts
+test-nifi-scripts: ## Run the NiFi step 8 Groovy script offline against a stub backend (needs groovy)
+	@groovy -cp $(NIFI_GEO_DIR)/test/stubs $(NIFI_GEO_DIR)/test/step8_harness.groovy \
+		$(NIFI_GEO_DIR)/08-ingest-backend-and-summarize.groovy
+
+.PHONY: check-nifi-scripts
+check-nifi-scripts: ## Diff the versioned NiFi step 8 script against the live processor
+	@python3 scripts/apply_nifi_script_body.py --check "8. Ingest Backend & Summarize" \
+		$(NIFI_GEO_DIR)/08-ingest-backend-and-summarize.groovy
+
+.PHONY: seed-geolocation-reference
+seed-geolocation-reference: ## Idempotently seed continents/regions (UN M49) into the BookAnything backend
+	@python3 scripts/seed_geolocation_reference_data.py
+
 .PHONY: bootstrap-authentik
 bootstrap-authentik: ## Seed corporate users, groups, and LDAP provider into Authentik directory
 	@echo -e "${GREEN}==> Bootstrapping Authentik Corporate Directory (HR/AD)...${NC}"

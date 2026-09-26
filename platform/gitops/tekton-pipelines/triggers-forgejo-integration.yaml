@@ -108,8 +108,17 @@ spec:
           params:
             - name: "filter"
               value: "body.ref == 'refs/heads/master' && body.repository.name == 'bookanything-platform'"
+            # Backend image variant: '[native]' (case-insensitive) in the SUBJECT of the pushed commit
+            # selects the GraalVM native image; otherwise the faster JVM image is built. On a merge
+            # Forgejo puts the PR title in the subject ("Merge pull request '<title>' (#n) from ...").
+            - name: "overlays"
+              value:
+                - key: image_variant
+                  expression: "body.head_commit.message.split('\\n')[0].lowerAscii().contains('[native]') ? 'native' : 'jvm'"
       bindings:
         - ref: forgejo-push-binding
+        - name: image-variant
+          value: $(extensions.image_variant)
       template:
         ref: bookanything-pipeline-template
 ---
@@ -132,6 +141,9 @@ spec:
     - name: owner-name
       description: "Owner organization or user of the Git repository"
       default: "swfabrik-europe"
+    - name: image-variant
+      description: "Backend image variant: 'jvm' (Dockerfile.jvm, default) or 'native' (Dockerfile.native)"
+      default: "jvm"
   resourcetemplates:
     - apiVersion: tekton.dev/v1beta1
       kind: PipelineRun
@@ -161,9 +173,9 @@ spec:
           - name: image-name
             value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/$(tt.params.owner-name)/bookanything-monolith-backend-01"
           - name: image-tag
-            value: "auto"
+            value: "auto-$(tt.params.image-variant)"
           - name: dockerfile-path
-            value: "Dockerfile"
+            value: "Dockerfile.$(tt.params.image-variant)"
           - name: tenant-name
             value: $(tt.params.owner-name)
           - name: app-name

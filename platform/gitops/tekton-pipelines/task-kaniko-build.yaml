@@ -80,6 +80,12 @@ spec:
         TAG="$(params.image-tag)"
         if [ -z "$TAG" ] || [ "$TAG" = "auto" ] || [ "$TAG" = "latest" ]; then
           TAG="$(date +'%Y.%m%d.%H%M%S')"
+        else
+          case "$TAG" in
+            # 'auto-<suffix>' keeps the timestamp and appends the suffix (e.g. 2026.0926.125910-native),
+            # so consumers can tell which image variant a tag holds.
+            auto-*) TAG="$(date +'%Y.%m%d.%H%M%S')-${TAG#auto-}" ;;
+          esac
         fi
 
         # 4. Resolve Image Base Name

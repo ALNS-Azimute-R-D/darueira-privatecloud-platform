@@ -203,7 +203,7 @@ de uma sessão do Claude.
 Os erros 500 voltam com a mensagem no corpo, mas nada aparece no log do Pod: foi assim que o disparo
 do DEU falhou em silêncio no native. Logar a exceção (com stack) no handler.
 
-### 26. Build do backend em duas variantes: JVM (padrão) e native `[dono: Claude — status: em andamento (fase C)]`
+### 26. Build do backend em duas variantes: JVM (padrão) e native `[dono: Claude — status: em andamento (fase C): gatilho no ar e JVM validado; falta a rota native e o chart]`
 Decidido com o André em 26/09. O build native leva ~26 min na pipeline e ~12 GiB de RAM; para testar
 funcionalidade em desenvolvimento isso é caro demais.
 - **Regra:** push na `master` do `bookanything-platform` gera a imagem **JVM** (`Dockerfile.jvm`). Se o
@@ -220,6 +220,24 @@ funcionalidade em desenvolvimento isso é caro demais.
   chart; 3) `kubectl apply` do gatilho/pipeline; 4) só então remover o `Dockerfile` antigo.
 - **Regra de qualidade:** JVM esconde bugs do native (a sessão de 25–26/09 foi isso). Nenhuma fase
   fica pronta sem um build native e um teste local com ele.
+
+**Andamento (26/09):**
+- Gatilho e task do Kaniko aplicados no cluster (commit `b1426ad`), depois de validar a expressão CEL
+  contra o interceptor real com um payload de push do Forgejo (6 casos + o filtro de branch).
+- `Dockerfile.native` adicionado e `Dockerfile-native` (antigo) removido (`cea19d4`). Esse commit
+  foi para a `master` do Forgejo **direto, sem PR**: a branch foi criada com upstream em
+  `origin/master`, e um `git push` simples empurrou para lá. Nas próximas branches criar com
+  `--no-track`.
+- **Primeira pipeline JVM validada** (`forgejo-ci-bookanything-backend-2qh9f`, tag
+  `2026.0926.153057-jvm`): 5 min 52 s de ponta a ponta, contra ~26 min do native. Pod JVM: startup de
+  **40,8 s** (native: 1–2 s) e **729 MiB** logo após subir (native: ~165–205 MiB em repouso), com o
+  limite de 2Gi. As probes do chart (readiness 30 s, liveness 45 s) cobrem o startup do JVM com pouca
+  folga: revisar ao tratar as variantes no chart.
+- O PipelineRun manual `pr-swfabrik-europe-bookanything-backend-manual` (modelo, não aplicado no
+  cluster) passou a usar `Dockerfile.jvm` e `auto-jvm`, porque o `Dockerfile` vai sair.
+- **Falta:** (a) PR com `[native]` no título removendo o `Dockerfile` transitório, que também testa a
+  rota native (o Pod volta a ser native); (b) o chart tratar `-jvm` e `-native` (memória,
+  `JAVA_TOOL_OPTIONS`, probes); (c) atualizar o README do `tekton-pipelines` com a regra `[native]`.
 
 ### 27. Visibilidade dos SVGs e relatórios na UI do Temporal `[dono: Claude — status: planejado (fase A)]`
 Hoje a geração por GeoLocation (SVGs, bandeira, resumo de IA, PDF) roda no

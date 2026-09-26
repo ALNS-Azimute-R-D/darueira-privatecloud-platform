@@ -126,8 +126,12 @@ spec:
       value: "1-backends/bookanything-monolith-backend-01"
     - name: image-name
       value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-europe/bookanything-monolith-backend-01:latest"
+    # Backend image variants (see backlog item 26): "Dockerfile.jvm" + image-tag "auto-jvm" (fast, default),
+    # or "Dockerfile.native" + image-tag "auto-native" (GraalVM native image, ~26 min).
+    - name: image-tag
+      value: "auto-jvm"
     - name: dockerfile-path
-      value: "Dockerfile"
+      value: "Dockerfile.jvm"
     - name: tenant-name
       value: "swfabrik-europe"
     - name: app-name

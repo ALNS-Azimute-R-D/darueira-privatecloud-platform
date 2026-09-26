@@ -331,7 +331,7 @@ tudo e devolve `status=ERROR`, e o Temporal nunca retenta). Search attributes fi
   nenhuma GeoLocation e ficaria 25 min esperando: ver o caso real no item 4.
 
 
-### 28. Endpoint e workflow de limpeza de GeoLocations `[dono: Claude — status: planejado (fase B)]`
+### 28. Endpoint e workflow de limpeza de GeoLocations `[dono: Claude — status: em andamento (fase B), ADR-0015]`
 `POST` assíncrono (padrão do `batch-import`) com uma coleção de
 `{countrySlug, locationLevel, shouldDeleteJsonFile, shouldDeleteXmlFile}` e **`dryRun=true` por
 padrão**. Decisões do André (26/09):

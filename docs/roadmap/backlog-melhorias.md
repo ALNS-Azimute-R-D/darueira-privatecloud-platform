@@ -203,6 +203,53 @@ de uma sessão do Claude.
 Os erros 500 voltam com a mensagem no corpo, mas nada aparece no log do Pod: foi assim que o disparo
 do DEU falhou em silêncio no native. Logar a exceção (com stack) no handler.
 
+### 26. Build do backend em duas variantes: JVM (padrão) e native `[dono: Claude — status: em andamento (fase C)]`
+Decidido com o André em 26/09. O build native leva ~26 min na pipeline e ~12 GiB de RAM; para testar
+funcionalidade em desenvolvimento isso é caro demais.
+- **Regra:** push na `master` do `bookanything-platform` gera a imagem **JVM** (`Dockerfile.jvm`). Se o
+  **assunto** (primeira linha) do commit de merge tiver `[native]` (o Forgejo copia o título do PR
+  para lá em merge commit e squash; em rebase se perde), gera a **native** (`Dockerfile.native`).
+  Um CEL no `forgejo-events`/`bookanything-events` decide, sem reconfigurar o webhook.
+- **Tag** com sufixo da variante (`YYYY.MMDD.HHMMSS-jvm|-native`), e o **chart deduz a variante pelo
+  sufixo da tag**: a imagem em execução e a configuração do Pod (memória, `JAVA_TOOL_OPTIONS`) nunca
+  divergem. Isso também resolve o "pendente" do item 21 por variante.
+- **Limpeza:** o `Dockerfile` atual (native) vira `Dockerfile.native`; o `Dockerfile-native` antigo
+  (sem o perfil AOT, imagem `:latest`) é apagado. `Dockerfile.fast` fica para uso local.
+- **Ordem obrigatória** (a task do Kaniko gera uma imagem Alpine de exemplo, em vez de falhar, quando
+  o Dockerfile não existe): 1) PR no app com `Dockerfile.native` (mantendo `Dockerfile`); 2) PR no
+  chart; 3) `kubectl apply` do gatilho/pipeline; 4) só então remover o `Dockerfile` antigo.
+- **Regra de qualidade:** JVM esconde bugs do native (a sessão de 25–26/09 foi isso). Nenhuma fase
+  fica pronta sem um build native e um teste local com ele.
+
+### 27. Visibilidade dos SVGs e relatórios na UI do Temporal `[dono: Claude — status: planejado (fase A)]`
+Hoje a geração por GeoLocation (SVGs, bandeira, resumo de IA, PDF) roda no
+`GeoLocationEnrichmentKafkaConsumer`, chamando a atividade como método comum: o Temporal não a vê, e o
+workflow "termina" quando acaba a ingestão. Decidido: **um workflow filho por GeoLocation**
+(`GeoLocationArtifactsWorkflow`), com as etapas como atividades separadas (mapas, upload dos SVGs,
+bandeira, resumo de IA, relatório, cópia no MinIO corporativo), **janela de concorrência de 4** no pai,
+ids listados do **banco** (`listGeoLocationIds`) e não do resumo do NiFi, search attributes
+(`GeoLocationId`, `CountrySlug`) e o pai só termina quando todos os filhos terminam. O consumer Kafka
+mantém só a parte de IA/boundary e inicia o mesmo workflow (id `geo-artifacts-<id>`) para
+GeoLocations criadas fora do import. Atenção: novas interfaces do Temporal precisam de hints no
+native (`NativeRuntimeHints`), como no PR #15. Relacionado aos itens 6 e 8.
+
+### 28. Endpoint e workflow de limpeza de GeoLocations `[dono: Claude — status: planejado (fase B)]`
+`POST` assíncrono (padrão do `batch-import`) com uma coleção de
+`{countrySlug, locationLevel, shouldDeleteJsonFile, shouldDeleteXmlFile}` e **`dryRun=true` por
+padrão**. Decisões do André (26/09):
+- Nível 0 com filhos no banco: **bloquear** (o dry-run mostra o motivo). Nunca apagar `CONTINENT` nem
+  `REGION`.
+- Apagar também `darueira-reports/geolocations/geolocation-detail-report-<friendlyId>.pdf`; **não**
+  apagar os resumos de job (`job-geo-import-*-summary.pdf`).
+- **Sem OIDC/OpenFGA por enquanto**: entra depois que tudo estiver rodando 100% (registrar no item 24
+  e em `authz/schema.fga`).
+- Divisão: o **backend** apaga banco e assets (tenant) e as cópias no corporativo (atividades
+  `montarPlano`, `apagarAssetsEGeoLocations`, `verificar`); o **NiFi** apaga `raw/*.json` e
+  `xml/*.xml` do `darueira-geodata` conforme as flags, com o padrão pedido/resposta via Kafka
+  (`geolocation.nifi-delete.requested|completed`). Fluxo do NiFi versionado em `platform/nifi/` com
+  harness de teste, como o passo 8.
+- Depende da fase A (mesmo padrão de visibilidade por item) e de um ADR novo em `specs/adr/`.
+
 ---
 
 ## 🟠 Média prioridade

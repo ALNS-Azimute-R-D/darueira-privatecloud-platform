@@ -357,6 +357,25 @@ falharam com "GeoLocation not found" (ids do banco de teste; nenhum dado real af
 teste deve apontar o Temporal para um endereço inerte (ou trocar o launcher por um dublê) e nenhum teste pode
 alcançar o cluster. Os 34 workflows `Failed` ficam no histórico até a retenção do namespace.
 
+### 30. Merge do PR #19 falhou no meio no Forgejo (sem `post-receive`) `[dono: Claude — status: PR ainda aberto]`
+Em 26/09 ~21:25, o merge do PR #19 (`bookanything-platform`) devolveu 500 ao clique (`MergePullRequest() [E]
+Merge: git push:` sem texto no log) e 400 na nova tentativa. O push do merge **chegou à `master`** (`9947b37`,
+com os pais corretos), mas o **`post-receive` não rodou**: o Forgejo não marcou o PR como mergeado (`open`,
+status "ancestral") e **não enviou o webhook de `push`**, então nenhuma pipeline disparou (aqui sem prejuízo:
+o #19 só muda testes e o cluster segue com o build do #18). Nos merges do #17 e do #18 o `post-receive`
+rodou normalmente.
+- **Causa provável (não confirmada):** o horário coincide com o fim de uma execução pesada de testes de
+  integração (Testcontainers com Keycloak, Elasticsearch, Kafka e Postgres) na mesma máquina, que manteve a
+  carga alta por ~5 min; uma chamada interna do Forgejo pode ter estourado o tempo. O Forgejo já tem 265
+  restarts históricos, então é um serviço frágil aqui.
+- **Lição:** não rodar testes de integração nem builds pesados enquanto o André faz um merge, e conferir se
+  a pipeline disparou depois de cada merge (`kubectl get pipelinerun`).
+- **Como reconhecer e recuperar:** a `master` tem o commit de merge mas o PR segue `open`, e não há
+  entrega de webhook de `push` da `master` no Forgejo (tabela `hook_task`). A API
+  `POST /pulls/{n}/merge` com `Do=manually-merged` responde 405 neste repositório ("not an allowed merge
+  style"): exige ligar `allow_manual_merge` nas configurações. Para disparar a pipeline basta qualquer
+  push novo na `master`.
+
 ---
 
 ## 🟠 Média prioridade

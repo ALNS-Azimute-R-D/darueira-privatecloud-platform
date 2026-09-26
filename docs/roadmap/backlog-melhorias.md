@@ -105,24 +105,35 @@ A activity `processCountryLocationViaNiFi` espera um `CompletableFuture` em mem�
 morre por heartbeat timeout. Alternativas: activity assíncrona com completion por task token, ou
 um signal no workflow a partir do consumer Kafka.
 
-### 21. Backend como GraalVM native image `[dono: Claude — status: aguardando PR/merge]`
+### 21. Backend como GraalVM native image `[dono: Claude — status: feito e validado no cluster; falta só o ajuste de memória do chart]`
 O Pod JVM usava ~930 MiB. O `Dockerfile` agora gera um executável native (o JVM ficou em
 `Dockerfile.jvm`): 144–297 MiB e startup de 1,2–2,5 s no cluster.
 
 **PRs no `bookanything-platform` (Forgejo):**
 - #13 (build native), #14 (epoll do gRPC) e #15 (proxies dos stubs do Temporal e errordetails do
   protobuf): mergeados e em produção, imagem `2026.0925.144234`.
-- Branch `fix/backend-native-minio-reflection` (commits `6750d86` e `9268784`): registra para
+- #16 (`fix/backend-native-minio-reflection`, commits `6750d86` e `9268784`): registra para
   reflection o cliente MinIO (`io.minio`) e o simple-xml que ele usa para ler as respostas S3
-  (`org.simpleframework.xml`). **Testada localmente com o binário native** (26/09): o endpoint
-  síncrono `POST /api/v1/geolocations/workflows/82/artifacts-and-report` (DEU) devolveu `SUCCESS`
-  (SVGs, bandeira, resumo de IA e PDF de 199 KB nos MinIOs do tenant e corporativo), sem
-  `MissingReflection|NoSuchMethod|no argument constructor` no log. O PR ainda precisa ser
-  aberto e mergeado (a pipeline leva ~26 min).
+  (`org.simpleframework.xml`). Mergeado em 26/09 (merge `4554375`), imagem `2026.0926.125910`.
+  Antes do merge foi testada localmente com o binário native, pelo endpoint síncrono
+  `POST /api/v1/geolocations/workflows/82/artifacts-and-report`.
 
-**Ainda não validado:** o workflow completo no cluster (Temporal + gatilho do NiFi via Kafka +
-enriquecimento + relatório). O teste local cobriu só o trecho síncrono do MinIO/JSReport. Depois do
-merge, disparar o import do DEU de novo.
+**Validação no cluster (26/09, Pod `...-55f755fb6f-65hjn`, 0 restarts):**
+- **DEU (nível 0):** workflow completo em ~42 s (Temporal, gatilho do NiFi via Kafka, resposta
+  `Created=0, Updated=1`, enriquecimento, upload no MinIO, PDFs do JSReport, evento
+  `geolocation.batch-import.completed`).
+- **BRA (níveis 0 e 1), após limpar a base:** 1 país + 27 estados (`Created=1` e `Created=27`),
+  28 itens em ~3 min (11:53:54 a 11:56:51). Contagens conferidas: 84 imagens e 28 documentos no
+  banco e no MinIO do tenant, 29 objetos em `darueira-reports` (28 relatórios + o resumo do job)
+  e os 4 arquivos do GADM em `darueira-geodata`. Nenhum item sem geometria, mapa ou relatório.
+- Nenhum `MissingReflection|NoSuchMethod|no argument constructor|ERROR` nos logs.
+- **Memória do Pod:** 297–308 MiB durante os imports, ~165–205 MiB em repouso (o JVM usava ~930 MiB).
+
+**Estado da base para os próximos testes:** só o BRA. Em 26/09 foram apagados DEU, USA e o BRA
+anterior (97 GeoLocations: 3 países e 94 estados; e 388 assets), mais os objetos correspondentes nos MinIOs e todo o conteúdo de
+`darueira-geodata` e `drr-corporate-reports` (este tinha logs de perfil do JSReport e PDFs de
+`swfabrik-latam/billing-summary`, sem backup). Continentes e regiões (referência UN M49) ficaram.
+Existe um dump só de dados das duas tabelas em `/tmp` (some no reboot).
 
 **Como repetir o teste local** (sem NiFi e sem tocar o cluster):
 1. Compilar (a partir de `1-backends/bookanything-monolith-backend-01`, JAVA_HOME em
@@ -144,8 +155,8 @@ merge, disparar o import do DEU de novo.
    `MissingReflection|MissingResource|Panic|InstantiationException|NoSuchMethod|must have no argument constructor`,
    e não só o resultado HTTP.
 
-**Depois do merge e da validação no cluster:** reduzir o limite de memória do chart (2Gi → ~1Gi) e
-remover o `JAVA_TOOL_OPTIONS`.
+**Pendente:** reduzir o limite de memória do chart (2Gi → ~1Gi) e remover o `JAVA_TOOL_OPTIONS`
+(repositório do chart, via PR no Forgejo). Com pico de ~310 MiB, 1Gi dá folga.
 
 **Lições:**
 - Cada tipo que falta registrar para reflection só aparece em runtime, e um por vez. O teste local
@@ -209,7 +220,8 @@ não foram revisadas as liveness probes nem os restarts do Forgejo e do Tekton.
   Decidir se fixa uma.
 
 ### 8. JSReport: `Protocol error (Page.printToPDF): Target closed`
-Falhas ocasionais, hoje cobertas pelo retry. Investigar memória/concorrência do Chrome no pod do
+Falhas ocasionais, hoje cobertas pelo retry. Em 26/09: 2 falhas no import do DEU (o relatório só
+passou na 3ª tentativa) e 2 no do BRA (cada uma passou na 2ª), todas `HTTP 500`. Investigar memória/concorrência do Chrome no pod do
 JSReport antes que excedam os retries.
 
 ### 9. Debug do cilium-cni ligado

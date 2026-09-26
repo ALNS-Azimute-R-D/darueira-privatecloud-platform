@@ -331,7 +331,7 @@ tudo e devolve `status=ERROR`, e o Temporal nunca retenta). Search attributes fi
   nenhuma GeoLocation e ficaria 25 min esperando: ver o caso real no item 4.
 
 
-### 28. Endpoint e workflow de limpeza de GeoLocations `[dono: Claude — status: implementado e testado localmente (native); falta PR, merge e validação no cluster]`
+### 28. Endpoint e workflow de limpeza de GeoLocations `[dono: Claude — status: feito e validado no cluster (PR #20)]`
 `POST` assíncrono (padrão do `batch-import`) com uma coleção de
 `{countrySlug, locationLevel, shouldDeleteJsonFile, shouldDeleteXmlFile}` e **`dryRun=true` por
 padrão**. Decisões do André (26/09):
@@ -372,6 +372,22 @@ padrão**. Decisões do André (26/09):
   workflow. Apaga dados de verdade: só com o OK explícito do André, por exemplo `PRT` (níveis 1 e 0) e depois
   reimportar.
 - **Sem OIDC/OpenFGA por enquanto** (decisão do André); o dry run por padrão é a única trava (item 24).
+
+**Validação no cluster (27/09, PR #20 mergeado com `[native]`, imagem `2026.0927.001956-native`):**
+- Pipeline com o `native-image` no Kaniko: ~16 min, sem apertar a máquina (mínimo de 14 GiB disponíveis). Pod novo:
+  startup de 2,6 s, 145 MiB, 0 restarts, 0 erros no log.
+- **Dry run no cluster** (sem `dryRun` no corpo): `DRY_RUN` com o plano de PRT (nível 1: 20 GeoLocations, 80 assets,
+  20 relatórios corporativos; nível 0: 1 GeoLocation, 4 assets, 1 relatório), banco idêntico depois.
+- **Limpeza real de PRT (níveis 1 e 0, com o JSON e o XML do nível 1), autorizada pelo André**, ~30 s,
+  `COMPLETED`: 21 GeoLocations, 84 assets e 21 relatórios de detalhe apagados; o pedido ao NiFi pelo Kafka voltou em
+  753 ms (`deletedJson/deletedXml=true`, `failedCount=0`); `remaining` = 0 e 0. Contagens conferidas contra o
+  esperado: 118 → 97 GeoLocations, 472 → 388 assets, imagens do tenant 354 → 291, documentos 118 → 97, `darueira-reports`
+  121 → 100, `darueira-geodata` 16 → 14 (ficaram só os de PRT nível 0). Preservados: os 29 continentes e regiões, os 3
+  resumos de job, e os outros países (BRA 27, DEU 16, USA 51 estados; sem itens sem mapa ou relatório).
+- **Segurança:** só um `dryRun:false` explícito apaga (ausente ou `null` é dry run); o endpoint segue sem
+  OIDC/OpenFGA (item 24), então o dry run por padrão é a única trava.
+- **Base agora:** BRA, DEU e USA. PRT foi limpo e pode ser reimportado (níveis 0 e 1).
+
 
 ### 31. `batch-import` devolve 500 no native se o corpo omite `shouldConvertToXML` `[dono: Claude — status: aberto]`
 Achado em 26/09 ao testar a limpeza com o binário native: `POST /api/v1/geolocations/workflows/batch-import` com

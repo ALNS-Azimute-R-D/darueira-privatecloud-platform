@@ -258,7 +258,7 @@ funcionalidade em desenvolvimento isso é caro demais.
   native com a label `darueira.io/image-variant: native`, limite de **1536Mi** (request 384Mi), sem
   `JAVA_TOOL_OPTIONS`, `startupProbe` de 30 × 2 s, startup de 2,0 s e ~80 MiB em repouso, 0 restarts.
 
-### 27. Visibilidade dos SVGs e relatórios na UI do Temporal `[dono: Claude — status: em andamento (fase A), branch feat/geolocation-artifacts-workflow]`
+### 27. Visibilidade dos SVGs e relatórios na UI do Temporal `[dono: Claude — status: implementado e validado localmente; falta PR, merge e teste no cluster]`
 Hoje a geração por GeoLocation (SVGs, bandeira, resumo de IA, PDF) roda no
 `GeoLocationEnrichmentKafkaConsumer`, chamando a atividade como método comum: o Temporal não a vê, e o
 workflow "termina" quando acaba a ingestão. Decidido: **um workflow filho por GeoLocation**
@@ -281,6 +281,39 @@ descoberta: as etapas trocam SVGs/bandeira/PDF em memória, e o Temporal limita 
 relê os SVGs e a bandeira do storage. As atividades passam a lançar exceção (a função atual captura
 tudo e devolve `status=ERROR`, e o Temporal nunca retenta). Search attributes ficam para depois
 (exigem registrar no namespace do Temporal); por ora vale o prefixo do id e o memo.
+
+**Handoff (26/09, branch `feat/geolocation-artifacts-workflow` do `bookanything-platform`, commits
+`604839b`, `9e419ed`, `91c0075`, ainda sem push):**
+- **Feito:** `GeoLocationArtifactsWorkflow` (`geo-artifacts-<id>`, fila `GEOLOCATION_ARTIFACTS_TASK_QUEUE`,
+  worker com `maxConcurrentActivityExecutionSize=4`) com 5 atividades (`GenerateAndStoreMaps`,
+  `ResolveAndStoreFlag`, `EnrichWithAi`, `RenderAndStoreReport`, `CopyReportToCorporateStorage`); launcher
+  sem duplicar (janela de 300 s); o consumer Kafka inicia o workflow em vez de chamar o método; o endpoint
+  `.../artifacts-and-report` inicia e aguarda o mesmo workflow; o import ganhou o estágio
+  `ARTIFACTS_GENERATION` (`Workflow.getVersion`, ids lidos do banco, resumo por país/nível em
+  `artifactsSummaries`). Propriedades novas em `temporal.artifacts.*` (`application.yml`).
+  ADR-0014, `temporal-testing` no pom, `StorageProviderPort.readBytes`.
+- **Testes:** 10 testes novos no servidor de teste do Temporal (ordem das etapas, retry só do relatório,
+  cópia corporativa tolerante, falha não retentável, regras do launcher) + suíte completa: 87 unitários e
+  26 de integração (Testcontainers) sem falhas.
+- **Validado localmente com o binário native e com o JVM** (Temporal local, Kafka em `localhost:9092`):
+  província (#177) e país (#204) `SUCCESS`; 9 itens em paralelo mantiveram no máximo **4 atividades
+  simultâneas**; 0 erros de reflection. A história do workflow mostra cada etapa com início e fim.
+- **Dois erros que só o teste local achou** (não aparecem em teste unitário nem em JVM): (1)
+  `@Lazy` sobre uma classe concreta no consumer gera um proxy CGLIB e o native quebra no startup
+  (`MissingReflectionRegistrationError ...$$SpringCGLIB$$0.CGLIB$FACTORY_DATA`); (2) as atividades rodam
+  em threads do worker do Temporal, sem sessão do Hibernate, e o mapper de **província** lê uma coleção
+  lazy (`LazyInitializationException`); um país não tem essa coleção, por isso o primeiro teste local
+  (DEU) passou. Corrigido com transações curtas só nas leituras. Um `mvn` sem `clean` também deixa
+  proxies CGLIB antigos em `target/` e quebra o `process-aot`: usar `clean`.
+- **Ainda não validado (só no cluster):** o estágio `ARTIFACTS_GENERATION` do workflow de import (precisa
+  do NiFi) e o caminho do consumer Kafka disparado pela criação/atualização via NiFi. Depois do merge:
+  reimportar um país e conferir na UI do Temporal `geo-artifacts-*` com as 5 etapas, o pai só terminando
+  quando todos terminam e `artifactsSummaries` no resultado.
+- **Limites conhecidos:** a janela de 4 é por Pod (com mais réplicas multiplica); search attributes
+  (`GeoLocationId`, `CountrySlug`) ficam para depois, pois registrar exige mudar o namespace do Temporal;
+  filtrar na UI pelo prefixo `geo-artifacts-`. O PDF do JSReport local levou até 18 s em uma chamada
+  isolada (item 8).
+
 
 ### 28. Endpoint e workflow de limpeza de GeoLocations `[dono: Claude — status: planejado (fase B)]`
 `POST` assíncrono (padrão do `batch-import`) com uma coleção de

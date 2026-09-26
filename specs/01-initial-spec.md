@@ -79,6 +79,7 @@ Inspired by enterprise platform architectures (such as Tesla Cloud Platform - TC
 
 #### 3.1.4. Business Integration & Workflow Services (`drr-corpshared-plat`)
 * **Workflow Orchestration:** Temporal (server + Web UI, Keycloak OIDC, multi-tenant namespaces).
+  * *BookAnything GeoLocation import:* `GeoLocationIngestionWorkflow` (NiFi ingestion per country/level) plus one `GeoLocationArtifactsWorkflow` per GeoLocation (SVG maps, flag, AI summary, detail PDF) on a dedicated task queue with a worker-side concurrency window; see ADR-0014.
 * **Data Flow / ETL:** Apache NiFi (Keycloak OIDC, persistent authorizations, flows and repositories).
 * **Reporting:** jsreport (PostgreSQL store, Chrome PDF engine, S3 storage in Central MinIO, Keycloak OIDC).
 * **Digital Identity (eIDAS 2.0 / EUDI Wallet):** Clavex (server, UI and Redis).

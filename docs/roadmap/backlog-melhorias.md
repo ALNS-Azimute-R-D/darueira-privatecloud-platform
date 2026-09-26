@@ -207,7 +207,7 @@ Secret do Tekton (relacionado ao item 1).
 Os erros 500 voltam com a mensagem no corpo, mas nada aparece no log do Pod: foi assim que o disparo
 do DEU falhou em silêncio no native. Logar a exceção (com stack) no handler.
 
-### 26. Build do backend em duas variantes: JVM (padrão) e native `[dono: Claude — status: em andamento (fase C): gatilho, JVM e native validados; chart pronto em branch, falta push/PR/merge]`
+### 26. Build do backend em duas variantes: JVM (padrão) e native `[dono: Claude — status: feito]`
 Decidido com o André em 26/09. O build native leva ~26 min na pipeline e ~12 GiB de RAM; para testar
 funcionalidade em desenvolvimento isso é caro demais.
 - **Regra:** push na `master` do `bookanything-platform` gera a imagem **JVM** (`Dockerfile.jvm`). Se o
@@ -254,9 +254,11 @@ funcionalidade em desenvolvimento isso é caro demais.
   (`Recreate`, indisponibilidade curta). O limite de 1536Mi do native é conservador: baixar depois de
   medir o workflow da fase A (janela de 4 itens em paralelo). Isso fecha o "pendente" de memória
   do item 21.
-- **Falta:** push da branch do chart, PR e merge; confirmar o Pod com a label e os novos limites.
+- **Entregue e confirmado** (chart PR #2, merge `d45b0dd`; o ArgoCD levou ~5 min para detectar): Pod
+  native com a label `darueira.io/image-variant: native`, limite de **1536Mi** (request 384Mi), sem
+  `JAVA_TOOL_OPTIONS`, `startupProbe` de 30 × 2 s, startup de 2,0 s e ~80 MiB em repouso, 0 restarts.
 
-### 27. Visibilidade dos SVGs e relatórios na UI do Temporal `[dono: Claude — status: planejado (fase A)]`
+### 27. Visibilidade dos SVGs e relatórios na UI do Temporal `[dono: Claude — status: em andamento (fase A), branch feat/geolocation-artifacts-workflow]`
 Hoje a geração por GeoLocation (SVGs, bandeira, resumo de IA, PDF) roda no
 `GeoLocationEnrichmentKafkaConsumer`, chamando a atividade como método comum: o Temporal não a vê, e o
 workflow "termina" quando acaba a ingestão. Decidido: **um workflow filho por GeoLocation**
@@ -267,6 +269,18 @@ ids listados do **banco** (`listGeoLocationIds`) e não do resumo do NiFi, searc
 mantém só a parte de IA/boundary e inicia o mesmo workflow (id `geo-artifacts-<id>`) para
 GeoLocations criadas fora do import. Atenção: novas interfaces do Temporal precisam de hints no
 native (`NativeRuntimeHints`), como no PR #15. Relacionado aos itens 6 e 8.
+
+**Desenho final (ADR-0014, 26/09):** o desenho inicial (filhos reais com janela no pai) foi trocado,
+com o André, por **um workflow por GeoLocation (`geo-artifacts-<id>`) numa fila própria cujo worker
+executa no máximo 4 atividades ao mesmo tempo**, iniciado pelo consumer Kafka de enriquecimento (sem
+mudar o NiFi e cobrindo GeoLocations criadas pela API). O workflow de import aguarda todos os ids
+(lidos do banco) num estágio `ARTIFACTS`. Motivo da troca: o consumer já gera os artefatos durante a
+ingestão, e evitar a duplicidade com filhos reais exigiria uma marca no NiFi e no evento. Restrição
+descoberta: as etapas trocam SVGs/bandeira/PDF em memória, e o Temporal limita cada payload a 2 MB
+(aviso a partir de 256 KB), então as atividades trocam **referências** (assets no MinIO) e o relatório
+relê os SVGs e a bandeira do storage. As atividades passam a lançar exceção (a função atual captura
+tudo e devolve `status=ERROR`, e o Temporal nunca retenta). Search attributes ficam para depois
+(exigem registrar no namespace do Temporal); por ora vale o prefixo do id e o memo.
 
 ### 28. Endpoint e workflow de limpeza de GeoLocations `[dono: Claude — status: planejado (fase B)]`
 `POST` assíncrono (padrão do `batch-import`) com uma coleção de

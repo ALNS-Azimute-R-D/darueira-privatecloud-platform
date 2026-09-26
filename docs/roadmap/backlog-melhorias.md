@@ -199,11 +199,15 @@ As 17 variáveis do Deployment `bookanything-monolith-backend-01` (senha do Post
 item 1: mover para Secrets/OpenBao. Em 26/09 essas variáveis foram impressas uma vez no terminal
 de uma sessão do Claude.
 
+Achado em 26/09: `platform/gitops/tekton-pipelines/task-gitops-helm-promote.yaml` tem o usuário e a
+senha do Git (`drradmin`) escritos no script para clonar o repositório do chart. Mover para um
+Secret do Tekton (relacionado ao item 1).
+
 ### 22. Handler global de exceções do backend não loga
 Os erros 500 voltam com a mensagem no corpo, mas nada aparece no log do Pod: foi assim que o disparo
 do DEU falhou em silêncio no native. Logar a exceção (com stack) no handler.
 
-### 26. Build do backend em duas variantes: JVM (padrão) e native `[dono: Claude — status: em andamento (fase C): gatilho no ar e JVM validado; falta a rota native e o chart]`
+### 26. Build do backend em duas variantes: JVM (padrão) e native `[dono: Claude — status: em andamento (fase C): gatilho, JVM e native validados; chart pronto em branch, falta push/PR/merge]`
 Decidido com o André em 26/09. O build native leva ~26 min na pipeline e ~12 GiB de RAM; para testar
 funcionalidade em desenvolvimento isso é caro demais.
 - **Regra:** push na `master` do `bookanything-platform` gera a imagem **JVM** (`Dockerfile.jvm`). Se o
@@ -235,9 +239,22 @@ funcionalidade em desenvolvimento isso é caro demais.
   folga: revisar ao tratar as variantes no chart.
 - O PipelineRun manual `pr-swfabrik-europe-bookanything-backend-manual` (modelo, não aplicado no
   cluster) passou a usar `Dockerfile.jvm` e `auto-jvm`, porque o `Dockerfile` vai sair.
-- **Falta:** (a) PR com `[native]` no título removendo o `Dockerfile` transitório, que também testa a
-  rota native (o Pod volta a ser native); (b) o chart tratar `-jvm` e `-native` (memória,
-  `JAVA_TOOL_OPTIONS`, probes); (c) atualizar o README do `tekton-pipelines` com a regra `[native]`.
+- **Rota native validada** (PR #17 com `[native]` no título, merge `4345514`): PipelineRun com
+  `auto-native` + `Dockerfile.native`, tag `2026.0926.154226-native`, pipeline em 3 min 54 s (o Kaniko
+  reaproveitou a camada do `native-image` porque o `src/` não mudou; com código alterado contar ~20
+  min a mais). Pod native: startup de **2,2 s** e **154 MiB** logo após subir. O `Dockerfile`
+  transitório foi removido.
+- **README** do `tekton-pipelines` documentando a regra `[native]`, a tag e o risco do Alpine.
+- **Chart** (`bookanything-platform-chart`, branch `feat/backend-image-variants`, commit `ae14681`,
+  ainda **sem push nem PR**): a variante sai do sufixo da tag; native = 384Mi → 1536Mi, sem
+  `JAVA_TOOL_OPTIONS`, `startupProbe` de até 60 s; jvm = 768Mi → 2048Mi (como antes), com
+  `startupProbe` de até 180 s; label `darueira.io/image-variant` no Pod. Testado com `helm lint` e
+  `helm template` (tags `-native`, `-jvm`, `latest` e sem sufixo): só o Deployment do backend muda.
+  **O ArgoCD sincroniza o chart sozinho (`automated`), então o merge reinicia o Pod do backend**
+  (`Recreate`, indisponibilidade curta). O limite de 1536Mi do native é conservador: baixar depois de
+  medir o workflow da fase A (janela de 4 itens em paralelo). Isso fecha o "pendente" de memória
+  do item 21.
+- **Falta:** push da branch do chart, PR e merge; confirmar o Pod com a label e os novos limites.
 
 ### 27. Visibilidade dos SVGs e relatórios na UI do Temporal `[dono: Claude — status: planejado (fase A)]`
 Hoje a geração por GeoLocation (SVGs, bandeira, resumo de IA, PDF) roda no

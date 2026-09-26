@@ -258,7 +258,7 @@ funcionalidade em desenvolvimento isso é caro demais.
   native com a label `darueira.io/image-variant: native`, limite de **1536Mi** (request 384Mi), sem
   `JAVA_TOOL_OPTIONS`, `startupProbe` de 30 × 2 s, startup de 2,0 s e ~80 MiB em repouso, 0 restarts.
 
-### 27. Visibilidade dos SVGs e relatórios na UI do Temporal `[dono: Claude — status: implementado e validado localmente; falta PR, merge e teste no cluster]`
+### 27. Visibilidade dos SVGs e relatórios na UI do Temporal `[dono: Claude — status: feito e validado no cluster (PR #18)]`
 Hoje a geração por GeoLocation (SVGs, bandeira, resumo de IA, PDF) roda no
 `GeoLocationEnrichmentKafkaConsumer`, chamando a atividade como método comum: o Temporal não a vê, e o
 workflow "termina" quando acaba a ingestão. Decidido: **um workflow filho por GeoLocation**
@@ -314,6 +314,22 @@ tudo e devolve `status=ERROR`, e o Temporal nunca retenta). Search attributes fi
   filtrar na UI pelo prefixo `geo-artifacts-`. O PDF do JSReport local levou até 18 s em uma chamada
   isolada (item 8).
 
+**Validação no cluster (26/09, PR #18 mergeado com `[native]`, imagem `2026.0926.203739-native`):**
+- Pipeline com o `native-image` dentro do Kaniko, sem cache (o código mudou): ~22 min; o ponto mais baixo de
+  memória da máquina foi 13 GiB disponíveis. Pod novo: startup de 2,1 s, ~170 MiB em repouso.
+- **Import de Portugal (`PRT`, níveis 0 e 1), 2 min 35 s de ponta a ponta:** o consumer Kafka iniciou os
+  `geo-artifacts-*` durante a ingestão, o workflow de import entrou em `ARTIFACTS_GENERATION` (80–84%) e só
+  completou depois do 21º filho. Resultado `COMPLETED` com `totalCreated=21` e
+  `artifactsSummaries`: PRT nível 0 = 1/1 e nível 1 = 20/20 (0 falhas).
+- **21 workflows, 105 atividades** (5 por item), **no máximo 4 simultâneas** (janela do worker), memória do Pod
+  com pico de 376 MiB (limite 1536Mi), 0 restarts. Só 2 reexecuções, ambas de `RenderAndStoreReport` (erro
+  do JSReport, ver item 8): as demais etapas do item não foram refeitas.
+- Contagens conferidas: 118 GeoLocations (4 países e 114 estados; 0 sem geometria, mapa ou relatório),
+  354 imagens e 118 documentos no banco e no MinIO do tenant, 121 objetos em `darueira-reports` (118
+  relatórios + 3 resumos de job), 16 arquivos em `darueira-geodata`.
+- **Lição do teste:** um import disparado com o código errado (`POR`; o ISO3 de Portugal é `PRT`) não cria
+  nenhuma GeoLocation e ficaria 25 min esperando: ver o caso real no item 4.
+
 
 ### 28. Endpoint e workflow de limpeza de GeoLocations `[dono: Claude — status: planejado (fase B)]`
 `POST` assíncrono (padrão do `batch-import`) com uma coleção de
@@ -332,6 +348,15 @@ padrão**. Decisões do André (26/09):
   harness de teste, como o passo 8.
 - Depende da fase A (mesmo padrão de visibilidade por item) e de um ADR novo em `specs/adr/`.
 
+### 29. Testes de integração falam com o Temporal do cluster `[dono: Claude — status: em andamento]`
+O `application.yml` tem o ClusterIP do Temporal como endereço padrão (`10.152.183.189:7233`), alcançável da
+máquina. Depois que o consumer Kafka passou a **iniciar** o workflow de artefatos (PR #18), os testes de
+integração (Testcontainers) criaram GeoLocations e iniciaram `geo-artifacts-1..34` no Temporal **real**
+(namespace `corporate-core`, 26/09 ~17:45): ficaram na fila sem worker e, quando o Pod novo subiu (19:00),
+falharam com "GeoLocation not found" (ids do banco de teste; nenhum dado real afetado). Corrigir: o perfil de
+teste deve apontar o Temporal para um endereço inerte (ou trocar o launcher por um dublê) e nenhum teste pode
+alcançar o cluster. Os 34 workflows `Failed` ficam no histórico até a retenção do namespace.
+
 ---
 
 ## 🟠 Média prioridade
@@ -343,6 +368,11 @@ padrão**. Decisões do André (26/09):
 
 Aplicar o mesmo padrão do passo 8: sempre responder ao workflow com um `errorMessage`, e versionar
 os scripts em `platform/nifi/`.
+
+**Caso real (26/09):** um import disparado com `countrySlug=POR` (o ISO3 de Portugal no GADM é `PRT`) fez o
+passo 3 receber HTTP 404 em `gadm41_POR_0.json`; o NiFi descartou o erro e o workflow ficou esperando o
+timeout de 25 min, sem nenhuma mensagem. Com `errorMessage` na resposta o workflow falharia em segundos. O
+backend também poderia validar o código do país antes de iniciar o workflow.
 
 ### 5. Restarts em massa dos pods `[dono: Claude — status: parcial]`
 temporal-server (63), central-postgres (38), Forgejo/Tekton (~46), entre outros. Parte vem dos
@@ -381,6 +411,11 @@ import do DEU sozinho (o relatório só passou na 3ª tentativa), 2 no do BRA (c
 mais 2 no início do DEU+USA. Depois disso não foi possível contar (o log do Pod rotacionou). Nenhum
 item falhou de vez nos 97. Investigar memória/concorrência do Chrome no pod do JSReport antes que
 excedam os retries.
+
+**Atualização (26/09, import de PRT):** 2 falhas `HTTP 500` em 21 relatórios
+(`Navigating frame was detached` e `Protocol error (Page.printToPDF)`). Com o workflow por item, cada uma foi
+retentada só na etapa `RenderAndStoreReport` (5 tentativas configuradas) e passou na 2ª; agora as tentativas
+aparecem na UI do Temporal.
 
 ### 9. Debug do cilium-cni ligado
 `05-cilium-cni.conf` tem `enable-debug: true` e escreve `/run/cilium/cilium-cni.log`, já com 55 MB

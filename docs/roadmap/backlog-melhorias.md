@@ -126,14 +126,26 @@ O Pod JVM usava ~930 MiB. O `Dockerfile` agora gera um executável native (o JVM
   28 itens em ~3 min (11:53:54 a 11:56:51). Contagens conferidas: 84 imagens e 28 documentos no
   banco e no MinIO do tenant, 29 objetos em `darueira-reports` (28 relatórios + o resumo do job)
   e os 4 arquivos do GADM em `darueira-geodata`. Nenhum item sem geometria, mapa ou relatório.
-- Nenhum `MissingReflection|NoSuchMethod|no argument constructor|ERROR` nos logs.
-- **Memória do Pod:** 297–308 MiB durante os imports, ~165–205 MiB em repouso (o JVM usava ~930 MiB).
+- **DEU + USA juntos (mesmo workflow, ~12:05 a 12:16 UTC):** DEU 1 + 16 estados e USA 1 + 51 estados,
+  69 itens em ~11 min. Contagens finais conferidas com o BRA: **97 GeoLocations** (3 países, 94
+  estados), 291 imagens e 97 documentos no banco e no MinIO do tenant, 99 objetos em
+  `darueira-reports` (97 relatórios + 2 resumos de job) e 12 em `darueira-geodata`. Nenhum item sem
+  geometria, mapa ou relatório. **Atenção:** o resumo do NiFi do USA nível 1 veio com
+  `createdCount=36, failedCount=15` (`SocketTimeoutException: Read timed out` no POST dos estados), mas
+  os 51 estados foram gravados: ver item 6.
+- Nenhum `MissingReflection|NoSuchMethod|no argument constructor|ERROR` nas consultas de log feitas
+  durante os imports.
+- **Memória do Pod:** 297–308 MiB nos imports do DEU e do BRA; **pico de 676 MiB** com DEU e USA em
+  paralelo (~165–205 MiB em repouso; o JVM usava ~930 MiB). 0 restarts. CPU chegou a 1,2–1,4 núcleo
+  (limite 1500m).
 
-**Estado da base para os próximos testes:** só o BRA. Em 26/09 foram apagados DEU, USA e o BRA
-anterior (97 GeoLocations: 3 países e 94 estados; e 388 assets), mais os objetos correspondentes nos MinIOs e todo o conteúdo de
-`darueira-geodata` e `drr-corporate-reports` (este tinha logs de perfil do JSReport e PDFs de
-`swfabrik-latam/billing-summary`, sem backup). Continentes e regiões (referência UN M49) ficaram.
-Existe um dump só de dados das duas tabelas em `/tmp` (some no reboot).
+**Estado da base para os próximos testes:** BRA, DEU e USA completos (97 GeoLocations, mais os 6
+continentes e 23 regiões UN M49 de referência). Em 26/09, antes desses imports, a base foi limpa: 97
+GeoLocations (3 países e 94 estados) e 388 assets apagados, com os objetos correspondentes nos MinIOs
+e todo o conteúdo de `darueira-geodata` e `drr-corporate-reports` (este tinha logs de perfil do
+JSReport e PDFs de `swfabrik-latam/billing-summary`, sem backup). O JSReport volta a preencher o
+`drr-corporate-reports` a cada renderização (103 objetos após o import). O dump só de dados das
+duas tabelas antes da limpeza está em `/tmp` (some no reboot).
 
 **Como repetir o teste local** (sem NiFi e sem tocar o cluster):
 1. Compilar (a partir de `1-backends/bookanything-monolith-backend-01`, JAVA_HOME em
@@ -156,13 +168,17 @@ Existe um dump só de dados das duas tabelas em `/tmp` (some no reboot).
    e não só o resultado HTTP.
 
 **Pendente:** reduzir o limite de memória do chart (2Gi → ~1Gi) e remover o `JAVA_TOOL_OPTIONS`
-(repositório do chart, via PR no Forgejo). Com pico de ~310 MiB, 1Gi dá folga.
+(repositório do chart, via PR no Forgejo). O pico observado foi de 676 MiB com dois países em paralelo,
+então 1Gi deixa ~350 MiB de folga (com um país por vez o pico é ~310 MiB). Decidir entre 1Gi e ~1,5Gi.
 
 **Lições:**
 - Cada tipo que falta registrar para reflection só aparece em runtime, e um por vez. O teste local
   com o endpoint síncrono acha o próximo em ~10 s, contra ~26 min de pipeline no cluster.
 - Bibliotecas sem metadata nativa (MinIO) puxam dependências que também usam reflection
   (simple-xml): registrar só o pacote da biblioteca não basta.
+- Sob import os logs do Pod rotacionam em ~2 min (~14 mil linhas): consultas posteriores a `kubectl logs
+  --since` só enxergam o final. Para acompanhar um import, usar `logs -f` com `grep --line-buffered` e
+  sem `sed`/`cut` no pipeline (eles seguram a saída em buffer e o monitor não emite nada).
 - O Spring AOT sobrescreve o `reachability-metadata.json` de `<group>/<artifact>`; os hints manuais
   ficam em `native-overrides/` ou no `NativeRuntimeHints`.
 
@@ -211,6 +227,17 @@ não foram revisadas as liveness probes nem os restarts do Forgejo e do Tekton.
 - Logar `errorMessage` / `failedCount` (novos no resumo do NiFi) no log "Ingestion finished".
 - Marcar o workflow como parcial/falho quando `failedCount > 0`, em vez de `COMPLETED`.
 
+**Caso real (26/09, USA nível 1):** o NiFi respondeu `createdCount=36, failedCount=15` com
+`POST province US-XX -> HTTP -1: SocketTimeoutException: Read timed out` (o log mostra só 5 dos 15
+estados: AK, MA, NH, NJ, NM). O backend logou `Created=36` e publicou
+`geolocation.batch-import.completed`, e **os 51 estados estavam gravados no banco**: o NiFi desistiu
+de esperar, mas o backend concluiu os POSTs. Ou seja, `failedCount` por timeout **não significa que o
+registro não foi criado**, e `createdCount` subestimou o resultado. Além de reagir a `failedCount`,
+o resumo deveria conciliar com o banco (ou o NiFi deveria tolerar timeouts com um read timeout maior /
+tratar HTTP -1 como "incerto"). Hipótese não verificada para os timeouts: o Pod (limite de CPU de
+1500m) estava gerando os mapas do DEU com o GeoPandas ao mesmo tempo que recebia os POSTs dos 51
+estados; com um país por vez (BRA) não ocorreu.
+
 ### 7. Backlog do enriquecimento (fase 2)
 - Tirar o trabalho de enriquecimento do `@Transactional` do consumer Kafka.
 - Persistir a fonte usada (Wikidata / flagcdn / Gemini / tabela) e criar um endpoint de re-enriquecimento.
@@ -220,9 +247,11 @@ não foram revisadas as liveness probes nem os restarts do Forgejo e do Tekton.
   Decidir se fixa uma.
 
 ### 8. JSReport: `Protocol error (Page.printToPDF): Target closed`
-Falhas ocasionais, hoje cobertas pelo retry. Em 26/09: 2 falhas no import do DEU (o relatório só
-passou na 3ª tentativa) e 2 no do BRA (cada uma passou na 2ª), todas `HTTP 500`. Investigar memória/concorrência do Chrome no pod do
-JSReport antes que excedam os retries.
+Falhas ocasionais, hoje cobertas pelo retry. Em 26/09, todas `HTTP 500` (`Target closed`): 2 no
+import do DEU sozinho (o relatório só passou na 3ª tentativa), 2 no do BRA (cada uma passou na 2ª) e
+mais 2 no início do DEU+USA. Depois disso não foi possível contar (o log do Pod rotacionou). Nenhum
+item falhou de vez nos 97. Investigar memória/concorrência do Chrome no pod do JSReport antes que
+excedam os retries.
 
 ### 9. Debug do cilium-cni ligado
 `05-cilium-cni.conf` tem `enable-debug: true` e escreve `/run/cilium/cilium-cni.log`, já com 55 MB

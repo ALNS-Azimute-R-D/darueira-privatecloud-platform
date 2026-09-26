@@ -331,7 +331,7 @@ tudo e devolve `status=ERROR`, e o Temporal nunca retenta). Search attributes fi
   nenhuma GeoLocation e ficaria 25 min esperando: ver o caso real no item 4.
 
 
-### 28. Endpoint e workflow de limpeza de GeoLocations `[dono: Claude — status: em andamento (fase B), ADR-0015]`
+### 28. Endpoint e workflow de limpeza de GeoLocations `[dono: Claude — status: implementado e testado localmente (native); falta PR, merge e validação no cluster]`
 `POST` assíncrono (padrão do `batch-import`) com uma coleção de
 `{countrySlug, locationLevel, shouldDeleteJsonFile, shouldDeleteXmlFile}` e **`dryRun=true` por
 padrão**. Decisões do André (26/09):
@@ -347,6 +347,40 @@ padrão**. Decisões do André (26/09):
   (`geolocation.nifi-delete.requested|completed`). Fluxo do NiFi versionado em `platform/nifi/` com
   harness de teste, como o passo 8.
 - Depende da fase A (mesmo padrão de visibilidade por item) e de um ADR novo em `specs/adr/`.
+
+**Handoff (26/09):**
+- **NiFi (já no ar, `master` da plataforma, `d108f60`):** process group "BookAnything - GeoLocation Cleanup Pipeline",
+  10 processadores rodando e válidos, definido em `platform/nifi/bookanything-geolocation-cleanup/flow.json` e
+  aplicado por `scripts/apply_nifi_cleanup_flow.py` (`make check-nifi-cleanup-flow` / `apply-nifi-cleanup-flow`; o
+  `--check` fica limpo). O passo 7 (Groovy) tem teste offline (`make test-nifi-cleanup-script`, 12 verificações).
+  Teste de ponta a ponta pelo Kafka (`ZZZ`): resposta em 317 ms. As credenciais do MinIO vêm do Pod na hora de
+  aplicar; nada secreto no repositório. O grupo do import não foi tocado.
+- **Backend (branch `feat/geolocation-cleanup-workflow`, commits `90ee2fd` e `2a972ae`, sem push):** `POST
+  /api/v1/geolocations/workflows/cleanup` (+ `GET .../{id}/status` e `.../result`), workflow
+  `GeoLocationCleanupWorkflow`, `GeoLocationCleanupService`, atividades (com o pedido/resposta ao NiFi pelo
+  Kafka) e `CorporateStoragePort`. 21 testes novos (serviço e workflow).
+- **Validado localmente com o binário native, só leituras** (banco idêntico antes e depois: 118 GeoLocations,
+  472 assets, 29 continentes e regiões): o dry run de PRT sem `dryRun` no corpo devolve o plano (20 estados, 80
+  assets, 20 relatórios; o país com 4 assets); país com estados sem o nível 1, item inválido e duplicado dão
+  `BLOCKED`; `dryRun: null` é dry run; pedido vazio dá 400; 0 erros de reflection.
+- **Defeitos que só o teste local achou:** (1) no native o Jackson não usa o padrão do Kotlin de propriedade ausente e
+  passa `null` a um `boolean` (o pedido sem `dryRun` falhava ao ler): as flags viraram `Boolean?` com leitores
+  seguros (`dryRunEnabled()` = `dryRun != false`, só um `false` explícito apaga); (2) um `val isDryRun` vira o
+  getter `isDryRun()`, que o Jackson lê como a propriedade `dryRun`, e o `@JsonIgnore` nele descartava o
+  `dryRun` inteiro (5 testes do workflow pegaram); por isso é uma função.
+- **Ainda não validado (só no cluster):** uma limpeza **real** (`dryRun=false`) e a chamada ao NiFi pelo
+  workflow. Apaga dados de verdade: só com o OK explícito do André, por exemplo `PRT` (níveis 1 e 0) e depois
+  reimportar.
+- **Sem OIDC/OpenFGA por enquanto** (decisão do André); o dry run por padrão é a única trava (item 24).
+
+### 31. `batch-import` devolve 500 no native se o corpo omite `shouldConvertToXML` `[dono: Claude — status: aberto]`
+Achado em 26/09 ao testar a limpeza com o binário native: `POST /api/v1/geolocations/workflows/batch-import` com
+`{"items":[{"countrySlug":"ZZZ","locationLevel":0}]}` responde 500 (`Cannot map null into type boolean`), e com
+`"shouldConvertToXML":false` aceita. É o mesmo defeito do `dryRun` da limpeza: `CountryImportItem.shouldConvertToXML`
+é `Boolean = false` e o Jackson do native não aplica o padrão do Kotlin. Corrigir com o mesmo padrão
+(`Boolean?` mais um leitor seguro) e um teste que parseia o corpo sem o campo. Vale revisar os outros DTOs de
+entrada REST com padrões do Kotlin em tipos primitivos (`GeoLocationBatchImportRequest`, criação de GeoLocation).
+
 
 ### 29. Testes de integração falam com o Temporal do cluster `[dono: Claude — status: em andamento]`
 O `application.yml` tem o ClusterIP do Temporal como endereço padrão (`10.152.183.189:7233`), alcançável da

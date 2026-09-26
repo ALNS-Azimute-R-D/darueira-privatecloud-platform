@@ -287,6 +287,21 @@ check-nifi-scripts: ## Diff the versioned NiFi step 8 script against the live pr
 	@python3 scripts/apply_nifi_script_body.py --check "8. Ingest Backend & Summarize" \
 		$(NIFI_GEO_DIR)/08-ingest-backend-and-summarize.groovy
 
+NIFI_CLEANUP_DIR := platform/nifi/bookanything-geolocation-cleanup
+
+.PHONY: test-nifi-cleanup-script
+test-nifi-cleanup-script: ## Run the NiFi cleanup step 7 Groovy script offline (needs groovy)
+	@groovy -cp $(NIFI_GEO_DIR)/test/stubs $(NIFI_CLEANUP_DIR)/test/step7_harness.groovy \
+		$(NIFI_CLEANUP_DIR)/07-summarize-cleanup.groovy
+
+.PHONY: check-nifi-cleanup-flow
+check-nifi-cleanup-flow: ## Diff the versioned NiFi cleanup flow (flow.json) against the live flow
+	@python3 scripts/apply_nifi_cleanup_flow.py --check
+
+.PHONY: apply-nifi-cleanup-flow
+apply-nifi-cleanup-flow: ## Create/update the NiFi cleanup flow from flow.json (mutating: one agent at a time)
+	@python3 scripts/apply_nifi_cleanup_flow.py --apply
+
 .PHONY: seed-geolocation-reference
 seed-geolocation-reference: ## Idempotently seed continents/regions (UN M49) into the BookAnything backend
 	@python3 scripts/seed_geolocation_reference_data.py

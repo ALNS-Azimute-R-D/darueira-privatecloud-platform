@@ -1,0 +1,251 @@
+{
+  "_comment": "BookAnything - GeoLocation Cleanup Pipeline (ADR-0015). Apply with scripts/apply_nifi_cleanup_flow.py. {{...}} placeholders are resolved at apply time and never stored here.",
+  "processGroup": "BookAnything - GeoLocation Cleanup Pipeline",
+  "position": {
+    "x": 600,
+    "y": 0
+  },
+  "processors": [
+    {
+      "name": "1. Consume Cleanup Request",
+      "type": "org.apache.nifi.processors.kafka.pubsub.ConsumeKafka_2_6",
+      "bundle": "nifi-kafka-2-6-nar",
+      "properties": {
+        "bootstrap.servers": "message-broker-kafka.drr-corpshared-plat.svc.cluster.local:9092",
+        "topic": "geolocation.nifi-cleanup.requested",
+        "topic_type": "names",
+        "group.id": "nifi-geolocation-cleanup-consumer",
+        "auto.offset.reset": "latest",
+        "security.protocol": "PLAINTEXT"
+      },
+      "autoTerminate": [],
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "name": "2. Extract Cleanup Attributes",
+      "type": "org.apache.nifi.processors.standard.EvaluateJsonPath",
+      "bundle": "nifi-standard-nar",
+      "properties": {
+        "Destination": "flowfile-attribute",
+        "Return Type": "auto-detect",
+        "Path Not Found Behavior": "ignore",
+        "Null Value Representation": "empty string",
+        "jobId": "$.jobId",
+        "countrySlug": "$.countrySlug",
+        "locationLevel": "$.locationLevel",
+        "shouldDeleteJsonFile": "$.shouldDeleteJsonFile",
+        "shouldDeleteXmlFile": "$.shouldDeleteXmlFile"
+      },
+      "autoTerminate": [
+        "failure",
+        "unmatched"
+      ],
+      "position": {
+        "x": 450,
+        "y": 0
+      }
+    },
+    {
+      "name": "3. Route on shouldDeleteJsonFile",
+      "type": "org.apache.nifi.processors.standard.RouteOnAttribute",
+      "bundle": "nifi-standard-nar",
+      "properties": {
+        "Routing Strategy": "Route to Property name",
+        "delete_json": "${shouldDeleteJsonFile:toLower():equals('true')}"
+      },
+      "autoTerminate": [],
+      "position": {
+        "x": 900,
+        "y": 0
+      }
+    },
+    {
+      "name": "4. Delete Raw GeoJSON",
+      "type": "org.apache.nifi.processors.aws.s3.DeleteS3Object",
+      "bundle": "nifi-aws-nar",
+      "properties": {
+        "Bucket": "darueira-geodata",
+        "Object Key": "raw/gadm41_${countrySlug}_${locationLevel}.json",
+        "Access Key": "{{CENTRAL_MINIO_ACCESS_KEY}}",
+        "Secret Key": "{{CENTRAL_MINIO_SECRET_KEY}}",
+        "Region": "us-west-2",
+        "Endpoint Override URL": "http://central-minio.drr-corpshared-plat.svc.cluster.local:9000",
+        "Signer Override": "AWSS3V4SignerType",
+        "Communications Timeout": "30 secs"
+      },
+      "autoTerminate": [],
+      "position": {
+        "x": 900,
+        "y": 250
+      }
+    },
+    {
+      "name": "4b. Mark JSON Delete Failure",
+      "type": "org.apache.nifi.processors.attributes.UpdateAttribute",
+      "bundle": "nifi-update-attribute-nar",
+      "properties": {
+        "jsonError": "${s3.exception:isEmpty():ifElse('delete failed', ${s3.exception})}"
+      },
+      "autoTerminate": [],
+      "position": {
+        "x": 450,
+        "y": 250
+      }
+    },
+    {
+      "name": "5. Route on shouldDeleteXmlFile",
+      "type": "org.apache.nifi.processors.standard.RouteOnAttribute",
+      "bundle": "nifi-standard-nar",
+      "properties": {
+        "Routing Strategy": "Route to Property name",
+        "delete_xml": "${shouldDeleteXmlFile:toLower():equals('true')}"
+      },
+      "autoTerminate": [],
+      "position": {
+        "x": 900,
+        "y": 500
+      }
+    },
+    {
+      "name": "6. Delete XML",
+      "type": "org.apache.nifi.processors.aws.s3.DeleteS3Object",
+      "bundle": "nifi-aws-nar",
+      "properties": {
+        "Bucket": "darueira-geodata",
+        "Object Key": "xml/gadm41_${countrySlug}_${locationLevel}.xml",
+        "Access Key": "{{CENTRAL_MINIO_ACCESS_KEY}}",
+        "Secret Key": "{{CENTRAL_MINIO_SECRET_KEY}}",
+        "Region": "us-west-2",
+        "Endpoint Override URL": "http://central-minio.drr-corpshared-plat.svc.cluster.local:9000",
+        "Signer Override": "AWSS3V4SignerType",
+        "Communications Timeout": "30 secs"
+      },
+      "autoTerminate": [],
+      "position": {
+        "x": 900,
+        "y": 750
+      }
+    },
+    {
+      "name": "6b. Mark XML Delete Failure",
+      "type": "org.apache.nifi.processors.attributes.UpdateAttribute",
+      "bundle": "nifi-update-attribute-nar",
+      "properties": {
+        "xmlError": "${s3.exception:isEmpty():ifElse('delete failed', ${s3.exception})}"
+      },
+      "autoTerminate": [],
+      "position": {
+        "x": 450,
+        "y": 750
+      }
+    },
+    {
+      "name": "7. Summarize Cleanup",
+      "type": "org.apache.nifi.processors.script.ExecuteScript",
+      "bundle": "nifi-scripting-nar",
+      "properties": {
+        "Script Engine": "Groovy",
+        "Script Body": "@file:07-summarize-cleanup.groovy"
+      },
+      "autoTerminate": [
+        "failure"
+      ],
+      "position": {
+        "x": 1350,
+        "y": 500
+      }
+    },
+    {
+      "name": "8. Publish Cleanup Event",
+      "type": "org.apache.nifi.processors.kafka.pubsub.PublishKafka_2_6",
+      "bundle": "nifi-kafka-2-6-nar",
+      "properties": {
+        "bootstrap.servers": "message-broker-kafka.drr-corpshared-plat.svc.cluster.local:9092",
+        "topic": "geolocation.nifi-cleanup.completed",
+        "use-transactions": "false",
+        "Failure Strategy": "Route to Failure",
+        "acks": "all",
+        "security.protocol": "PLAINTEXT",
+        "key-attribute-encoding": "utf-8"
+      },
+      "autoTerminate": [
+        "success",
+        "failure"
+      ],
+      "position": {
+        "x": 1800,
+        "y": 500
+      }
+    }
+  ],
+  "connections": [
+    {
+      "from": "1. Consume Cleanup Request",
+      "relationship": "success",
+      "to": "2. Extract Cleanup Attributes"
+    },
+    {
+      "from": "2. Extract Cleanup Attributes",
+      "relationship": "matched",
+      "to": "3. Route on shouldDeleteJsonFile"
+    },
+    {
+      "from": "3. Route on shouldDeleteJsonFile",
+      "relationship": "delete_json",
+      "to": "4. Delete Raw GeoJSON"
+    },
+    {
+      "from": "3. Route on shouldDeleteJsonFile",
+      "relationship": "unmatched",
+      "to": "5. Route on shouldDeleteXmlFile"
+    },
+    {
+      "from": "4. Delete Raw GeoJSON",
+      "relationship": "success",
+      "to": "5. Route on shouldDeleteXmlFile"
+    },
+    {
+      "from": "4. Delete Raw GeoJSON",
+      "relationship": "failure",
+      "to": "4b. Mark JSON Delete Failure"
+    },
+    {
+      "from": "4b. Mark JSON Delete Failure",
+      "relationship": "success",
+      "to": "5. Route on shouldDeleteXmlFile"
+    },
+    {
+      "from": "5. Route on shouldDeleteXmlFile",
+      "relationship": "delete_xml",
+      "to": "6. Delete XML"
+    },
+    {
+      "from": "5. Route on shouldDeleteXmlFile",
+      "relationship": "unmatched",
+      "to": "7. Summarize Cleanup"
+    },
+    {
+      "from": "6. Delete XML",
+      "relationship": "success",
+      "to": "7. Summarize Cleanup"
+    },
+    {
+      "from": "6. Delete XML",
+      "relationship": "failure",
+      "to": "6b. Mark XML Delete Failure"
+    },
+    {
+      "from": "6b. Mark XML Delete Failure",
+      "relationship": "success",
+      "to": "7. Summarize Cleanup"
+    },
+    {
+      "from": "7. Summarize Cleanup",
+      "relationship": "success",
+      "to": "8. Publish Cleanup Event"
+    }
+  ]
+}

@@ -76,8 +76,13 @@ spec:
                 - pg_isready -U drr_admin -d drr_keycloak_db
             initialDelaySeconds: 5
             periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 180
+            timeoutSeconds: 10
+            # Raised from 180 (30 min): on this host's mechanical disk, the mandatory
+            # "syncing data directory (fsync)" startup pass has been observed to exceed 30 min
+            # (see docs/runbooks/host-disk-io-contention.md) and the pod was being SIGKILLed by
+            # this very probe mid-fsync, forcing it to restart the whole pass from scratch every
+            # time — a self-inflicted crash loop. 720 gives up to 2h before giving up.
+            failureThreshold: 720
           readinessProbe:
             exec:
               command:

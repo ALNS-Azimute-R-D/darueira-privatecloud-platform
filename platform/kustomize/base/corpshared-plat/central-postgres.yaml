@@ -59,7 +59,11 @@ spec:
               cpu: 250m
               memory: 512Mi
             limits:
-              cpu: 1000m
+              # Raised from 1000m: shared by ~16 DBs, and the host (a laptop running the whole
+              # lab plus IDE/browser) sometimes starves this cgroup under load, which previously
+              # tripped the liveness probe and got the whole pod SIGKILLed even though Postgres
+              # itself was healthy (see docs/runbooks/host-disk-io-contention.md).
+              cpu: 2000m
               memory: 2048Mi
           volumeMounts:
             - name: postgres-data
@@ -82,8 +86,10 @@ spec:
                 - pg_isready -U drr_admin -d drr_keycloak_db
             initialDelaySeconds: 5
             periodSeconds: 5
-            timeoutSeconds: 5
-            failureThreshold: 3
+            # timeoutSeconds/failureThreshold widened so a brief CPU stall on the host (an exec
+            # probe needs a fork+scheduler slice) doesn't flip readiness off under load.
+            timeoutSeconds: 10
+            failureThreshold: 6
           livenessProbe:
             exec:
               command:
@@ -92,8 +98,11 @@ spec:
                 - pg_isready -U drr_admin -d drr_keycloak_db
             initialDelaySeconds: 15
             periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 6
+            # Widened from timeoutSeconds=5/failureThreshold=6 (60s tolerance): under host memory
+            # pressure the pg_isready exec can miss a tight timeout even though Postgres itself is
+            # fine, and the pod was getting SIGKILLed and restarted for no real reason.
+            timeoutSeconds: 10
+            failureThreshold: 10
   volumeClaimTemplates:
     - metadata:
         name: postgres-data

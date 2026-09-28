@@ -52,6 +52,17 @@ Essas mudanças reduzem a chance de o Kubernetes **matar** o Postgres por falso-
 mas não aceleram o `fsync` em si — um boot legítimo do Postgres neste disco continua levando
 minutos.
 
+**Segundo achado, ao vivo, no mesmo dia**: mesmo depois da mitigação acima, o `startupProbe`
+(`failureThreshold: 180` × `periodSeconds: 10` = 30 min) continuou sendo curto demais. Três boots
+seguidos foram mortos pelo próprio probe por volta dos 30-31 min, cada um reiniciando o `fsync` do
+zero — um crash loop auto-infligido pelo Kubernetes, não pelo Postgres ou pelo disco. Corrigido
+alargando `failureThreshold` para `720` (2h). **Lição de operação**: um Pod já em execução não
+herda mudanças de spec do StatefulSet sozinho — o `kubectl apply` só atualiza o *template*; o Pod
+existente continua com o probe antigo até ser recriado. Se o boot em andamento tiver progresso
+insignificante (poucos minutos de `fsync`), vale a pena `kubectl delete pod` logo após aplicar a
+correção, pra ele já nascer com o novo teto, em vez de esperar o probe antigo matá-lo de novo.
+Se já tiver muito progresso acumulado, siga a regra abaixo e não force.
+
 ## Remediações possíveis (decisão do usuário, precisam de `sudo`)
 
 1. **Mover o swap para o NVMe** (`nvme0n1p2`/`vgmint`, que tem ~106 GiB livres) — tira a maior

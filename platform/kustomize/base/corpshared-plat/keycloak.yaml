@@ -17,6 +17,8 @@ spec:
         app.kubernetes.io/name: keycloak
         darueira.io/tier: enterprise-shared
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: nbalns-mifcom-lnx-01
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -26,7 +28,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: keycloak
-          image: quay.io/keycloak/keycloak:26.7.3
+          image: quay.io/keycloak/keycloak:26.8.1
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
@@ -34,7 +36,7 @@ spec:
               drop:
                 - ALL
           args:
-            - start-dev
+            - start
             - --http-enabled=true
             - --http-port=8080
             - --health-enabled=true
@@ -69,6 +71,8 @@ spec:
               value: "true"
             - name: KC_PROXY_HEADERS
               value: "xforwarded"
+            - name: KC_CACHE
+              value: "local"
           resources:
             requests:
               cpu: 200m

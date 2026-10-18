@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swfabrik-latam-opa-policies
+  namespace: drr-tnt-swfabrik-latam-dev
+  labels:
+    app.kubernetes.io/name: tenant-opa-policies
+    darueira.io/tier: tenant-infrastructure
+data:
+  authzen.rego: |
+    package authzen.evaluation
+
+    import rego.v1
+
+    default decision := false
+    default context := {"reason": "Access denied by tenant policy"}
+
+    # Allowed role sets
+    is_viewer if {
+        some r in input.subject.properties.roles
+        r in ["viewer", "buyer", "seller", "trader", "admin", "ROLE_FOOD_MARKET_USER", "ROLE_FOOD_MARKET_MANAGER", "ROLE_FOOD_MARKET_ADMIN", "ROLE_ADMIN", "ROLE_GUEST", "user"]
+    }
+
+    is_trader if {
+        some r in input.subject.properties.roles
+        r in ["trader", "seller", "admin", "ROLE_FOOD_MARKET_USER", "ROLE_FOOD_MARKET_MANAGER", "ROLE_FOOD_MARKET_ADMIN", "ROLE_ADMIN"]
+    }
+
+    is_admin if {
+        some r in input.subject.properties.roles
+        r in ["admin", "ROLE_ADMIN", "ROLE_FOOD_MARKET_ADMIN"]
+    }
+
+    # Permite leitura e listagem
+    decision if {
+        input.action.name in ["view", "list", "get"]
+        is_viewer
+    }
+
+    # Permite criacao de trading para traders
+    decision if {
+        input.action.name == "create"
+        is_trader
+    }
+
+    # Permite confirmacao se for o dono da oferta ou admin
+    decision if {
+        input.action.name in ["confirm", "update"]
+        input.resource.properties.owner == input.subject.id
+    }
+
+    # Administrador tem acesso irrestrito
+    decision if {
+        is_admin
+    }
+
+    context := {"reason": "Access granted by OPA AuthZEN policy"} if decision

@@ -24,6 +24,7 @@ domain separation, and the security guardrails.
 ## Repository conventions
 
 - This platform repo is **not GitOps**: commit directly to `master`; André pushes to GitHub.
+- Tenant common infrastructure (`tenant-postgres`, `tenant-keycloak`, `tenant-minio`, `tenant-mongodb`, `tenant-openbao`, `tenant-mysql`) is **PaaS**, managed directly from this repo under `platform/kustomize/overlays/tenants/<tenant>` via `make diff-tenant-infra TENANT=<tenant>` and `make deploy-tenant-infra TENANT=<tenant>` (ADR-0016). It is **not** managed by ArgoCD; tenant `infra-k8s.git` repos in Forgejo are archived read-only.
 - Tenant business apps (`workspace/platf-bizz-apps/...`) are **full GitOps** via the internal
   Forgejo: feature branch → PR → merge to `master` → Tekton builds and promotes the image tag in
   the chart repo → ArgoCD syncs.

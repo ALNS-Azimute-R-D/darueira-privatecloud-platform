@@ -1,0 +1,217 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tenant-openbao-pvc
+  namespace: drr-tnt-swfabrik-europe-dev
+  labels:
+    app.kubernetes.io/name: tenant-openbao
+    darueira.io/tier: tenant-workload
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: darueira-host-storage
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tenant-openbao-config
+  namespace: drr-tnt-swfabrik-europe-dev
+  labels:
+    app.kubernetes.io/name: tenant-openbao
+    darueira.io/tier: tenant-workload
+data:
+  bao.json: |
+    {
+      "listener": {
+        "tcp": {
+          "address": "0.0.0.0:8200",
+          "tls_disable": true
+        }
+      },
+      "storage": {
+        "file": {
+          "path": "/vault/data"
+        }
+      },
+      "ui": true,
+      "default_lease_ttl": "720h",
+      "max_lease_ttl": "8760h",
+      "disable_mlock": true
+    }
+  entrypoint.sh: |
+    #!/bin/sh
+    export VAULT_ADDR="http://127.0.0.1:8200"
+
+    if command -v bao >/dev/null 2>&1; then
+      BIN="bao"
+    else
+      BIN="vault"
+    fi
+
+    echo "=================================================="
+    echo "  Starting Tenant OpenBao / Vault Storage Node    "
+    echo "=================================================="
+
+    # Start server in the background
+    $BIN server -config=/vault/config/bao.json &
+    SERVER_PID=$!
+
+    # Wait for HTTP endpoint
+    echo "==> Waiting for HTTP port 8200..."
+    until wget -q -O- http://127.0.0.1:8200/v1/sys/init >/dev/null 2>&1; do
+      sleep 1
+    done
+
+    # Check if initialized
+    INIT_STATUS=$(wget -q -O- http://127.0.0.1:8200/v1/sys/init 2>/dev/null || echo '{"initialized":false}')
+    if echo "$INIT_STATUS" | grep -q '"initialized":false'; then
+      echo "==> [INIT] Initializing Tenant backend with 1 unseal share..."
+      INIT_OUTPUT=$($BIN operator init -key-shares=1 -key-threshold=1)
+      UNSEAL_KEY=$(echo "$INIT_OUTPUT" | grep 'Unseal Key 1:' | awk '{print $NF}')
+      ROOT_TOKEN=$(echo "$INIT_OUTPUT" | grep 'Initial Root Token:' | awk '{print $NF}')
+
+      echo "UNSEAL_KEY=${UNSEAL_KEY}" > /vault/data/.vault-keys.env
+      echo "ROOT_TOKEN=${ROOT_TOKEN}" >> /vault/data/.vault-keys.env
+      chmod 600 /vault/data/.vault-keys.env
+      echo "==> [INIT] Tenant Keys saved securely to /vault/data/.vault-keys.env"
+    fi
+
+    # Check seal status and unseal
+    SEAL_STATUS=$(wget -q -O- http://127.0.0.1:8200/v1/sys/seal-status 2>/dev/null || echo '{"sealed":true}')
+    if echo "$SEAL_STATUS" | grep -q '"sealed":true'; then
+      if [ -f /vault/data/.vault-keys.env ]; then
+        . /vault/data/.vault-keys.env
+        if [ -n "$UNSEAL_KEY" ]; then
+          echo "==> [UNSEAL] Auto-unsealing Tenant node..."
+          $BIN operator unseal "$UNSEAL_KEY"
+          echo "==> [UNSEAL] Successfully unsealed!"
+        fi
+      fi
+    fi
+
+    # Ensure predefined root token and secret engine
+    if [ -f /vault/data/.vault-keys.env ]; then
+      . /vault/data/.vault-keys.env
+      TARGET_TOKEN="${PREDEFINED_ROOT_TOKEN:-tenant-vault-root-token-2026}"
+      env VAULT_TOKEN="$ROOT_TOKEN" $BIN token create -id="$TARGET_TOKEN" -policy="root" -orphan=true -period="0" >/dev/null 2>&1 || true
+      env VAULT_TOKEN="$ROOT_TOKEN" $BIN secrets enable -path=secret kv-v2 >/dev/null 2>&1 || true
+    fi
+
+    echo "==> [READY] Tenant Node is fully operational, unsealed with UI on 0.0.0.0:8200"
+    wait $SERVER_PID
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tenant-openbao
+  namespace: drr-tnt-swfabrik-europe-dev
+  labels:
+    app.kubernetes.io/name: tenant-openbao
+    app.kubernetes.io/component: secrets-management
+    darueira.io/tier: tenant-workload
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tenant-openbao
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tenant-openbao
+        darueira.io/tier: tenant-workload
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: nbalns-mifcom-lnx-01
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: openbao
+          image: hashicorp/vault:1.17.6
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          command:
+            - "/bin/sh"
+            - "/vault/config/entrypoint.sh"
+          env:
+            - name: HOME
+              value: /vault/data
+            - name: PREDEFINED_ROOT_TOKEN
+              value: "tenant-vault-root-token-2026"
+            - name: VAULT_UI
+              value: "true"
+          ports:
+            - containerPort: 8200
+              name: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+          volumeMounts:
+            - name: bao-data
+              mountPath: /vault/data
+            - name: bao-config
+              mountPath: /vault/config
+          startupProbe:
+            httpGet:
+              path: /v1/sys/health?uninitcode=200&sealedcode=200
+              port: 8200
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /v1/sys/health
+              port: 8200
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /v1/sys/health
+              port: 8200
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: bao-data
+          persistentVolumeClaim:
+            claimName: tenant-openbao-pvc
+        - name: bao-config
+          configMap:
+            name: tenant-openbao-config
+            defaultMode: 0755
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tenant-openbao
+  namespace: drr-tnt-swfabrik-europe-dev
+  labels:
+    app.kubernetes.io/name: tenant-openbao
+    darueira.io/tier: tenant-workload
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tenant-openbao
+  ports:
+    - port: 8200
+      targetPort: 8200
+      name: http

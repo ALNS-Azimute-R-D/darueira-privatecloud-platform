@@ -81,8 +81,12 @@ spec:
                 - pg_isready -U drr_tnt_svcs_admin -d drr_tnt_bizapps_db
             initialDelaySeconds: 5
             periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 180
+            timeoutSeconds: 10
+            # Raised from 180 (30 min): on this host's mechanical disk, the mandatory
+            # "syncing data directory (fsync)" startup pass can exceed 30 min (see central-postgres
+            # and docs/runbooks/host-disk-io-contention.md) and was SIGKILLing the pod mid-fsync.
+            # 720 gives up to 2h grace window before giving up.
+            failureThreshold: 720
           readinessProbe:
             exec:
               command:

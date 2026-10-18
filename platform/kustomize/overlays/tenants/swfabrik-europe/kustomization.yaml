@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Item 34: migrated verbatim from swfabrik-europe/infra-k8s.git (Forgejo/ArgoCD GitOps)
+# to direct platform-repo management. See docs/discussions/item-34-tenant-infra-gitops-migration.md.
+# Content copied byte-for-byte on 2026-10-15 to guarantee a no-op cutover diff; cleanup
+# (switching to patches over ../../base/tnt-tenant-base) is a deferred follow-up, not part
+# of this migration step.
+
+resources:
+  - 00-namespace-and-configs.yaml
+  - 01-tenant-postgres.yaml
+  - 02-tenant-mongodb.yaml
+  - 03-tenant-minio.yaml
+  - 04-tenant-openbao.yaml
+  - 05-tenant-keycloak.yaml
+  - 06-tenant-opa-policies.yaml
+  - 07-tenant-mysql.yaml

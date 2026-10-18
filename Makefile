@@ -94,7 +94,22 @@ validate-manifests: ## Validate all Kustomize base manifests
 	$(KUBECTL) kustomize platform/kustomize/base/corpshared-obs > /dev/null
 	$(KUBECTL) kustomize platform/kustomize/base/corpshared-mgmt > /dev/null
 	$(KUBECTL) kustomize platform/kustomize/base/tnt-tenant-base > /dev/null
+	$(KUBECTL) kustomize platform/kustomize/overlays/tenants/swfabrik-latam > /dev/null
+	$(KUBECTL) kustomize platform/kustomize/overlays/tenants/swfabrik-europe > /dev/null
 	@echo -e "${GREEN}==> All Kustomize manifests are valid!${NC}"
+
+.PHONY: diff-tenant-infra
+diff-tenant-infra: ## Diff tenant common infrastructure overlay against live cluster (usage: make diff-tenant-infra TENANT=swfabrik-latam)
+	@if [ -z "$(TENANT)" ]; then echo -e "${RED}Error: TENANT parameter required. Example: make diff-tenant-infra TENANT=swfabrik-latam${NC}"; exit 1; fi
+	@echo -e "${GREEN}==> Running kubectl diff on tenant infrastructure: platform/kustomize/overlays/tenants/$(TENANT)...${NC}"
+	@$(KUBECTL) diff -k platform/kustomize/overlays/tenants/$(TENANT) || true
+
+.PHONY: deploy-tenant-infra
+deploy-tenant-infra: ## Deploy tenant common infrastructure overlay (usage: make deploy-tenant-infra TENANT=swfabrik-latam)
+	@if [ -z "$(TENANT)" ]; then echo -e "${RED}Error: TENANT parameter required. Example: make deploy-tenant-infra TENANT=swfabrik-latam${NC}"; exit 1; fi
+	@echo -e "${GREEN}==> Deploying tenant infrastructure: platform/kustomize/overlays/tenants/$(TENANT)...${NC}"
+	@$(KUBECTL) apply -k platform/kustomize/overlays/tenants/$(TENANT)
+	@echo -e "${GREEN}==> Tenant infrastructure $(TENANT) applied successfully!${NC}"
 
 .PHONY: test-unit
 test-unit: ## Run Go unit test suites across all platform apps and operators

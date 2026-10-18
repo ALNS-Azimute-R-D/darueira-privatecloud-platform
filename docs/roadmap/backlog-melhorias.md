@@ -426,6 +426,75 @@ rodou normalmente.
   style"): exige ligar `allow_manual_merge` nas configurações. Para disparar a pipeline basta qualquer
   push novo na `master`.
 
+
+### 32. Upgrade do Keycloak para 26.8.1 (Todas as instâncias) `[dono: Claude + AGY — status: feito]`
+Upgrade de todas as instâncias Keycloak do cluster (`drr-corpshared-plat` e tenants `swfabrik-europe` e `swfabrik-latam`), templates (`tnt-tenant-base`, `tenant-xpto`) e ambiente de desenvolvimento local (`bookanything-monolith-backend-01`) de `26.7.3` (e `26.5.1`) para `26.8.1` (lançado em 13/10/2026, corrigindo 14 CVEs).
+- **Discussão e plano de coordenação conjunto:** `docs/discussions/keycloak-upgrade-26.8.1.md` (histórico completo do debate entre os dois agentes, decisões e tabela de execução passo a passo).
+
+**Handoff (14/10/2026, AGY — Fases 0-2):** probe do `tenant-postgres` ampliado
+(`failureThreshold: 720`, `timeoutSeconds: 10`) em ambos tenants, commits `aa2f809`
+(europe) e `d792330` (latam) no Forgejo; backups via `pg_dump` em stream direto pro host
+(`/tmp/darueira-backups/keycloak-26.8.1-pre-upgrade/`, 3 arquivos, não vazios); Central
+Keycloak upgradado para 26.8.1 e validado.
+
+**Handoff (14/10/2026, Claude — Fase 2.3 e 3-5):**
+- 2.3: `make validate-iam`, `validate-backstage`, `validate-forgejo`, `validate-nexus` — os
+  4 passaram limpo contra o Keycloak central já em 26.8.1.
+- 3.1-3.2: **achado de processo** — `tenant-keycloak`/`tenant-postgres` dos tenants reais são
+  geridos via ArgoCD (`selfHeal: true`, fonte `swfabrik-{europe,latam}/infra-k8s.git` no
+  Forgejo). Um `kubectl apply` direto foi revertido pelo ArgoCD em segundos (confirmado: o
+  pod nem chegou a trocar). Corrigido via commit+push nesses repos (commits `429c47e`
+  europe, `052f9d3` latam) + refresh forçado da Application — mesmo caminho que a AGY já
+  tinha usado pro fix do probe. Os dois tenants agora rodam pods novos em 26.8.1, 0
+  restarts. Também saneado o default `tenant-postgres.drr-tnt-acme...` no template base
+  (`tnt-tenant-base/tenant-keycloak.yaml`) para o nome de serviço "bare" `tenant-postgres`.
+- 3.3: `make bootstrap-tenant-keycloak` re-rodou limpo (idempotente) contra o broker
+  atualizado; confirmado via Admin API que usuários federados existentes (`andre.nascimento`)
+  mantêm `ROLE_FOOD_MARKET_ADMIN`/`ROLE_LEGALHUB_ADMIN`. **Lacuna encontrada**: esse
+  script/target só cobre `swfabrik-europe` (hardcoded) — não existe equivalente para
+  `swfabrik-latam`. O Keycloak do latam está upgradado e saudável, mas a federação SSO
+  dele não foi revalidada por script automatizado (tentei um spot-check manual via Admin
+  API, mas não havia `python3`/`curl` disponível em nenhum pod do namespace latam).
+- 4.1: `apps/examples/tenant-xpto` (pasta simples do repo raiz, não-GitOps) editado direto.
+  `.env` do `bookanything-monolith-backend-01` vive em repo próprio (GitOps, em branch de
+  feature de outra sessão) — usei um `git worktree` isolado a partir de `origin/master`
+  para não tocar nessa branch, PR aberta:
+  https://git.darueira-corpshared.127.0.0.1.nip.io/swfabrik-europe/bookanything-platform/pulls/21
+  (deixada para o André revisar/mergear, já que push na master dispara pipeline Tekton).
+
+**Pendências que ficam como achados (não bloqueiam o item):**
+- Validação automatizada da federação SSO do `swfabrik-latam` (replicar/generalizar
+  `scripts/bootstrap_tenant_keycloak_iam.py` para aceitar o tenant como parâmetro em vez de
+  hardcoded `swfabrik-europe`).
+- PR #21 do `bookanything-platform` pendente de merge.
+
+### 33. Transição do Keycloak para Modo Produção (`kc.sh start`) `[dono: Claude + AGY — status: feito]`
+Transição de todas as instâncias do Keycloak (`keycloak-server` em `drr-corpshared-plat`, `tenant-keycloak` em `swfabrik-europe` e `swfabrik-latam`, templates `tnt-tenant-base`, `tenant-xpto` e ambiente local) de modo de desenvolvimento (`start-dev`) para modo de produção (`start`).
+- **Motivação:** `start-dev` executava re-augmentação Quarkus no boot (penalidade de 45-60s de CPU no startup), relaxava validações de hostname e TLS, e mantinha comportamento de desenvolvimento.
+- **Configuração aplicada:** comando `start`, `--http-enabled=true` (TLS terminado no APISIX), `--proxy-headers=xforwarded`, `KC_HOSTNAME_STRICT=false`, e crucialmente `KC_CACHE=local` (eliminou a dependência frágil do JGroups `JDBC_PING` de bater no Postgres para formar cluster em instâncias standalone de 1 réplica).
+- **Handoff (15/10/2026, Claude + AGY):**
+  - Todas as 3 instâncias em cluster (`drr-corpshared-plat`, `swfabrik-europe`, `swfabrik-latam`) atualizadas com sucesso e rodando em modo produção `start` + `KC_CACHE=local`, `1/1 Running`, 0 restarts.
+  - Tempo de bootstrap reduzido de ~50s para ~12s.
+  - Commits `d769a5b` (europe) e `61ced39` (latam) sincronizados via Forgejo GitOps / ArgoCD.
+  - PR #22 aberta no Forgejo para `bookanything-platform` (`services-base-05-iam-keycloak.yaml`).
+  - Suíte completa de validação re-executada e 100% aprovada: `make validate-iam` (4/4 perfis), `make validate-backstage` (4/4 fases), `make validate-forgejo` (7/7 fases), `make validate-nexus` (3/3 fases) e `make bootstrap-tenant-keycloak`.
+- **Plano e discussão completos:** `docs/discussions/keycloak-prod-mode-and-tenant-infra-gitops.md`.
+
+### 34. Fronteira Arquitetural: Gestão de Infraestrutura Comum dos Tenants `[dono: Claude + AGY — status: feito]`
+Migrar `tenant-keycloak`, `tenant-postgres`, `tenant-minio`, `tenant-mongodb`, `tenant-openbao`
+e `tenant-mysql` de GitOps por tenant (`swfabrik-{europe,latam}/infra-k8s.git` + ArgoCD
+`selfHeal: true`) para gestão direta via o repo da plataforma + Makefile/`kubectl`, igual à
+infra corporativa central hoje.
+- **Visão do André:** GitOps (Forgejo Git, Tekton, ArgoCD) deve gerenciar apenas projetos de aplicações de negócios dos tenants (`app-food-market-*`, `bookanything-*`, etc.). Os serviços comuns de infraestrutura dos tenants (Postgres, Keycloak, MinIO, Vault/OpenBao, MySQL) devem ser governados centralmente pelo plano de controle da plataforma (PaaS).
+- **Problema resolvido:** Eliminado N-repo sprawl (duplicação de manifestos por tenant), risco de silent reverts pelo `selfHeal: true` do ArgoCD, e gaps de padronização.
+- **Handoff (15/10/2026, Claude + AGY):**
+  - **Fase 0 (Base & Overlays):** Criado `platform/kustomize/base/tnt-tenant-base/tenant-mysql.yaml` e registrado no `kustomization.yaml` (fechando gap da spec §11.2). Criados overlays `platform/kustomize/overlays/tenants/swfabrik-latam` e `swfabrik-europe`. Adicionados targets `diff-tenant-infra` e `deploy-tenant-infra` ao `Makefile`, e validação incluída no `make validate-manifests`.
+  - **Fase 1 (Cutover `swfabrik-latam`):** Pré-diff verificado como cosmético (apenas remoção da label de tracking do ArgoCD). Desacoplada a Application `swfabrik-latam-tenant-infra` com `--cascade=orphan` com zero downtime/restart de pods. Aplicado overlay via `make deploy-tenant-infra TENANT=swfabrik-latam`. Removida a Application de `platform/gitops/argocd-apps/apps-swfabrik-latam.yaml`. Repositório `swfabrik-latam/infra-k8s.git` arquivado como read-only no Forgejo.
+  - **Fase 2 (Cutover `swfabrik-europe`):** Desacoplada a Application `swfabrik-europe-tenant-infra` com `--cascade=orphan` com zero downtime (todos os 20 pods ativos preservados). Aplicado overlay via `make deploy-tenant-infra TENANT=swfabrik-europe`. Removida a Application de `platform/gitops/argocd-apps/apps-swfabrik-europe.yaml`. Repositório `swfabrik-europe/infra-k8s.git` arquivado como read-only no Forgejo.
+  - **Validação Global:** `make diff-tenant-infra` para ambos os tenants executado com diff zero (clean no-op). `make validate-manifests` 100% OK. `make validate-iam` 4/4 suites/assertions aprovadas. `make bootstrap-tenant-keycloak` sincronizado.
+  - **Fase 3 (Formalização):** Registrada a **ADR-0016** (`specs/adr/0016-tenant-infra-management-boundary.md`), indexada em `specs/adr/README.md`. Atualizados `specs/01-initial-spec.md` (§11.1 e §11.2 item 4 resolvido), `CLAUDE.md` e `AGY.md`.
+- **Plano e discussão completos:** `docs/discussions/item-34-tenant-infra-gitops-migration.md`.
+
 ---
 
 ## 🟠 Média prioridade

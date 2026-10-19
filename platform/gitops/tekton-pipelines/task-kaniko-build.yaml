@@ -120,6 +120,14 @@ spec:
         echo "=================================================================="
 
         # 5. Build and Push via Kaniko (both versioned tag and latest tag)
+        #
+        # Layer cache in the Nexus registry. The workspace PVC is created per run, so a local
+        # --cache-dir cannot survive between builds (and it never cached RUN layers anyway). With
+        # --cache-repo each RUN layer is pushed once and reused while its inputs are unchanged:
+        # e.g. "COPY pom.xml" + "mvn dependency:go-offline" is downloaded again only when the pom changes.
+        # One cache repository per image keeps applications from sharing (or evicting) each other's layers.
+        CACHE_REPO="${IMAGE_BASE}-cache"
+        echo "  Layer cache : $CACHE_REPO (ttl 336h)"
         /kaniko/executor \
           --dockerfile="$DF_PATH" \
           --context="$(workspaces.source.path)/source/$(params.context-subpath)" \
@@ -130,6 +138,8 @@ spec:
           --insecure-registry=nexus-oss.drr-corpshared-plat.svc.cluster.local:8082 \
           --insecure-registry=10.152.183.89:8082 \
           --cache=true \
+          --cache-repo="$CACHE_REPO" \
+          --cache-ttl=336h \
           --cache-dir="$(workspaces.source.path)/.kaniko-cache"
 
         # 6. Record Task Results

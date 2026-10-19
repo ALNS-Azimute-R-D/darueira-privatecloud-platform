@@ -21,9 +21,19 @@ spec:
       type: string
       default: "test"
       description: "Build command arguments"
+    - name: maven-mirror-url
+      type: string
+      default: "http://nexus-oss.drr-corpshared-plat.svc.cluster.local:8081/repository/maven-public/"
+      description: "Maven repository every Maven request goes through (the platform Nexus group). Empty = talk to the repositories declared in the pom."
   workspaces:
     - name: source
       description: "Workspace containing cloned source code"
+  volumes:
+    # Not a Tekton workspace on purpose: with the affinity assistant a PipelineRun can bind only one PVC
+    # workspace, and that one is the per-run source volume. This claim outlives the runs.
+    - name: maven-cache
+      persistentVolumeClaim:
+        claimName: maven-repo-cache
   steps:
     - name: test-node
       image: node:22-alpine
@@ -125,6 +135,9 @@ spec:
             - ALL
         seccompProfile:
           type: RuntimeDefault
+      volumeMounts:
+        - name: maven-cache
+          mountPath: /maven-cache
       script: |
         #!/usr/bin/env sh
         set -eu
@@ -144,8 +157,36 @@ spec:
         export MAVEN_CONFIG="$(workspaces.source.path)/.m2"
         mkdir -p "$(workspaces.source.path)/.m2"
 
+        # Local repository: the claim that outlives the runs, or the per-run workspace when it is not writable.
+        M2_REPO="$(workspaces.source.path)/.m2/repository"
+        if [ -w /maven-cache ]; then
+          M2_REPO="/maven-cache/repository"
+          mkdir -p "$M2_REPO"
+        else
+          echo "==> [Maven] /maven-cache is not writable: using the per-run workspace (no cache between builds)."
+        fi
+
+        # Mirror "*": every repository of the pom (and of its parents/plugins) is served by the platform Nexus,
+        # which proxies Maven Central and hosts the artifacts that only existed in third-party repositories.
+        MVN_SETTINGS=""
+        if [ -n "$(params.maven-mirror-url)" ]; then
+          MVN_SETTINGS="$(workspaces.source.path)/.m2/settings.xml"
+          cat > "$MVN_SETTINGS" << EOF
+        <settings>
+          <mirrors>
+            <mirror>
+              <id>darueira-nexus</id>
+              <mirrorOf>*</mirrorOf>
+              <url>$(params.maven-mirror-url)</url>
+            </mirror>
+          </mirrors>
+        </settings>
+        EOF
+          echo "==> [Maven] Using mirror $(params.maven-mirror-url)"
+        fi
+
         echo "==> [Maven] Validating POM model..."
-        mvn -B validate -Duser.home="$(workspaces.source.path)" -Dmaven.repo.local="$(workspaces.source.path)/.m2/repository"
+        mvn -B validate ${MVN_SETTINGS:+-s "$MVN_SETTINGS"} -Duser.home="$(workspaces.source.path)" -Dmaven.repo.local="$M2_REPO"
         echo "==> [Maven] Validation step completed successfully."
 
     - name: test-python

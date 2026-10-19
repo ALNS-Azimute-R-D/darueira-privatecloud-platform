@@ -9,6 +9,10 @@ metadata:
 spec:
   description: "Builds a container image using unprivileged Kaniko executor and pushes versioned (YYYY.MMDD.HHMMSS in CET/CEST) and latest tags to Sonatype Nexus OCI Registry"
   params:
+    - name: maven-mirror-url
+      type: string
+      default: "http://nexus-oss.drr-corpshared-plat.svc.cluster.local:8081/repository/maven-public/"
+      description: "Passed to the image build as the MAVEN_MIRROR_URL build argument; Dockerfiles that declare it send their Maven traffic through it."
     - name: image-name
       type: string
       description: "Target image name (e.g. nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-europe/app-food-market-00-mfe)"
@@ -137,6 +141,7 @@ spec:
           --skip-tls-verify=true \
           --insecure-registry=nexus-oss.drr-corpshared-plat.svc.cluster.local:8082 \
           --insecure-registry=10.152.183.89:8082 \
+          --build-arg=MAVEN_MIRROR_URL="$(params.maven-mirror-url)" \
           --cache=true \
           --cache-repo="$CACHE_REPO" \
           --cache-ttl=336h \

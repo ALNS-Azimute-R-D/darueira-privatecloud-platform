@@ -41,3 +41,34 @@ Every push to `master` of `bookanything-platform` (the `bookanything-events` tri
 - Tested against the real Tekton CEL interceptor with a Forgejo push payload: a merge commit without the
   mark gives `jvm`; `[native]` in the title (merge or squash) gives `native`; `[native]` only in the
   body gives `jvm`; a push to another branch is filtered out.
+
+## Build speed: Nexus as Maven mirror, Kaniko layer cache, Maven cache volume
+
+- **Kaniko layer cache:** `task-kaniko-build` runs with `--cache=true --cache-repo=<image>-cache`
+  (TTL 14 days) in the Nexus Docker registry. Only the first build after a change of `pom.xml` pays the
+  `dependency:go-offline` layer.
+- **Maven through Nexus:** the `maven-mirror-url` param (default: `maven-public` of `nexus-oss` in
+  `drr-corpshared-plat`, port 8081) is used by `task-polyglot-build` (settings mirror `*`) and passed to the
+  Dockerfile as the build arg `MAVEN_MIRROR_URL`. An empty value builds with no mirror.
+- **Maven cache volume:** `pvc-maven-repo-cache.yaml` (5Gi, `microk8s-hostpath`) is mounted by
+  `test-maven` as the local repository, so `test-and-build` stays around 20-40 s. Apply the PVC before the
+  Task: `kubectl apply -f pvc-maven-repo-cache.yaml`. The Tekton tasks themselves are applied by hand, not by ArgoCD.
+
+### Manual step: `jackson-datatype-jts` is hosted in Nexus by hand
+
+`de.terrestris.jackson:jackson-datatype-jts:2.17.2` is published only on `nexus.terrestris.de`, which
+times out from this cluster, so the proxy cannot fetch it. It was **uploaded by hand to the hosted repository
+`maven-releases`** (part of the `maven-public` group). Nothing in git recreates it: **if the Nexus volume is
+recreated, backend builds fail on this dependency until the upload is repeated.**
+
+```bash
+# jar and pom of the artifact in $DIR (from a machine that has them in ~/.m2, or from terrestris when reachable)
+B=http://localhost:32081/repository/maven-releases/de/terrestris/jackson/jackson-datatype-jts/2.17.2
+for f in jackson-datatype-jts-2.17.2.jar jackson-datatype-jts-2.17.2.pom; do
+  curl -u admin -T "$DIR/$f" "$B/$f"        # expect HTTP 201 for each file
+done
+# check: must answer 200
+curl -s -o /dev/null -w '%{http_code}\n' "$B/jackson-datatype-jts-2.17.2.pom"
+```
+
+Run the upload yourself: it asks for the Nexus `admin` password. Keep a copy of the two files outside Nexus.

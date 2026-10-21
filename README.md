@@ -193,7 +193,7 @@ Execute one of the following commands in a terminal:
 
 ```bash
 # Option A: Standard Ports 80 (HTTP) & 443 (HTTPS) (Recommended - Clean URLs)
-make proxy-80
+make proxy-privileged
 
 # Option B: Non-root Ports 9080 (HTTP) & 9443 (HTTPS)
 make proxy

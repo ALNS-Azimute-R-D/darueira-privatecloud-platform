@@ -19,7 +19,7 @@ Inspired by enterprise platform architectures (such as Tesla Cloud Platform - TC
   - **Container Runtime**: `containerd` / Docker
   - **Storage**: MinIO (S3-compatible Object Storage), Local Persistent Volumes
 - **CNI & Mesh**: **Cilium CNI** (eBPF routing, `1.15.2`, live since 2026-09-22). Default-deny `CiliumNetworkPolicy` enforcement is live for the 4 control-plane namespaces (`corpshared-{plat,mgmt,obs,secr-internal}`); the tenant policy is still pending rollout. L7 rules, WireGuard and kube-proxy replacement remain target-only (see Section 11).
-- **LoadBalancer / Ingress**: Apache APISIX Gateway exposed via NodePort (`30080` HTTP / `30443` HTTPS) and reached through `make proxy` / `make proxy-80`. MicroK8s MetalLB is the target LoadBalancer and is not enabled yet (see Section 11).
+- **LoadBalancer / Ingress**: Apache APISIX Gateway exposed via NodePort (`30080` HTTP / `30443` HTTPS) and reached through `make proxy` / `make proxy-privileged`. MicroK8s MetalLB is the target LoadBalancer and is not enabled yet (see Section 11).
 - **Future Hybrid Target**: Remote VPS (Hostinger) for staging/production external simulation.
 
 ---

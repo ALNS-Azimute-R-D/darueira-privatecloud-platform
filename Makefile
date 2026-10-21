@@ -239,8 +239,8 @@ proxy: ## Start APISIX Ingress Reverse Proxy on localhost:9080 & 9443 (non-root)
 	@echo -e "${CYAN}================================================================================${NC}"
 	$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway 9080:80 9443:443
 
-.PHONY: proxy-80
-proxy-80: ## Start APISIX Ingress Reverse Proxy on default Ports 80 & 443 (HTTP & HTTPS clean URLs)
+.PHONY: proxy-privileged
+proxy-privileged: ## Start APISIX Ingress Reverse Proxy on default Ports 80 & 443 (HTTP & HTTPS clean URLs)
 	@echo -e "${GREEN}==> Starting Darueira Reverse Proxy Gateway on standard Ports 80 & 443...${NC}"
 	@echo -e "${CYAN}================================================================================${NC}"
 	@echo -e "${CYAN}  Corporate Shared Services (HTTPS / TLS on Standard Port 443):                 ${NC}"
@@ -264,7 +264,10 @@ proxy-80: ## Start APISIX Ingress Reverse Proxy on default Ports 80 & 443 (HTTP 
 	@echo -e "${CYAN}  - Tenant Keycloak IdP:   https://keycloak.swfabrik-europe.127.0.0.1.nip.io${NC}"
 	@echo -e "${CYAN}  - CaseForce LegalHub:    https://caseforce.swfabrik-europe.127.0.0.1.nip.io/swagger-ui/index.html${NC}"
 	@echo -e "${CYAN}  - Fake Partner Agency:   https://agency.swfabrik-europe.127.0.0.1.nip.io/swagger-ui.html${NC}"
+	@echo -e "${CYAN}  - BookAnything Companion: http://localhost:18063/companion/index.html (direct port-forward to the backend)${NC}"
 	@echo -e "${CYAN}================================================================================${NC}"
+	@PF=; trap 'kill $$PF 2>/dev/null' EXIT; \
+	$(KUBECTL) port-forward -n drr-tnt-swfabrik-europe-dev svc/bookanything-monolith-backend-01 18063:8060 >/dev/null 2>&1 & PF=$$!; \
 	sudo $(KUBECTL) --kubeconfig $(HOME)/.kube/config port-forward -n drr-corpshared-plat svc/apisix-gateway 80:80 443:443
 
 .PHONY: bootstrap-apisix

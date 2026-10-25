@@ -66,8 +66,8 @@ cluster-stop: ## Stop MicroK8s daemon to save local laptop resources
 	@echo -e "${YELLOW}==> MicroK8s stopped.${NC}"
 
 .PHONY: backup-pvc
-backup-pvc: ## Cold backup of all static PVs (stops workloads briefly). Options: BACKUP_DIR=..., FLAGS="--include-nexus --include-obs --dry-run"
-	@scripts/backup_pvc.sh backup $(FLAGS)
+backup-pvc: ## Cold backup of all static PVs (stops workloads briefly). Options: BACKUP_DIR=..., ONLY=text, FLAGS="--include-nexus --include-obs --dry-run"
+	@scripts/backup_pvc.sh backup $(if $(ONLY),--only $(ONLY)) $(FLAGS)
 
 .PHONY: backup-list
 backup-list: ## List the PV backups found in BACKUP_DIR (default ~/Backups/darueira-platform)
@@ -76,6 +76,10 @@ backup-list: ## List the PV backups found in BACKUP_DIR (default ~/Backups/darue
 .PHONY: backup-verify
 backup-verify: ## Verify checksums and archive integrity of a backup (latest, or ID=<timestamp>)
 	@scripts/backup_pvc.sh verify $(ID)
+
+.PHONY: restore-pvc
+restore-pvc: ## Restore volumes from a backup (stops workloads; keeps old data as *.pre-restore-*). ID=<backup> [ONLY=text] [FLAGS="--dry-run --yes"]
+	@scripts/backup_pvc.sh restore $(ID) $(if $(ONLY),--only $(ONLY)) $(FLAGS)
 
 .PHONY: deploy-crds
 deploy-crds: ## Install Darueira Operator Custom Resource Definitions (CRDs) into the cluster

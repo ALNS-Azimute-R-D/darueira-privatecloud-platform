@@ -668,3 +668,32 @@ spec:
               operator: In
               values:
                 - nbalns-mifcom-lnx-01
+---
+# Rebuildable tier: APISIX dashboard embedded etcd (routes can be recreated by scripts/bootstrap_apisix_routes.py).
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-apisix-etcd
+  labels:
+    darueira.io/volume: apisix-etcd
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: apisix-etcd-pvc
+    namespace: drr-corpshared-plat
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/corpshared-plat/apisix-etcd
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - nbalns-mifcom-lnx-01

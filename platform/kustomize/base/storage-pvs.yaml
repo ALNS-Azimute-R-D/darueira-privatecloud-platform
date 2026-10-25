@@ -609,3 +609,62 @@ spec:
                 - nbalns-mifcom-lnx-01
 
 
+---
+# Ephemeral tier: Tekton run workspaces. Excluded from backups (data/ephemeral/). Each run uses its own subPath.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-tekton-workspace
+  labels:
+    darueira.io/volume: tekton-workspace
+    darueira.io/storage-tier: ephemeral
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: tekton-workspace
+    namespace: drr-corpshared-mgmt
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/ephemeral/tekton-workspaces
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - nbalns-mifcom-lnx-01
+---
+# Rebuildable tier: Maven repository cache shared by CI runs. Losing it only costs a cold first build.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-drr-maven-repo-cache
+  labels:
+    darueira.io/volume: maven-repo-cache
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: darueira-host-storage
+  claimRef:
+    name: maven-repo-cache
+    namespace: drr-corpshared-mgmt
+  hostPath:
+    path: /mnt/FileBuckets01/darueira-platform/data/corpshared-mgmt/maven-repo-cache
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - nbalns-mifcom-lnx-01

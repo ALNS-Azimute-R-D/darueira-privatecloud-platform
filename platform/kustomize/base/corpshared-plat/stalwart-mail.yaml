@@ -151,6 +151,8 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: darueira-host-storage
+  volumeName: pv-drr-stalwart-mail
   resources:
     requests:
       storage: 5Gi

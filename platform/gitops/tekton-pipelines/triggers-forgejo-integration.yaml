@@ -71,13 +71,9 @@ spec:
             value: "$(tt.params.owner-name)-$(tt.params.repository-name)"
         workspaces:
           - name: pipeline-workspace
-            volumeClaimTemplate:
-              spec:
-                accessModes:
-                  - ReadWriteOnce
-                resources:
-                  requests:
-                    storage: 1Gi
+            persistentVolumeClaim:
+              claimName: tekton-workspace
+            subPath: $(uid)
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener
@@ -186,13 +182,9 @@ spec:
             value: "$(tt.params.owner-name)-$(tt.params.repository-name)"
         workspaces:
           - name: pipeline-workspace
-            volumeClaimTemplate:
-              spec:
-                accessModes:
-                  - ReadWriteOnce
-                resources:
-                  requests:
-                    storage: 2Gi
+            persistentVolumeClaim:
+              claimName: tekton-workspace
+            subPath: $(uid)
     - apiVersion: tekton.dev/v1beta1
       kind: PipelineRun
       metadata:
@@ -234,10 +226,6 @@ spec:
             value: "$(tt.params.owner-name)-$(tt.params.repository-name)"
         workspaces:
           - name: pipeline-workspace
-            volumeClaimTemplate:
-              spec:
-                accessModes:
-                  - ReadWriteOnce
-                resources:
-                  requests:
-                    storage: 2Gi
+            persistentVolumeClaim:
+              claimName: tekton-workspace
+            subPath: $(uid)

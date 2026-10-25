@@ -96,13 +96,9 @@ spec:
       value: "${ARGOCD_APP}"
   workspaces:
     - name: pipeline-workspace
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 1Gi
+      persistentVolumeClaim:
+        claimName: tekton-workspace
+      subPath: ${RUN_NAME}
 YAML
 
 echo "==> PipelineRun '${RUN_NAME}' successfully launched in drr-corpshared-mgmt!"

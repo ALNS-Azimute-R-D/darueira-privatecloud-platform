@@ -1,0 +1,19 @@
+# Single workspace claim shared by all CI runs (each run mounts its own subPath, see the TriggerTemplates).
+# Bound to pv-drr-tekton-workspace (data/ephemeral/tekton-workspaces), so no per-run PVC is created.
+# Runs sharing a claim execute serially on this single-node lab; delete old subPath directories when space matters.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tekton-workspace
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/component: ci-pipeline
+    darueira.io/tier: enterprise-shared
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: darueira-host-storage
+  volumeName: pv-drr-tekton-workspace
+  resources:
+    requests:
+      storage: 20Gi

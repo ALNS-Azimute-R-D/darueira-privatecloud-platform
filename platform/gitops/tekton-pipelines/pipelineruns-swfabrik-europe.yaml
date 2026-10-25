@@ -25,13 +25,9 @@ spec:
       value: "dev"
   workspaces:
     - name: shared-workspace
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 1Gi
+      persistentVolumeClaim:
+        claimName: tekton-workspace
+      subPath: pr-swfabrik-europe-food-market-01-manual
 ---
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
@@ -60,13 +56,9 @@ spec:
       value: "dev"
   workspaces:
     - name: shared-workspace
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 1Gi
+      persistentVolumeClaim:
+        claimName: tekton-workspace
+      subPath: pr-swfabrik-europe-caseforce-legalhub-manual
 ---
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
@@ -95,13 +87,9 @@ spec:
       value: "dev"
   workspaces:
     - name: shared-workspace
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 1Gi
+      persistentVolumeClaim:
+        claimName: tekton-workspace
+      subPath: pr-swfabrik-europe-fake-agency-manual
 ---
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
@@ -142,13 +130,9 @@ spec:
       value: "swfabrik-europe-bookanything-platform"
   workspaces:
     - name: pipeline-workspace
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 2Gi
+      persistentVolumeClaim:
+        claimName: tekton-workspace
+      subPath: pr-swfabrik-europe-bookanything-backend-manual
 ---
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
@@ -185,11 +169,7 @@ spec:
       value: "swfabrik-europe-bookanything-platform"
   workspaces:
     - name: pipeline-workspace
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 2Gi
+      persistentVolumeClaim:
+        claimName: tekton-workspace
+      subPath: pr-swfabrik-europe-bookanything-frontend-manual
 

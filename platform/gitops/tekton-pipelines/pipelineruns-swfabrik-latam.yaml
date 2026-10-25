@@ -25,13 +25,9 @@ spec:
       value: "dev"
   workspaces:
     - name: shared-workspace
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 1Gi
+      persistentVolumeClaim:
+        claimName: tekton-workspace
+      subPath: pr-swfabrik-latam-checkout-service-manual
 ---
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
@@ -60,10 +56,6 @@ spec:
       value: "dev"
   workspaces:
     - name: shared-workspace
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 1Gi
+      persistentVolumeClaim:
+        claimName: tekton-workspace
+      subPath: pr-swfabrik-latam-app-identity-studio-manual

@@ -1,5 +1,5 @@
 # Maven local repository shared by the CI runs (mounted by task-polyglot-build as a volume, not as a workspace).
-# microk8s-hostpath binds when the first run mounts it. Deleting the claim only costs a cold first build.
+# Bound to pv-drr-maven-repo-cache (data/corpshared-mgmt/maven-repo-cache). Deleting the claim only costs a cold first build.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -11,7 +11,8 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: microk8s-hostpath
+  storageClassName: darueira-host-storage
+  volumeName: pv-drr-maven-repo-cache
   resources:
     requests:
       storage: 5Gi

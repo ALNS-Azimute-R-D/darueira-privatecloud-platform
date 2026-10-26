@@ -23,6 +23,7 @@
 #         scripts/backup_pvc.sh list    [--dest DIR]
 #         scripts/backup_pvc.sh verify  [--dest DIR] [BACKUP_ID]
 #         scripts/backup_pvc.sh restore [--dest DIR] BACKUP_ID [--only TEXT] [--yes]
+#         scripts/backup_pvc.sh prune   [--dest DIR] --keep N
 # --only keeps the volumes whose data path contains TEXT (e.g. forgejo, tenants/swfabrik-europe).
 # ==============================================================================
 set -euo pipefail
@@ -38,6 +39,7 @@ INCLUDE_OBS=0
 DRY_RUN=0
 ONLY=""
 ASSUME_YES=0
+KEEP=0
 RUN_DIR=""            # directory mounted at /backup in the helper pod
 REPLICAS_DIR=""       # global: where the EXIT trap finds replicas.txt after the command function returned
 declare -A WL_REPLICAS=()
@@ -53,6 +55,7 @@ while [[ $# -gt 0 ]]; do
     --dry-run) DRY_RUN=1; shift ;;
     --only) ONLY="$2"; shift 2 ;;
     --yes) ASSUME_YES=1; shift ;;
+    --keep) KEEP="$2"; shift 2 ;;
     *) ARGS+=("$1"); shift ;;
   esac
 done
@@ -261,7 +264,20 @@ cmd_restore() {
   log "Restore done. Previous data kept as *.pre-restore-$ts under $DATA_ROOT"
 }
 
+# Deletes all but the newest KEEP backups (only directories that contain SHA256SUMS count as backups).
+cmd_prune() {
+  [[ "$KEEP" =~ ^[1-9][0-9]*$ ]] || { echo "Usage: prune --keep N (N >= 1)"; exit 1; }
+  local all=() old d
+  for d in "$DEST"/*/; do [ -f "${d}SHA256SUMS" ] && all+=("$(basename "$d")"); done
+  [ "${#all[@]}" -gt "$KEEP" ] || { log "Nothing to prune (${#all[@]} backups, keeping $KEEP)"; return 0; }
+  for old in "${all[@]:0:${#all[@]}-KEEP}"; do
+    log "Removing old backup $old"
+    rm -rf "${DEST:?}/$old"
+  done
+}
+
 case "$cmd" in
+  prune) cmd_prune ;;
   backup) cmd_backup ;;
   list) cmd_list ;;
   verify) cmd_verify ;;

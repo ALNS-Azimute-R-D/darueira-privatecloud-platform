@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekly cold backup of the Darueira platform volumes
+
+[Timer]
+OnCalendar=Sun *-*-* 03:00:00
+# Run at the next boot/login if the laptop was off at the scheduled time
+Persistent=true
+RandomizedDelaySec=0
+
+[Install]
+WantedBy=timers.target

@@ -77,6 +77,18 @@ backup-list: ## List the PV backups found in BACKUP_DIR (default ~/Backups/darue
 backup-verify: ## Verify checksums and archive integrity of a backup (latest, or ID=<timestamp>)
 	@scripts/backup_pvc.sh verify $(ID)
 
+.PHONY: backup-prune
+backup-prune: ## Delete all but the newest backups. KEEP=<n> (default 4)
+	@scripts/backup_pvc.sh prune --keep $(or $(KEEP),4)
+
+.PHONY: backup-schedule
+backup-schedule: ## Install and enable the weekly systemd user timer (Sun 03:00) for the cold backup
+	@mkdir -p $(HOME)/.config/systemd/user
+	@cp scripts/systemd/darueira-backup.service scripts/systemd/darueira-backup.timer $(HOME)/.config/systemd/user/
+	@systemctl --user daemon-reload
+	@systemctl --user enable --now darueira-backup.timer
+	@systemctl --user list-timers darueira-backup.timer --no-pager
+
 .PHONY: restore-pvc
 restore-pvc: ## Restore volumes from a backup (stops workloads; keeps old data as *.pre-restore-*). ID=<backup> [ONLY=text] [FLAGS="--dry-run --yes"]
 	@scripts/backup_pvc.sh restore $(ID) $(if $(ONLY),--only $(ONLY)) $(FLAGS)

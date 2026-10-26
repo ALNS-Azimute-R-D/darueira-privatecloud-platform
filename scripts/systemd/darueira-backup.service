@@ -1,0 +1,8 @@
+[Unit]
+Description=Darueira platform cold PV backup
+
+[Service]
+Type=oneshot
+ExecStart=%h/DevEnvALNS/projects/03-PoCs-And-Researches/ALNS-Azimute-R-D/darueira-privatecloud-platform/scripts/backup_pvc_scheduled.sh
+Environment=PATH=/usr/local/bin:/usr/bin:/bin:/snap/bin
+Nice=10

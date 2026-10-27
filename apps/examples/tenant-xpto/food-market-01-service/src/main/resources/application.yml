@@ -26,6 +26,15 @@ spring:
     password: ${SPRING_RABBITMQ_PASSWORD:darueira-admin123}
     virtual-host: ${SPRING_RABBITMQ_VHOST:/}
 
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db,rabbit
+
 app:
   market-id: ${APP_MARKET_ID:MKT-EU-01-SPRING}
   rabbitmq:

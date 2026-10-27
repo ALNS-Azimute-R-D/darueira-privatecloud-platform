@@ -35,7 +35,7 @@ spec:
             - "authentik.darueira-corpshared.local"
       initContainers:
         - name: setup-ca-certs
-          image: stalwartlabs/stalwart:latest
+          image: stalwartlabs/stalwart:v0.16.27
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
@@ -57,7 +57,7 @@ spec:
               mountPath: /tmp/custom-ca
       containers:
         - name: stalwart-mail
-          image: stalwartlabs/stalwart:latest
+          image: stalwartlabs/stalwart:v0.16.27
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false

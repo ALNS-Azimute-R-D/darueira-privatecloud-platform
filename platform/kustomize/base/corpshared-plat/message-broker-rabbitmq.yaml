@@ -70,6 +70,8 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: darueira-host-storage
+  volumeName: pv-drr-message-broker-rabbitmq
   resources:
     requests:
       storage: 5Gi

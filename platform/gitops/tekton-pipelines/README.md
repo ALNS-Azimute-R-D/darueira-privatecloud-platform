@@ -50,7 +50,12 @@ Every push to `master` of `bookanything-platform` (the `bookanything-events` tri
 - **Maven through Nexus:** the `maven-mirror-url` param (default: `maven-public` of `nexus-oss` in
   `drr-corpshared-plat`, port 8081) is used by `task-polyglot-build` (settings mirror `*`) and passed to the
   Dockerfile as the build arg `MAVEN_MIRROR_URL`. An empty value builds with no mirror.
-- **Maven cache volume:** `pvc-maven-repo-cache.yaml` (5Gi, `microk8s-hostpath`) is mounted by
+- **Run workspace:** every run mounts the shared claim `tekton-workspace` (`pvc-tekton-workspace.yaml`, static PV
+  `pv-drr-tekton-workspace` under `data/ephemeral/tekton-workspaces`, excluded from backups) with its own `subPath`
+  (`$(uid)` in the TriggerTemplates, the run name elsewhere). The clone task fails on a non-empty directory, so a
+  manual run with a fixed name needs its old subPath directory deleted before it is re-run. Apply
+  `pvc-tekton-workspace.yaml` and the PVs in `kustomize/base/storage-pvs.yaml` first.
+- **Maven cache volume:** `pvc-maven-repo-cache.yaml` (5Gi, static PV `pv-drr-maven-repo-cache` under `data/corpshared-mgmt/`) is mounted by
   `test-maven` as the local repository, so `test-and-build` stays around 20-40 s. Apply the PVC before the
   Task: `kubectl apply -f pvc-maven-repo-cache.yaml`. The Tekton tasks themselves are applied by hand, not by ArgoCD.
 

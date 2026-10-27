@@ -28,10 +28,6 @@ spec:
       value: "corpshared-mgmt"
   workspaces:
     - name: pipeline-workspace
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 2Gi
+      persistentVolumeClaim:
+        claimName: tekton-workspace
+      subPath: sample-ci-pipeline-run

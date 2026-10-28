@@ -324,10 +324,26 @@ state in PostgreSQL. `webmail` is still not in the set (dynamic `microk8s-hostpa
   restarted the pod. Nightly cluster stops and crashes cause the same thing.
 - Scope: only this service. `food-market-02` is Quarkus (`/q/health/live`), 03-06 use `/healthz`. `caseforce-legalhub-mgmt`
   (266 restarts, last `Error/1`) is a different case and was not investigated.
-- Fix (merged): liveness `/actuator/health/liveness`, readiness `/actuator/health/readiness` (group still includes
-  `db` and `rabbit`), `startupProbe` instead of initial delays, `timeoutSeconds: 3`. The image is native, so the
-  new probe paths only exist after a Tekton rebuild; the Deployment and the image must ship together.
-  **Verify after the rebuild:** the pod becomes Ready and survives a RabbitMQ scale-to-zero without a restart.
+- First attempt, ineffective: the probe change merged on GitHub (`apps/examples/tenant-xpto/food-market-01-service/k8s/deployment.yaml`,
+  PR #2) does nothing in the cluster. That file is only an example; the running Deployment is rendered by the Helm
+  chart `food-market-01-service-chart` in the internal Forgejo (ArgoCD app `swfabrik-europe-food-market-01`,
+  `values.yaml` + `values-dev-green.yaml`), and the app source Tekton builds is the Forgejo repo
+  `food-market-01-service`, which GitHub does not feed. Check how ArgoCD deploys before editing manifests.
+- Fix, as applied (2026-10-28), in two Forgejo PRs that had to merge in this order:
+  1. App, `fix/health-probe-groups` (PR #9, merged 09:20 UTC): `management.endpoint.health.probes.enabled=true`
+     and a readiness group `readinessState,db,rabbit`. `SecurityConfig` already permits `/actuator/**`. The merge
+     triggered Tekton (`forgejo-ci-food-market-01-service-fp7nj`, native GraalVM build, about 15 min, host available
+     memory stayed at 20-22 GiB), which promoted tag `2026.1028.102149` (chart commit `44635ea`). New pod
+     `1/1` Ready with 0 restarts; `/actuator/health/liveness` and `/readiness` returned 200.
+  2. Chart, `fix/health-probe-paths-and-startup`: probes point to `/actuator/health/liveness` and `/readiness`,
+     new optional `startupProbe` (2 s x 60), configurable `timeoutSeconds` (3) and `failureThreshold`. Merged only
+     after step 1 was verified, because the new paths return 404 on older images. ArgoCD synced
+     (`Synced/Healthy`), pod `2/2 Running`, 0 restarts.
+  Helm gotcha: `default 10` treats `0` as empty, so `initialDelaySeconds: 0` rendered as 10; the values use `1`.
+- Verified (2026-10-28 11:04-11:09): RabbitMQ scaled to 0 for 160 s. The app pod went `Ready=False` in every sample
+  (20-160 s) and kept 0 restarts; it was `Ready=True` again within 15 s after RabbitMQ returned. With the old
+  probes the same outage would have restarted the pod. Not tested: a PostgreSQL outage (same mechanism, other
+  indicator) and more than one pod.
 
 **Lessons for the next items (lean mode, post-boot-check):**
 - A scale-down order that stops dependencies first will restart apps whose liveness depends on them. Either fix the
@@ -335,6 +351,10 @@ state in PostgreSQL. `webmail` is still not in the set (dynamic `microk8s-hostpa
 - `backup_pvc.sh` should preferably pin or at least report image digests before scaling to 0, because a restart
   silently re-pulls every `:latest` image.
 - When killing a background `kubectl port-forward`, use the PID (`$!`); `pkill -f` matches the invoking shell.
+- For `kubectl scale`, put the flags after the verb (`kubectl -n NS scale deploy/NAME --replicas=N`); with the
+  resource first the command fails and a test script can look like it passed. Read the original replicas first and
+  abort if they are not what you expect.
+- A merge on a tenant repo in Forgejo is a deploy (Tekton native builds take about 15 min and a lot of CPU).
 
 **State at end of session:**
 
@@ -344,7 +364,7 @@ state in PostgreSQL. `webmail` is still not in the set (dynamic `microk8s-hostpa
 | JTS jar copy | done, local disk only |
 | Backup `20261027-154218` | done and verified, local disk only |
 | Stalwart pin | done and merged |
-| food-market-01 probes | merged, **waiting for the Tekton rebuild and deploy** |
+| food-market-01 probes | done and verified in the cluster (app image + chart, RabbitMQ outage test passed, 0 restarts) |
 | Restore test | not done (`restore-pvc --dry-run`, then one small volume) |
 | Off-disk copy (`backup-upload`, `age`) | not done |
 | `disk-report`, `cluster-health`, `post-boot-check`, `tools-check`, lean mode | not done |

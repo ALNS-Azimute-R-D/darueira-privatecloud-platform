@@ -356,6 +356,52 @@ state in PostgreSQL. `webmail` is still not in the set (dynamic `microk8s-hostpa
   abort if they are not what you expect.
 - A merge on a tenant repo in Forgejo is a deploy (Tekton native builds take about 15 min and a lot of CPU).
 
+### 9b. Host helpers and Docker cleanup (2026-10-28)
+
+**New read-only helpers** (branch `feat/disk-report-cluster-health`, commit `5f85c47`, pushed by André):
+- `make disk-report` (`scripts/disk_report.sh`, about 30 s): filesystems, platform data tree and largest volumes,
+  backups, host logs, MicroK8s, developer caches. `du` runs in parallel at idle I/O priority with a per-path
+  timeout (`--timeout`, default 25 s). Sizes of root-owned paths are printed as `>= X (partial, needs sudo)` and slow
+  ones as `timeout`; the first version summed only the readable part and showed `/var/snap/microk8s` as 1.4 GB
+  instead of 2.4 GB without any warning, and took 8 minutes. `sudo scripts/disk_report.sh` gives exact values.
+- `make cluster-health` (`scripts/cluster_health.sh`): node pressure, pods not ready, restarts (a burst of 8 or more
+  restarts within 15 minutes is collapsed as a cluster start/stop; the historical top N is listed), workloads below
+  replicas, PVC/PV state, ArgoCD apps, unpinned images, TLS secrets close to expiry, stale CiliumEndpoints. Exit 0 =
+  clean, 1 = findings, 2 = cluster unreachable. There is no cert-manager `Certificate` CRD, so expiry is read from
+  `kubernetes.io/tls` secrets.
+
+**First cluster-health run (healthy cluster, 21 findings):** no pod down, no workload below replicas, ArgoCD all
+`Synced/Healthy`, no expiring certificate, no stale Cilium endpoint. Findings: the 06:46-06:56 UTC boot burst (20
+containers), the restart history (top: `authentik-server` 426, `opensearch-dashboards` 357,
+`caseforce-legalhub-mgmt` 271, `temporal-ui` 246, `argocd-server` and `backstage` 199 each; 49 more pods above 20)
+and 9 unpinned images: `roundcube/roundcubemail`, `backstage-showcase`, `kafka-ui`, `bitnami/kubectl` and
+`curlimages/curl` (no tag), plus four `:latest` images from the internal Nexus (`app-identity-studio`,
+`checkout-service`, `bookanything-maps-generator`, `fake-legal-partners-agencies-app`). Same failure mode as the
+Stalwart incident; not fixed yet.
+
+**First disk-report run:** `/` 79%, `/home` 81%, `/mnt/FileBuckets01` 74%. In `/home`: `~/.docker` 95 GB,
+`~/VirtualMachines` 53 GB, `~/Downloads` 20 GB, `~/.cache/JetBrains` 14 GB, `~/.thunderbird` 14 GB, `~/.android`
+14 GB, Trash 592 MB. Data tree: Nexus 37 GB, Prometheus 2.7 GB, Kafka 1.3 GB. `/var/log` 7.5 GB (pods 3.6 GB,
+journal 3.4 GB), yet `journalctl --disk-usage` reports 289.8 MB; the difference is unexplained. `~/.cache`,
+`~/.gradle`, `~/.npm`, `~/.local`, `DevEnvALNS` and `Backups` hit the 25 s timeout and were not measured.
+
+**Docker (two separate problems, investigated read-only first):**
+1. `~/.docker` (95 GB) is the Docker Desktop VM: `~/.docker/desktop/vms/0/data/Docker.raw`, 94 GB on disk (352 GB
+   apparent, sparse), last modified 2026-04-26. Docker Desktop is not running and `DOCKER_HOST` points to the
+   system daemon (`/var/run/docker.sock`). Its contents are unknown (images and possibly volumes with data); looking
+   inside needs a read-only loop mount with sudo. **Not touched.** Deleting it would free 94 GB on `/home`, but only
+   after André confirms nothing in it is needed.
+2. The system daemon (`/var/lib/docker`, on `/`) had 110.4 GB of build cache (104 GB reclaimable), 29.6 GB of images
+   (18.4 GB reclaimable), 14 stopped containers (387 MB), 19 volumes (6 unused, which hold data such as local
+   Postgres: not pruned). The `gc.defaultKeepStorage: 40GB` André had sits in `~/.docker/daemon.json`, which only
+   Docker Desktop reads; `/etc/docker/daemon.json` had no GC. `docker builder prune --keep-storage 20GB` freed
+   **82.69 GB**: build cache 110.4 -> 27.7 GB, `/` from 342 GB used (79%) to 248 GB (58%). Only build cache was removed.
+   To stop it growing back, `scripts/setup_host_docker_gc.sh` (branch `chore/docker-system-gc`, commit `11094aa`)
+   merges `builder.gc` into `/etc/docker/daemon.json`. Dry run by default; `sudo ... --apply` backs up the file,
+   validates it with `dockerd --validate`, restarts docker (it refuses if containers are running) and checks the
+   daemon came back. **Not applied yet**, and the restart itself was not tested. MicroK8s uses its own containerd
+   and the cluster builds with Kaniko, so the cluster is not affected.
+
 **State at end of session:**
 
 | Item | Status |
@@ -367,7 +413,12 @@ state in PostgreSQL. `webmail` is still not in the set (dynamic `microk8s-hostpa
 | food-market-01 probes | done and verified in the cluster (app image + chart, RabbitMQ outage test passed, 0 restarts) |
 | Restore test | not done (`restore-pvc --dry-run`, then one small volume) |
 | Off-disk copy (`backup-upload`, `age`) | not done |
-| `disk-report`, `cluster-health`, `post-boot-check`, `tools-check`, lean mode | not done |
+| `disk-report`, `cluster-health` | done (`5f85c47`, pushed) |
+| Docker build cache prune | done, 82.69 GB freed, `/` 79% -> 58% |
+| Docker system GC (`setup_host_docker_gc.sh`) | script committed (`11094aa`), **not applied** (needs `sudo ... --apply`) |
+| `~/.docker/desktop/.../Docker.raw` (94 GB on `/home`) | not touched, contents unknown, André decides |
+| Unpinned images (9 found by `cluster-health`) | not done |
+| `post-boot-check`, `tools-check`, lean mode | not done |
 | `volumes.yaml` classification, dynamic PVs into the data tree, `DRR_DATA_ROOT` | not done |
 | Cilium cleanup validated in a real stop/start | not done |
 

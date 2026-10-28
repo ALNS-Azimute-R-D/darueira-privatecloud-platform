@@ -386,11 +386,14 @@ journal 3.4 GB), yet `journalctl --disk-usage` reports 289.8 MB; the difference 
 `~/.gradle`, `~/.npm`, `~/.local`, `DevEnvALNS` and `Backups` hit the 25 s timeout and were not measured.
 
 **Docker (two separate problems, investigated read-only first):**
-1. `~/.docker` (95 GB) is the Docker Desktop VM: `~/.docker/desktop/vms/0/data/Docker.raw`, 94 GB on disk (352 GB
-   apparent, sparse), last modified 2026-04-26. Docker Desktop is not running and `DOCKER_HOST` points to the
-   system daemon (`/var/run/docker.sock`). Its contents are unknown (images and possibly volumes with data); looking
-   inside needs a read-only loop mount with sudo. **Not touched.** Deleting it would free 94 GB on `/home`, but only
-   after André confirms nothing in it is needed.
+1. `~/.docker` (95 GB) was the Docker Desktop VM: `~/.docker/desktop/vms/0/data/Docker.raw`, 94 GB on disk (352 GB
+   apparent, sparse), last modified 2026-04-26, left over from an earlier project that used k3d clusters. The kubeconfig
+   had no k3d context (only `microk8s`), so nothing outside the VM referenced those clusters. André started Docker
+   Desktop, deleted the inactive clusters and all images, and lowered the virtual disk limit from 352 GB to 64 GB
+   (`DiskSizeMiB: 65536`; `DiskTRIM` is on) and the VM CPUs from 10 to 5. `Docker.raw` went from 94 GB to 8 MB on disk
+   and `/home` from 929 GB (81%) to 835 GB (73%): **about 94 GB freed**. The file is sparse, so the 64 GB is a ceiling,
+   not a reservation. VM memory is still 16 GB while Desktop is open; the `docker-desktop` package (4.66.1) and the
+   `desktop-linux` context are still installed (removing them is optional).
 2. The system daemon (`/var/lib/docker`, on `/`) had 110.4 GB of build cache (104 GB reclaimable), 29.6 GB of images
    (18.4 GB reclaimable), 14 stopped containers (387 MB), 19 volumes (6 unused, which hold data such as local
    Postgres: not pruned). The `gc.defaultKeepStorage: 40GB` André had sits in `~/.docker/daemon.json`, which only
@@ -416,7 +419,7 @@ journal 3.4 GB), yet `journalctl --disk-usage` reports 289.8 MB; the difference 
 | `disk-report`, `cluster-health` | done (`5f85c47`, pushed) |
 | Docker build cache prune | done, 82.69 GB freed, `/` 79% -> 58% |
 | Docker system GC (`setup_host_docker_gc.sh`) | script committed (`11094aa`), **not applied** (needs `sudo ... --apply`) |
-| `~/.docker/desktop/.../Docker.raw` (94 GB on `/home`) | not touched, contents unknown, André decides |
+| `~/.docker/desktop/.../Docker.raw` (94 GB on `/home`) | done, 94 GB freed (`/home` 81% -> 73%); disk limit now 64 GB, VM CPUs 5; Desktop package still installed |
 | Unpinned images (9 found by `cluster-health`) | not done |
 | `post-boot-check`, `tools-check`, lean mode | not done |
 | `volumes.yaml` classification, dynamic PVs into the data tree, `DRR_DATA_ROOT` | not done |

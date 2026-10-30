@@ -144,9 +144,9 @@ spec:
               type: RuntimeDefault
           containers:
             - name: janitor
-              image: bitnami/kubectl:latest
+              image: alpine/k8s:1.31.13
               imagePullPolicy: IfNotPresent
-              command: ["/usr/bin/bash", "/scripts/janitor.sh"]
+              command: ["/bin/bash", "/scripts/janitor.sh"]
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities:

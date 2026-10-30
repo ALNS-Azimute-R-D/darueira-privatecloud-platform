@@ -21,7 +21,7 @@ The Darueira Private Cloud Platform requires dual asynchronous messaging capabil
    - Standardize Redpanda Kafka broker (`docker.redpanda.com/redpandadata/redpanda:v24.1.8`) with advertise address `PLAINTEXT://message-broker-kafka.drr-corpshared-plat.svc.cluster.local:9092`.
 
 2. **Embedding Kafbat UI as an In-Pod Sidecar**:
-   - Deploy **Kafbat UI** (`ghcr.io/kafbat/kafka-ui:latest`) as a sidecar container inside the `message-broker-kafka` Pod.
+   - Deploy **Kafbat UI** (`ghcr.io/kafbat/kafka-ui:v1.5.0`) as a sidecar container inside the `message-broker-kafka` Pod.
    - Connect Kafbat UI directly to `127.0.0.1:9092` for zero-latency in-pod cluster communication.
    - Expose Kafbat UI on port `8080` via service `message-broker-kafka`.
 

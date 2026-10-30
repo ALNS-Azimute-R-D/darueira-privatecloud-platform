@@ -52,7 +52,7 @@ spec:
       description: "Timeout to wait for sync to complete"
   steps:
     - name: sync-and-wait
-      image: bitnami/kubectl:latest
+      image: alpine/k8s:1.31.13
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001

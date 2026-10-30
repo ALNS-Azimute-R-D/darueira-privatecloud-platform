@@ -872,7 +872,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: backstage
-          image: quay.io/janus-idp/backstage-showcase:latest
+          image: quay.io/janus-idp/backstage-showcase:1.1.0
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

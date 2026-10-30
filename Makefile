@@ -93,6 +93,14 @@ backup-schedule: ## Install and enable the weekly systemd user timer (Sun 03:00)
 restore-pvc: ## Restore volumes from a backup (stops workloads; keeps old data as *.pre-restore-*). ID=<backup> [ONLY=text] [FLAGS="--dry-run --yes"]
 	@scripts/backup_pvc.sh restore $(ID) $(if $(ONLY),--only $(ONLY)) $(FLAGS)
 
+.PHONY: disk-report
+disk-report: ## Read-only disk usage report: filesystems, platform data tree, backups, logs, caches. FLAGS="--deep"
+	@scripts/disk_report.sh $(FLAGS)
+
+.PHONY: cluster-health
+cluster-health: ## Read-only cluster health summary (exit 1 when there are findings). FLAGS="--restarts 20 --top 10 --recent-hours 24 --cert-days 30"
+	@scripts/cluster_health.sh $(FLAGS) || [ $$? -eq 1 ]
+
 .PHONY: deploy-crds
 deploy-crds: ## Install Darueira Operator Custom Resource Definitions (CRDs) into the cluster
 	@echo -e "${GREEN}==> Applying Darueira CRDs...${NC}"

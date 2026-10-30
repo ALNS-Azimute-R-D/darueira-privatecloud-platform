@@ -377,7 +377,22 @@ containers), the restart history (top: `authentik-server` 426, `opensearch-dashb
 and 9 unpinned images: `roundcube/roundcubemail`, `backstage-showcase`, `kafka-ui`, `bitnami/kubectl` and
 `curlimages/curl` (no tag), plus four `:latest` images from the internal Nexus (`app-identity-studio`,
 `checkout-service`, `bookanything-maps-generator`, `fake-legal-partners-agencies-app`). Same failure mode as the
-Stalwart incident; not fixed yet.
+Stalwart incident.
+
+**Update 2026-10-30 (branch `chore/pin-latest-images`, applied to the cluster):** roundcube `1.7.5-apache`, kafka-ui
+`v1.5.0` and backstage-showcase `1.1.0` are pinned to the digest that was already running. `bitnami/kubectl:latest`
+(Tekton janitor and `task-argocd-sync`) became `alpine/k8s:1.31.13`: Bitnami now publishes only `latest` (kubectl 1.37
+against the 1.31 API server) and `bitnamilegacy` is frozen. The janitor command path changed to `/bin/bash`; a manual
+job from the CronJob completed. Still open: `curlimages/curl` is an orphan `curl-test` pod in `default` (not in the
+repo), and three of the four Nexus images (`app-identity-studio`, `checkout-service`,
+`fake-legal-partners-agencies-app`) only have a `latest` tag, so pinning them needs the Tekton build to tag by
+version or commit first (`bookanything-maps-generator` already has `2026.0919.125000`).
+
+**Restore test 2026-10-30:** `make restore-pvc ID=20261027-154218 ONLY=swfabrik-latam/tenant-postgres` (dry-run, then
+real). The StatefulSet scaled to 0 and back, Postgres started from the restored files (`shut down at 2026-10-27
+14:42:33`) and the Keycloak database matched the baseline taken before (1 realm, 1 user, 6 clients, 101 tables). The
+previous data stayed as `tenant-postgres.pre-restore-20261030-184909` (75 MB, owned by container UIDs, needs root to
+delete).
 
 **First disk-report run:** `/` 79%, `/home` 81%, `/mnt/FileBuckets01` 74%. In `/home`: `~/.docker` 95 GB,
 `~/VirtualMachines` 53 GB, `~/Downloads` 20 GB, `~/.cache/JetBrains` 14 GB, `~/.thunderbird` 14 GB, `~/.android`

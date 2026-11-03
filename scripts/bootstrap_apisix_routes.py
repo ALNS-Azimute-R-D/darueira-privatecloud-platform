@@ -1037,6 +1037,24 @@ ROUTES = [
         }
     },
     {
+        "id": "route-host-swfabrik-europe-ehr-hub",
+        "name": "EHR Integrations Hub (Kotlin / Ktor, Vivendi connector)",
+        "desc": "Residents/areas service and Swagger UI. No gateway cors plugin: the service has CORS off by default (spec 003).",
+        "uri": "/*",
+        "hosts": [
+            "ehr-hub.swfabrik-europe.127.0.0.1.nip.io",
+            "ehr-hub.swfabrik-europe.192.168.178.84.nip.io",
+            "ehr-hub.swfabrik-europe.local"
+        ],
+        "upstream": {
+            "nodes": {"alns-voize-ehr-integrator.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8080": 1},
+            "type": "roundrobin"
+        },
+        "plugins": {
+            "prometheus": {}
+        }
+    },
+    {
         "id": "route-path-swfabrik-europe-bookanything-api",
         "name": "BookAnything API & Swagger Path Routing on Frontend Host",
         "desc": "Proxy /api/*, /management/*, /swagger-ui/* to Backend on frontend host",

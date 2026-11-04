@@ -309,10 +309,10 @@ proxy-privileged: ## Start APISIX Ingress Reverse Proxy on default Ports 80 & 44
 .PHONY: bootstrap-apisix
 bootstrap-apisix: ## Seed all cluster routes and SSL certificates into APISIX Gateway and ETCD
 	@echo -e "${GREEN}==> Seeding platform routes and SSL into APISIX Gateway & ETCD...${NC}"
-	@trap 'kill 0' EXIT; \
-	$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway 9180:9180 & \
+	@$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway 9180:9180 >/dev/null & PF=$$!; \
 	sleep 2; \
-	python3 scripts/bootstrap_apisix_routes.py
+	rc=0; APISIX_ADMIN_URL=http://127.0.0.1:9180/apisix/admin python3 scripts/bootstrap_apisix_routes.py || rc=$$?; \
+	kill $$PF; exit $$rc
 
 .PHONY: check-apisix-routes
 check-apisix-routes: ## Diff scripts/bootstrap_apisix_routes.py (source of truth) against live APISIX routes

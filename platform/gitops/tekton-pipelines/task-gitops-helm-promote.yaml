@@ -88,8 +88,18 @@ spec:
         git config user.email "gitops-promoter@darueira.local"
 
         IMG="$(params.image-name)"
+        # Image name without registry path and tag (bookanything-maps-generator)
+        IMG_BASE="${IMG##*/}"
+        IMG_BASE="${IMG_BASE%%:*}"
         if [ -f "$VALUES_FILE" ]; then
-          if grep -q "legalhubMgmt:" "$VALUES_FILE"; then
+          if [ -n "$IMG_BASE" ] && grep -Eq "promote:[[:space:]]*${IMG_BASE}[[:space:]]*$" "$VALUES_FILE"; then
+            # Multi-image chart: the `tag:` line below a `# promote: <image name>` marker belongs to that image.
+            awk -v tag="$TAG" -v img="$IMG_BASE" '
+              $0 ~ ("promote:[ \t]*" img "[ \t]*$") { arm=1 }
+              arm && /^[ \t]*tag:/ { sub(/tag:[ \t]*.*/, "tag: \"" tag "\""); arm=0 }
+              { print }
+            ' "$VALUES_FILE" > "${VALUES_FILE}.tmp" && mv "${VALUES_FILE}.tmp" "$VALUES_FILE"
+          elif grep -q "legalhubMgmt:" "$VALUES_FILE"; then
             awk -v tag="$TAG" '
               /legalhubMgmt:/ { in_sec=1 }
               /fakeAgency:/ { in_sec=0 }

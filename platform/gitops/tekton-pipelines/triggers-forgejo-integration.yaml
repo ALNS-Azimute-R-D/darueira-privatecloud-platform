@@ -188,6 +188,50 @@ spec:
     - apiVersion: tekton.dev/v1beta1
       kind: PipelineRun
       metadata:
+        generateName: "forgejo-ci-bookanything-maps-generator-"
+        namespace: drr-corpshared-mgmt
+        labels:
+          darueira.io/tier: enterprise-shared
+          darueira.io/triggered-by: forgejo-webhook
+          darueira.io/tenant: $(tt.params.owner-name)
+          darueira.io/service: bookanything-maps-generator
+      spec:
+        pipelineRef:
+          name: standard-ci-cd-pipeline
+        podTemplate:
+          nodeSelector:
+            kubernetes.io/hostname: nbalns-mifcom-lnx-01
+        params:
+          - name: git-url
+            value: $(tt.params.git-url)
+          - name: git-revision
+            value: $(tt.params.git-revision)
+          - name: runtime
+            value: "python"
+          - name: source-subpath
+            value: "1-backends/bookanything-maps-generator"
+          - name: image-name
+            value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/$(tt.params.owner-name)/bookanything-maps-generator"
+          - name: image-tag
+            value: "auto"
+          - name: dockerfile-path
+            value: "Dockerfile"
+          - name: tenant-name
+            value: $(tt.params.owner-name)
+          - name: app-name
+            value: $(tt.params.repository-name)
+          - name: target-env
+            value: "dev-green"
+          - name: argocd-app-name
+            value: "$(tt.params.owner-name)-$(tt.params.repository-name)"
+        workspaces:
+          - name: pipeline-workspace
+            persistentVolumeClaim:
+              claimName: tekton-workspace
+            subPath: $(uid)-maps
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:
         generateName: "forgejo-ci-bookanything-frontend-"
         namespace: drr-corpshared-mgmt
         labels:
@@ -228,4 +272,4 @@ spec:
           - name: pipeline-workspace
             persistentVolumeClaim:
               claimName: tekton-workspace
-            subPath: $(uid)
+            subPath: $(uid)-fe

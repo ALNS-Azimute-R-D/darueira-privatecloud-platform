@@ -2,9 +2,18 @@
 """
 ==============================================================================
 Script: scripts/bootstrap_tenant_keycloak_iam.py
-Purpose: Declarative, idempotent bootstrap of Tenant Keycloak (swfabrik-europe),
-         OIDC Clients, Identity Provider Federation with Central Keycloak
-         (darueira-platform-svcs), Role Mappers, and Test Personas.
+Purpose: Declarative, idempotent bootstrap of a Tenant Keycloak realm, Identity
+         Provider Federation with Central Keycloak (darueira-platform-svcs) and
+         Role Mappers. Works for any tenant: pick it with TENANT_NAME
+         (default swfabrik-europe; also swfabrik-latam).
+
+Usage:   TENANT_NAME=swfabrik-latam python3 scripts/bootstrap_tenant_keycloak_iam.py
+         The tenant Keycloak is reached at
+         http://tenant-keycloak.drr-tnt-<TENANT_NAME>-dev.svc.cluster.local:8080
+         (override with TENANT_KEYCLOAK_BASE_URL, e.g. a kubectl port-forward: the tenant
+         network policy only lets pods of the tenant itself reach it).
+Roles:   Role mappers per tenant are listed in TENANT_ROLE_MAPPERS below, or set
+         TENANT_ROLE_MAPPERS_JSON='["ROLE_X","ROLE_Y"]' to override them.
 ==============================================================================
 """
 
@@ -15,9 +24,11 @@ import urllib.request
 import urllib.parse
 import urllib.error
 
+TENANT_NAME = os.environ.get("TENANT_NAME", "swfabrik-europe")
+
 TENANT_KEYCLOAK_BASE_URL = os.environ.get(
     "TENANT_KEYCLOAK_BASE_URL",
-    "http://tenant-keycloak.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8080"
+    f"http://tenant-keycloak.drr-tnt-{TENANT_NAME}-dev.svc.cluster.local:8080"
 )
 TENANT_KEYCLOAK_ADMIN_USER = os.environ.get("TENANT_KEYCLOAK_ADMIN_USER", "admin")
 TENANT_KEYCLOAK_ADMIN_PASS = os.environ.get("TENANT_KEYCLOAK_ADMIN_PASS", "admin123")
@@ -31,8 +42,32 @@ CENTRAL_KEYCLOAK_EXTERNAL = os.environ.get(
     "https://keycloak.darueira-corpshared.127.0.0.1.nip.io"
 )
 
-REALM_NAME = "swfabrik-europe"
-REALM_DISPLAY = "SWFabrik Europe Tenant"
+REALM_NAME = os.environ.get("TENANT_REALM", TENANT_NAME)
+REALM_DISPLAY = os.environ.get(
+    "TENANT_REALM_DISPLAY",
+    {"swfabrik-europe": "SWFabrik Europe Tenant", "swfabrik-latam": "SWFabrik Latam Tenant"}.get(
+        TENANT_NAME, TENANT_NAME.replace("-", " ").title() + " Tenant"
+    ),
+)
+
+# Roles granted to every user that arrives through the Central SSO, per tenant. The europe list is the
+# one this script always had. The latam list is empty on purpose: its applications (app-identity-studio,
+# checkout-service) have no role contract yet, so none is invented here. Set it in this table or with
+# TENANT_ROLE_MAPPERS_JSON when it exists.
+TENANT_ROLE_MAPPERS = {
+    "swfabrik-europe": [
+        "ROLE_FOOD_MARKET_ADMIN",
+        "ROLE_FOOD_MARKET_MANAGER",
+        "ROLE_FOOD_MARKET_USER",
+        "ROLE_LEGALHUB_ADMIN",
+    ],
+    "swfabrik-latam": [],
+}
+ROLE_MAPPERS = (
+    json.loads(os.environ["TENANT_ROLE_MAPPERS_JSON"])
+    if os.environ.get("TENANT_ROLE_MAPPERS_JSON")
+    else TENANT_ROLE_MAPPERS.get(TENANT_NAME, [])
+)
 
 
 class KeycloakAdminClient:
@@ -68,7 +103,9 @@ class KeycloakAdminClient:
                 content = resp.read()
                 return json.loads(content.decode("utf-8")) if content else None
         except urllib.error.HTTPError as e:
-            if e.code == 404:
+            # A missing resource is only an answer for a read. On a write it means the target does not exist
+            # (for instance an absent realm) and must not look like success.
+            if e.code == 404 and method == "GET":
                 return None
             err_body = e.read().decode("utf-8") if e.fp else ""
             print(f"[ERROR] HTTP {e.code} on {method} {url}: {err_body}", file=sys.stderr)
@@ -78,11 +115,28 @@ class KeycloakAdminClient:
 def bootstrap_tenant():
     print("==================================================================")
     print("  Bootstrapping Tenant Keycloak IAM & Central SSO Identity Broker ")
-    print("  Tenant Realm: swfabrik-europe                                  ")
+    print(f"  Tenant Realm: {REALM_NAME}")
     print("  Central Realm: darueira-platform-svcs                          ")
     print("==================================================================")
 
     kc = KeycloakAdminClient(TENANT_KEYCLOAK_BASE_URL, TENANT_KEYCLOAK_ADMIN_USER, TENANT_KEYCLOAK_ADMIN_PASS)
+
+    # 0. The tenant realm itself (a fresh tenant Keycloak only has `master`)
+    print(f"--> 0. Ensuring Realm '{REALM_NAME}' exists...")
+    if kc.request(f"admin/realms/{REALM_NAME}") is None:
+        kc.request("admin/realms", method="POST", data={
+            "realm": REALM_NAME,
+            "displayName": REALM_DISPLAY,
+            "enabled": True,
+            "loginWithEmailAllowed": True,
+            "registrationAllowed": False,
+            "duplicateEmailsAllowed": False,
+        })
+        if kc.request(f"admin/realms/{REALM_NAME}") is None:
+            raise RuntimeError(f"Realm '{REALM_NAME}' was not created")
+        print(f"    [+] Created realm '{REALM_NAME}'")
+    else:
+        print(f"    [=] Realm '{REALM_NAME}' exists")
 
     # 1. Identity Provider Configuration (Central SSO)
     print("--> 1. Configuring Identity Provider 'darueira-central-keycloak'...")
@@ -133,31 +187,19 @@ def bootstrap_tenant():
     existing_mappers = kc.request(f"admin/realms/{REALM_NAME}/identity-provider/instances/{idp_alias}/mappers") or []
     existing_map_names = {m["name"] for m in existing_mappers}
 
-    desired_mappers = [
+    # One hardcoded-role mapper per role of the tenant. Names stay `hardcode-role-<role without ROLE_>`
+    # (ROLE_FOOD_MARKET_ADMIN -> hardcode-role-food-market-admin) so an already configured realm is not duplicated.
+    role_mappers = [
         {
-            "name": "hardcode-role-food-market-admin",
+            "name": "hardcode-role-" + role.removeprefix("ROLE_").lower().replace("_", "-"),
             "identityProviderAlias": idp_alias,
             "identityProviderMapper": "oidc-hardcoded-role-idp-mapper",
-            "config": {"role": "ROLE_FOOD_MARKET_ADMIN", "syncMode": "FORCE"}
-        },
-        {
-            "name": "hardcode-role-food-market-manager",
-            "identityProviderAlias": idp_alias,
-            "identityProviderMapper": "oidc-hardcoded-role-idp-mapper",
-            "config": {"role": "ROLE_FOOD_MARKET_MANAGER", "syncMode": "FORCE"}
-        },
-        {
-            "name": "hardcode-role-food-market-user",
-            "identityProviderAlias": idp_alias,
-            "identityProviderMapper": "oidc-hardcoded-role-idp-mapper",
-            "config": {"role": "ROLE_FOOD_MARKET_USER", "syncMode": "FORCE"}
-        },
-        {
-            "name": "hardcode-role-legalhub-admin",
-            "identityProviderAlias": idp_alias,
-            "identityProviderMapper": "oidc-hardcoded-role-idp-mapper",
-            "config": {"role": "ROLE_LEGALHUB_ADMIN", "syncMode": "FORCE"}
-        },
+            "config": {"role": role, "syncMode": "FORCE"}
+        }
+        for role in ROLE_MAPPERS
+    ]
+
+    desired_mappers = role_mappers + [
         {
             "name": "username-importer",
             "identityProviderAlias": idp_alias,

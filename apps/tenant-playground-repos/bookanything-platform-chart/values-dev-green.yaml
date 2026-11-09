@@ -1,0 +1,12 @@
+# dev-green environment. The Tekton promote task finds each `tag:` through the `promote:` marker above it. Keep both lines.
+env: dev
+
+monolith:
+  image:
+    # promote: bookanything-monolith-backend-01
+    tag: "2026.1108.233134-jvm"
+
+mapsGenerator:
+  image:
+    # promote: bookanything-maps-generator
+    tag: "2026.1108.233135"

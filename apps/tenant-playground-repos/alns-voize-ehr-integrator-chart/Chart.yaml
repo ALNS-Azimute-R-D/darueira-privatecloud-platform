@@ -1,0 +1,7 @@
+apiVersion: v2
+name: alns-voize-ehr-integrator
+description: GitOps Helm chart for the EHR Integrations Hub (Kotlin/Ktor service over the Vivendi SISWeb demo)
+type: application
+version: 1.0.0
+# appVersion follows the promoted image tag (see values-dev-green.yaml); Tekton edits `tag:` there.
+appVersion: "2026.1108.200856"

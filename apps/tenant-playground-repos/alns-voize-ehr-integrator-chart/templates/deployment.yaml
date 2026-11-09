@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "alns-voize-ehr-integrator.name" . }}
+  labels:
+    {{- include "alns-voize-ehr-integrator.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "alns-voize-ehr-integrator.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "alns-voize-ehr-integrator.labels" . | nindent 8 }}
+        darueira.io/egress-internet: "true"   # lets the network policy reach the public Vivendi demo
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.app.port }}
+              protocol: TCP
+          env:
+            - name: SERVER_HOST
+              value: {{ .Values.app.host | quote }}
+            - name: SERVER_PORT
+              value: {{ .Values.app.port | quote }}
+            - name: SERVICE_DOCS_ENABLED
+              value: {{ .Values.app.docsEnabled | quote }}
+            - name: VIVENDI_DEFAULT_AREA_ID
+              value: {{ .Values.app.defaultAreaId | quote }}
+            - name: VIVENDI_PROFILE
+              value: {{ .Values.app.profile | quote }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.path }}
+              port: {{ .Values.app.port }}
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.path }}
+              port: {{ .Values.app.port }}
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}

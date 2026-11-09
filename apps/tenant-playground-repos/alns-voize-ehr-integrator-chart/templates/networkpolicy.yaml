@@ -1,0 +1,25 @@
+{{- if .Values.networkPolicy.enabled }}
+# The tenant baseline (tnt-tenant-base) lets labelled pods leave the cluster on 443 only. The Vivendi SISWeb demo listens
+# on 4482, so this app opens exactly that port, for this app only. Cilium policies are additive: the pod keeps the DNS and
+# in-cluster allows of tenant-isolation-policy. Destination stays `world` like the platform's own egress policy; an FQDN
+# allowlist needs Cilium's DNS proxy, which the platform consciously deferred.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "alns-voize-ehr-integrator.name" . }}-egress-vivendi
+  labels:
+    {{- include "alns-voize-ehr-integrator.labels" . | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      {{- include "alns-voize-ehr-integrator.selectorLabels" . | nindent 6 }}
+  egress:
+    - toEntities:
+        - world
+      toPorts:
+        - ports:
+            {{- range .Values.networkPolicy.egressPorts }}
+            - port: {{ . | quote }}
+              protocol: TCP
+            {{- end }}
+{{- end }}

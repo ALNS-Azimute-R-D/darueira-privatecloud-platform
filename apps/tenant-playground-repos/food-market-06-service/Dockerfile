@@ -1,3 +1,4 @@
+# Built by Tekton from the Forgejo copy of apps/tenant-playground-repos (end-to-end publish test, 2026-11-09)
 # ==============================================================================
 # Build Stage
 # ==============================================================================

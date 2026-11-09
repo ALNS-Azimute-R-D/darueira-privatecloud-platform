@@ -2,7 +2,7 @@
 """
 ==============================================================================
 Script: scripts/publish_food_market_to_forgejo.py
-Purpose: Idempotently publishes the playground projects of tenant swfabrik-europe from this repository
+Purpose: Idempotently publishes the playground projects and charts of tenant swfabrik-europe from this repository
          (apps/tenant-playground-repos/) to the in-cluster Forgejo. GitHub keeps the sources; Forgejo is derived:
            - the source repo `<project>` (build output and IDE files are left out),
            - the chart repo `<project>-chart`. Its `values-dev-green.yaml` is runtime state (Tekton rewrites the image
@@ -37,6 +37,8 @@ PROJECTS = [
     "food-market-01-service", "food-market-02-service", "food-market-03-service",
     "food-market-04-service", "food-market-05-service", "food-market-06-service",
     "app-food-market-00-mfe", "app-food-market-01-react", "app-food-market-02-angular",
+    # chart only: their code lives in its own GitHub repository (scout23DF) and in Forgejo, not under apps/
+    "bookanything-platform", "alns-voize-ehr-integrator",
 ]
 SKIP_DIRS = {"node_modules", "target", "dist", "bin", "obj", ".git", ".idea", "__pycache__", ".gradle"}
 SKIP_SUFFIXES = (".iml",)
@@ -126,9 +128,12 @@ def main():
     for project in wanted:
         print(f"--> {project}")
         for repo, folder in ((f"{project}-chart", os.path.join(ROOT, f"{project}-chart")), (project, os.path.join(ROOT, project))):
+            if not os.path.isdir(folder):
+                print(f"    [-] {repo}: not under apps/tenant-playground-repos, left alone")
+                continue
             ensure_repo(repo)
             sync_repo(repo, folder)
-        if hooks:
+        if hooks and os.path.isdir(os.path.join(ROOT, project)):
             ensure_hook(project)
 
 

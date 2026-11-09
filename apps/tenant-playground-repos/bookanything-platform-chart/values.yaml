@@ -1,0 +1,84 @@
+# Defaults. Image tags are rewritten by the Tekton task `task-gitops-helm-promote` in values-dev-green.yaml.
+tenant: swfabrik-europe
+project: bookanything-platform
+env: dev
+
+# Single-node cluster: pin to the node, as the previous chart did.
+nodeSelector:
+  kubernetes.io/hostname: nbalns-mifcom-lnx-01
+
+registry: nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-europe
+
+# Secrets come from the tenant OpenBao at pod start (init container, AppRole login). The AppRole credentials
+# live in the namespaced Secret named below (created by hand, see README). With `enabled: false` the pods start
+# without GEMINI_API_KEY and without the Keycloak client secret.
+openbao:
+  enabled: true
+  image: hashicorp/vault:1.17.6
+  address: http://tenant-openbao:8200
+  approleSecret: bookanything-openbao-approle
+  geminiPath: secret/bookanything/gemini          # field: api_key
+  keycloakPath: secret/bookanything/keycloak      # field: client_secret
+
+keycloak:
+  realm: swfabrik-europe
+  baseUrl: http://tenant-keycloak.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8080
+  clientId: web_app
+  swaggerClientId: swaggerui-test-app
+  swaggerAuthUrl: http://tenant-keycloak.drr-tnt-swfabrik-europe-dev.svc.cluster.local:8080/realms/swfabrik-europe/protocol/openid-connect/auth
+
+minio:
+  url: http://tenant-minio.drr-tnt-swfabrik-europe-dev.svc.cluster.local:9000
+  # accessKey and secretKey: Secret bookanything-credentials (minio_access_key, minio_secret_key), not in Git
+  bucketImages: bookanything-images
+
+temporal:
+  address: temporal-frontend.drr-corpshared-plat.svc.cluster.local:7233
+  namespace: corporate-core
+
+monolith:
+  name: bookanything-monolith-backend-01
+  image:
+    repository: bookanything-monolith-backend-01
+    pullPolicy: Always
+  port: 8060
+  profile: darueira-k8s
+  javaToolOptions: "-XX:MaxRAMPercentage=55.0 -XX:InitialRAMPercentage=20.0 -XX:+ExitOnOutOfMemoryError"
+  datasource:
+    url: jdbc:postgresql://tenant-postgres.drr-tnt-swfabrik-europe-dev.svc.cluster.local:5432/DBBookAnythingPlatform
+    username: dbabookanythingapps01
+    # password: Secret bookanything-credentials (db_password), not in Git
+  elasticsearchUris: http://opensearch.drr-corpshared-obs.svc.cluster.local:9200
+  kafkaBootstrap: message-broker-kafka.drr-corpshared-plat.svc.cluster.local:9092
+  resources:
+    requests: {cpu: 100m, memory: 768Mi}
+    limits: {cpu: 1500m, memory: 2Gi}
+
+mapsGenerator:
+  name: bookanything-maps-generator
+  image:
+    repository: bookanything-maps-generator
+    pullPolicy: Always
+  port: 8000
+  taskQueue: MAPS_GENERATOR_TASK_QUEUE
+  workerEnabled: "true"
+  resources:
+    requests: {cpu: 200m, memory: 512Mi}
+    limits: {cpu: 2000m, memory: 2Gi}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault

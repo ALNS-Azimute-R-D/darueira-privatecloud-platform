@@ -1,0 +1,5 @@
+# dev-green environment. Do not reformat the `tag:` line: the Tekton promote task rewrites it with sed.
+env: dev
+
+image:
+  tag: "2026.1108.202337"

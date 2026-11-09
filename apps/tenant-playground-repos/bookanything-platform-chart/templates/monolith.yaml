@@ -1,0 +1,98 @@
+{{- $m := .Values.monolith }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $m.name }}
+  labels:
+    app.kubernetes.io/name: {{ $m.name }}
+    app.kubernetes.io/component: backend-api
+    {{- include "bookanything.labels" (dict "root" .) | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $m.name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      darueira.io/tenant: {{ .Values.tenant }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $m.name }}
+        app.kubernetes.io/component: backend-api
+        {{- include "bookanything.labels" (dict "root" .) | nindent 8 }}
+        darueira.io/egress-internet: "true"   # Gemini, flagcdn, restcountries (443)
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      {{- if .Values.openbao.enabled }}
+      initContainers:
+        {{- include "bookanything.openbaoInit" . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: backend
+          image: "{{ .Values.registry }}/{{ $m.image.repository }}:{{ $m.image.tag }}"
+          imagePullPolicy: {{ $m.image.pullPolicy }}
+          {{- if .Values.openbao.enabled }}
+          command: ["sh", "-c", ". /secrets/env && exec java $JAVA_OPTS -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE} -jar /app/app.jar"]
+          {{- end }}
+          ports:
+            - {name: http, containerPort: {{ $m.port }}}
+          env:
+            - {name: JAVA_TOOL_OPTIONS, value: {{ $m.javaToolOptions | quote }}}
+            - {name: SPRING_PROFILES_ACTIVE, value: {{ $m.profile | quote }}}
+            - {name: SERVER_PORT, value: {{ $m.port | quote }}}
+            - {name: SPRING_DATASOURCE_URL, value: {{ $m.datasource.url | quote }}}
+            - {name: SPRING_DATASOURCE_USERNAME, value: {{ $m.datasource.username | quote }}}
+            - {name: SPRING_DATASOURCE_PASSWORD, valueFrom: {secretKeyRef: {name: bookanything-credentials, key: db_password}}}
+            - {name: SPRING_ELASTICSEARCH_URIS, value: {{ $m.elasticsearchUris | quote }}}
+            - {name: SPRING_KAFKA_BOOTSTRAP_SERVERS, value: {{ $m.kafkaBootstrap | quote }}}
+            - {name: KEYCLOAK_REALM, value: {{ .Values.keycloak.realm | quote }}}
+            - {name: KEYCLOAK_CLIENT_ID, value: {{ .Values.keycloak.clientId | quote }}}
+            - {name: KEYCLOAK_ISSUER_URI, value: "{{ .Values.keycloak.baseUrl }}/realms/{{ .Values.keycloak.realm }}"}
+            - {name: KEYCLOAK_JWK_SET_URI, value: "{{ .Values.keycloak.baseUrl }}/realms/{{ .Values.keycloak.realm }}/protocol/openid-connect/certs"}
+            - {name: SWAGGER_OAUTH_CLIENT_ID, value: {{ .Values.keycloak.swaggerClientId | quote }}}
+            - {name: SWAGGER_OAUTH_AUTH_URL, value: {{ .Values.keycloak.swaggerAuthUrl | quote }}}
+            - {name: MINIO_URL, value: {{ .Values.minio.url | quote }}}
+            - {name: MINIO_ACCESS_KEY, valueFrom: {secretKeyRef: {name: bookanything-credentials, key: minio_access_key}}}
+            - {name: MINIO_SECRET_KEY, valueFrom: {secretKeyRef: {name: bookanything-credentials, key: minio_secret_key}}}
+            - {name: TEMPORAL_SERVICE_ADDRESS, value: {{ .Values.temporal.address | quote }}}
+            - {name: TEMPORAL_NAMESPACE, value: {{ .Values.temporal.namespace | quote }}}
+          startupProbe:
+            tcpSocket: {port: {{ $m.port }}}
+            periodSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            tcpSocket: {port: {{ $m.port }}}
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket: {port: {{ $m.port }}}
+            periodSeconds: 5
+          resources:
+            {{- toYaml $m.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          volumeMounts:
+            - {name: secrets, mountPath: /secrets, readOnly: true}
+      volumes:
+        - {name: secrets, emptyDir: {medium: Memory}}
+        - {name: tmp, emptyDir: {}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $m.name }}
+  labels:
+    app.kubernetes.io/name: {{ $m.name }}
+    {{- include "bookanything.labels" (dict "root" .) | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - {name: http, port: {{ $m.port }}, targetPort: {{ $m.port }}}
+  selector:
+    app.kubernetes.io/name: {{ $m.name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    darueira.io/tenant: {{ .Values.tenant }}

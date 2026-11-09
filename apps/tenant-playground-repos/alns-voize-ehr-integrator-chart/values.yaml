@@ -1,0 +1,69 @@
+# Defaults. Environment-specific values live in values-<env>.yaml (the ArgoCD Application lists both).
+# The image `tag:` is rewritten by the Tekton task `task-gitops-helm-promote` in values-dev-green.yaml.
+tenant: swfabrik-europe
+project: ehr-integrations
+env: dev
+
+replicaCount: 1
+
+image:
+  repository: nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-europe/alns-voize-ehr-integrator
+  tag: "0.0.0-bootstrap"
+  pullPolicy: Always
+
+# Application configuration (environment variables of the service; see README of the app).
+app:
+  port: 8080
+  host: "0.0.0.0"          # inside the container; the service itself defaults to 127.0.0.1
+  profile: demo            # `demo` calls the public Vivendi SISWeb demo, `local` expects a WireMock
+  defaultAreaId: "94"
+  docsEnabled: "true"
+
+service:
+  type: ClusterIP
+  port: 8080
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Pod Security "restricted": non-root, no privilege escalation, no capabilities.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+probes:
+  path: /healthz
+  liveness:
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  readiness:
+    initialDelaySeconds: 10
+    periodSeconds: 5
+
+# Extra egress for this app only (see templates/networkpolicy.yaml). 4482 = Vivendi SISWeb demo.
+networkPolicy:
+  enabled: true
+  egressPorts:
+    - "4482"
+
+# Single-node cluster: pin to the node, as the previous chart did.
+nodeSelector:
+  kubernetes.io/hostname: nbalns-mifcom-lnx-01

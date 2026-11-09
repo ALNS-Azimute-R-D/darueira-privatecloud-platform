@@ -10,7 +10,10 @@ Purpose: Idempotent re-wiring of "sign in with the central Keycloak" on the serv
                        updated when it already exists.
          2. jsreport : it only accepts a Keycloak login for a user that already exists in its own store with
                        the same `preferred_username`. The users in JSREPORT_USERS are created (admin) when missing.
-         3. MinIO    : when the log shows it gave up on OpenID at start-up (DNS not ready yet, so the
+         3. Backstage: the Keycloak client `backstage-portal` (runs scripts/bootstrap_backstage_iam.py inside the
+                       authentik-server pod, like `make bootstrap-backstage`). Its login also needs the config order
+                       set in platform/kustomize/base/corpshared-mgmt/backstage.yaml.
+         4. MinIO    : when the log shows it gave up on OpenID at start-up (DNS not ready yet, so the
                        "Keycloak Central IAM" button is missing), the deployment is restarted.
 
          Not automated on purpose: Grafana answers `user already exists` when a stale user holds the same
@@ -130,8 +133,18 @@ def jsreport():
         print(f"    [{'=' if out == 'exists' else '+'}] {user}: {out}")
 
 
+def backstage():
+    print("--> 3. Backstage Keycloak client 'backstage-portal'")
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "bootstrap_backstage_iam.py")) as f:
+        res = subprocess.run([*KUBECTL, "-n", NS, "exec", "-i", "deploy/authentik-server", "-c", "server", "--", "python3"],
+                             stdin=f, capture_output=True, text=True)
+    if res.returncode != 0:
+        sys.exit(f"[ERROR] bootstrap_backstage_iam.py failed: {res.stderr.strip()[-300:]}")
+    print("    [✓] client ensured")
+
+
 def minio():
-    print("--> 3. MinIO OpenID start-up")
+    print("--> 4. MinIO OpenID start-up")
     log = kube("logs", "deploy/central-minio", "-c", "minio", "--tail=60", check=False).stdout
     if "Unable to initialize OpenID" in log:
         kube("rollout", "restart", "deploy/central-minio")
@@ -162,6 +175,7 @@ def main():
             return
         forgejo(token)
     jsreport()
+    backstage()
     minio()
     print("Done. Grafana: if it answers `user already exists`, delete the stale user (see the header).")
 

@@ -874,6 +874,17 @@ spec:
         - name: backstage
           image: quay.io/janus-idp/backstage-showcase:1.1.0
           imagePullPolicy: IfNotPresent
+          # The image's example configs set app.baseUrl=localhost and auth.environment=development; the last
+          # --config wins, so ours (mounted over app-config.yaml) must come last.
+          command:
+            - node
+            - packages/backend
+            - --config
+            - app-config.example.yaml
+            - --config
+            - app-config.example.production.yaml
+            - --config
+            - app-config.yaml
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false

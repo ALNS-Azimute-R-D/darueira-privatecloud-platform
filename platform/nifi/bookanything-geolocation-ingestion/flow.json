@@ -1,0 +1,283 @@
+{
+  "_comment": "BookAnything - GeoLocation Ingestion Pipeline (rebuilt 2026-11-09 after the NiFi state was lost; steps 3-7 reconstructed from the backend contract, step 8 is the original script). Apply with scripts/apply_nifi_cleanup_flow.py --flow bookanything-geolocation-ingestion. {{...}} placeholders are resolved at apply time and never stored here.",
+  "processGroup": "BookAnything - GeoLocation Ingestion Pipeline",
+  "position": {
+    "x": 0,
+    "y": 0
+  },
+  "processors": [
+    {
+      "name": "1. Consume Import Request",
+      "type": "org.apache.nifi.processors.kafka.pubsub.ConsumeKafka_2_6",
+      "bundle": "nifi-kafka-2-6-nar",
+      "properties": {
+        "bootstrap.servers": "message-broker-kafka.drr-corpshared-plat.svc.cluster.local:9092",
+        "topic": "geolocation.nifi-import.requested",
+        "topic_type": "names",
+        "group.id": "nifi-geolocation-import-consumer",
+        "auto.offset.reset": "latest",
+        "security.protocol": "PLAINTEXT"
+      },
+      "autoTerminate": [],
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "name": "2. Extract Import Attributes",
+      "type": "org.apache.nifi.processors.standard.EvaluateJsonPath",
+      "bundle": "nifi-standard-nar",
+      "properties": {
+        "Destination": "flowfile-attribute",
+        "Return Type": "auto-detect",
+        "Path Not Found Behavior": "ignore",
+        "Null Value Representation": "empty string",
+        "jobId": "$.jobId",
+        "countrySlug": "$.countrySlug",
+        "locationLevel": "$.locationLevel",
+        "shouldConvertToXML": "$.shouldConvertToXML"
+      },
+      "autoTerminate": [
+        "failure",
+        "unmatched"
+      ],
+      "position": {
+        "x": 450,
+        "y": 0
+      }
+    },
+    {
+      "name": "3. Download GADM GeoJSON",
+      "type": "org.apache.nifi.processors.standard.InvokeHTTP",
+      "bundle": "nifi-standard-nar",
+      "properties": {
+        "HTTP Method": "GET",
+        "Remote URL": "https://geodata.ucdavis.edu/gadm/gadm4.1/json/gadm41_${countrySlug}_${locationLevel}.json",
+        "Connection Timeout": "15 secs",
+        "Read Timeout": "5 mins",
+        "Follow Redirects": "True"
+      },
+      "autoTerminate": [
+        "Original"
+      ],
+      "position": {
+        "x": 900,
+        "y": 0
+      }
+    },
+    {
+      "name": "3b. Mark Download Failure",
+      "type": "org.apache.nifi.processors.attributes.UpdateAttribute",
+      "bundle": "nifi-update-attribute-nar",
+      "properties": {
+        "upstream.error": "Download of gadm41_${countrySlug}_${locationLevel}.json failed (HTTP ${invokehttp.status.code:replaceEmpty('no response')}); check the ISO3 code and the level"
+      },
+      "autoTerminate": [],
+      "position": {
+        "x": 900,
+        "y": 300
+      }
+    },
+    {
+      "name": "4. Store Raw GeoJSON",
+      "type": "org.apache.nifi.processors.aws.s3.PutS3Object",
+      "bundle": "nifi-aws-nar",
+      "properties": {
+        "Bucket": "darueira-geodata",
+        "Access Key": "{{CENTRAL_MINIO_ACCESS_KEY}}",
+        "Secret Key": "{{CENTRAL_MINIO_SECRET_KEY}}",
+        "Region": "us-west-2",
+        "Endpoint Override URL": "http://central-minio.drr-corpshared-plat.svc.cluster.local:9000",
+        "Signer Override": "AWSS3V4SignerType",
+        "Communications Timeout": "60 secs",
+        "use-path-style-access": "true",
+        "Object Key": "raw/gadm41_${countrySlug}_${locationLevel}.json"
+      },
+      "autoTerminate": [],
+      "position": {
+        "x": 1350,
+        "y": 0
+      }
+    },
+    {
+      "name": "4b. Mark Raw Store Failure",
+      "type": "org.apache.nifi.processors.attributes.UpdateAttribute",
+      "bundle": "nifi-update-attribute-nar",
+      "properties": {
+        "upstream.error": "Storing raw/gadm41_${countrySlug}_${locationLevel}.json in MinIO failed: ${s3.exception:replaceEmpty('unknown error')}"
+      },
+      "autoTerminate": [],
+      "position": {
+        "x": 1350,
+        "y": 300
+      }
+    },
+    {
+      "name": "5. Route on shouldConvertToXML",
+      "type": "org.apache.nifi.processors.standard.RouteOnAttribute",
+      "bundle": "nifi-standard-nar",
+      "properties": {
+        "Routing Strategy": "Route to Property name",
+        "convert_xml": "${shouldConvertToXML:toLower():equals('true')}"
+      },
+      "autoTerminate": [
+        "unmatched"
+      ],
+      "position": {
+        "x": 1800,
+        "y": -300
+      }
+    },
+    {
+      "name": "6. Convert GeoJSON to XML",
+      "type": "org.apache.nifi.processors.script.ExecuteScript",
+      "bundle": "nifi-scripting-nar",
+      "properties": {
+        "Script Engine": "Groovy",
+        "Script Body": "@file:06-convert-geojson-to-xml.groovy"
+      },
+      "autoTerminate": [
+        "failure"
+      ],
+      "position": {
+        "x": 2250,
+        "y": -300
+      }
+    },
+    {
+      "name": "7. Store XML",
+      "type": "org.apache.nifi.processors.aws.s3.PutS3Object",
+      "bundle": "nifi-aws-nar",
+      "properties": {
+        "Bucket": "darueira-geodata",
+        "Access Key": "{{CENTRAL_MINIO_ACCESS_KEY}}",
+        "Secret Key": "{{CENTRAL_MINIO_SECRET_KEY}}",
+        "Region": "us-west-2",
+        "Endpoint Override URL": "http://central-minio.drr-corpshared-plat.svc.cluster.local:9000",
+        "Signer Override": "AWSS3V4SignerType",
+        "Communications Timeout": "60 secs",
+        "use-path-style-access": "true",
+        "Object Key": "xml/gadm41_${countrySlug}_${locationLevel}.xml"
+      },
+      "autoTerminate": [
+        "success",
+        "failure"
+      ],
+      "position": {
+        "x": 2700,
+        "y": -300
+      }
+    },
+    {
+      "name": "8. Ingest Backend & Summarize",
+      "type": "org.apache.nifi.processors.script.ExecuteScript",
+      "bundle": "nifi-scripting-nar",
+      "properties": {
+        "Script Engine": "Groovy",
+        "Script Body": "@file:08-ingest-backend-and-summarize.groovy"
+      },
+      "autoTerminate": [
+        "failure"
+      ],
+      "position": {
+        "x": 1800,
+        "y": 0
+      }
+    },
+    {
+      "name": "9. Publish Import Event",
+      "type": "org.apache.nifi.processors.kafka.pubsub.PublishKafka_2_6",
+      "bundle": "nifi-kafka-2-6-nar",
+      "properties": {
+        "bootstrap.servers": "message-broker-kafka.drr-corpshared-plat.svc.cluster.local:9092",
+        "topic": "geolocation.nifi-import.completed",
+        "use-transactions": "false",
+        "Failure Strategy": "Route to Failure",
+        "acks": "all",
+        "security.protocol": "PLAINTEXT",
+        "key-attribute-encoding": "utf-8"
+      },
+      "autoTerminate": [
+        "success",
+        "failure"
+      ],
+      "position": {
+        "x": 2250,
+        "y": 0
+      }
+    }
+  ],
+  "connections": [
+    {
+      "from": "1. Consume Import Request",
+      "relationship": "success",
+      "to": "2. Extract Import Attributes"
+    },
+    {
+      "from": "2. Extract Import Attributes",
+      "relationship": "matched",
+      "to": "3. Download GADM GeoJSON"
+    },
+    {
+      "from": "3. Download GADM GeoJSON",
+      "relationship": "Response",
+      "to": "4. Store Raw GeoJSON"
+    },
+    {
+      "from": "3. Download GADM GeoJSON",
+      "relationship": "Failure",
+      "to": "3b. Mark Download Failure"
+    },
+    {
+      "from": "3. Download GADM GeoJSON",
+      "relationship": "Retry",
+      "to": "3b. Mark Download Failure"
+    },
+    {
+      "from": "3. Download GADM GeoJSON",
+      "relationship": "No Retry",
+      "to": "3b. Mark Download Failure"
+    },
+    {
+      "from": "3b. Mark Download Failure",
+      "relationship": "success",
+      "to": "8. Ingest Backend & Summarize"
+    },
+    {
+      "from": "4. Store Raw GeoJSON",
+      "relationship": "success",
+      "to": "8. Ingest Backend & Summarize"
+    },
+    {
+      "from": "4. Store Raw GeoJSON",
+      "relationship": "success",
+      "to": "5. Route on shouldConvertToXML"
+    },
+    {
+      "from": "4. Store Raw GeoJSON",
+      "relationship": "failure",
+      "to": "4b. Mark Raw Store Failure"
+    },
+    {
+      "from": "4b. Mark Raw Store Failure",
+      "relationship": "success",
+      "to": "8. Ingest Backend & Summarize"
+    },
+    {
+      "from": "5. Route on shouldConvertToXML",
+      "relationship": "convert_xml",
+      "to": "6. Convert GeoJSON to XML"
+    },
+    {
+      "from": "6. Convert GeoJSON to XML",
+      "relationship": "success",
+      "to": "7. Store XML"
+    },
+    {
+      "from": "8. Ingest Backend & Summarize",
+      "relationship": "success",
+      "to": "9. Publish Import Event"
+    }
+  ]
+}

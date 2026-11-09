@@ -9,7 +9,7 @@ Idempotent:
   --apply   creates the missing group, processors and connections, updates the ones that drifted
             (stop -> update -> start) and starts everything
 
-It only ever touches the cleanup process group; the import pipeline is never modified.
+It only ever touches the process group named in the chosen flow.json (--flow <folder under platform/nifi>).
 
 Auth: mTLS with the node keystore from inside the apache-nifi pod (same as scripts/apply_nifi_script_body.py).
 Secrets: `{{CENTRAL_MINIO_ACCESS_KEY}}` / `{{CENTRAL_MINIO_SECRET_KEY}}` in flow.json are resolved from the
@@ -122,7 +122,12 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--check", action="store_true", help="only report the differences (the default)")
     ap.add_argument("--apply", action="store_true", help="make the changes")
+    ap.add_argument("--flow", default="bookanything-geolocation-cleanup",
+                    help="folder under platform/nifi/ holding flow.json (default: bookanything-geolocation-cleanup; "
+                         "the import pipeline is bookanything-geolocation-ingestion)")
     args = ap.parse_args()
+    global FLOW_DIR
+    FLOW_DIR = FLOW_DIR.parent / args.flow
     if args.check and args.apply:
         sys.exit("ERROR: use either --check or --apply")
     spec = json.loads((FLOW_DIR / "flow.json").read_text())

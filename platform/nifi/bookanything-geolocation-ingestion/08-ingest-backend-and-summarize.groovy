@@ -237,6 +237,15 @@ def emitSummary = { Map summary ->
     session.transfer(flowFile, REL_SUCCESS)
 }
 
+// An upstream step (download, raw storage) already failed: answer the workflow right away with that message
+// instead of parsing a body that is not GeoJSON.
+def upstreamError = flowFile.getAttribute('upstream.error')
+if (upstreamError) {
+    log.error("${logPrefix} upstream failure: ${upstreamError}")
+    emitSummary(buildSummary(upstreamError))
+    return
+}
+
 try {
     def json = null
     session.read(flowFile, { inputStream ->

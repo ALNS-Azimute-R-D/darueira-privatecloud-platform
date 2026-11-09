@@ -649,3 +649,11 @@ link-playground: ## Link apps/tenant-playground-repos/* into workspace/platf-biz
 .PHONY: publish-playground
 publish-playground: ## Publish apps/tenant-playground-repos to the in-cluster Forgejo (needs port-forward svc/forgejo-git 3000:3000)
 	@python3 scripts/publish_food_market_to_forgejo.py --hooks
+
+.PHONY: check-nifi-ingestion-flow
+check-nifi-ingestion-flow: ## Diff the versioned NiFi import flow (flow.json) against the live flow
+	@python3 scripts/apply_nifi_cleanup_flow.py --check --flow bookanything-geolocation-ingestion
+
+.PHONY: apply-nifi-ingestion-flow
+apply-nifi-ingestion-flow: ## Create/update the NiFi import flow from flow.json (mutating: one agent at a time)
+	@python3 scripts/apply_nifi_cleanup_flow.py --apply --flow bookanything-geolocation-ingestion

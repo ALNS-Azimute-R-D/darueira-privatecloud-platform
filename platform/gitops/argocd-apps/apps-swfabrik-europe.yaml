@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: swfabrik-europe-app-host-mfe
+  name: swfabrik-europe-app-food-market-00-mfe
   namespace: drr-corpshared-mgmt
   labels:
     darueira.io/tenant: swfabrik-europe
@@ -28,7 +28,7 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: swfabrik-europe-app-react-01
+  name: swfabrik-europe-app-food-market-01-react
   namespace: drr-corpshared-mgmt
   labels:
     darueira.io/tenant: swfabrik-europe
@@ -55,7 +55,7 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: swfabrik-europe-app-angular-02
+  name: swfabrik-europe-app-food-market-02-angular
   namespace: drr-corpshared-mgmt
   labels:
     darueira.io/tenant: swfabrik-europe
@@ -82,7 +82,7 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: swfabrik-europe-food-market-01
+  name: swfabrik-europe-food-market-01-service
   namespace: drr-corpshared-mgmt
   labels:
     darueira.io/tenant: swfabrik-europe
@@ -109,7 +109,7 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: swfabrik-europe-food-market-02
+  name: swfabrik-europe-food-market-02-service
   namespace: drr-corpshared-mgmt
   labels:
     darueira.io/tenant: swfabrik-europe
@@ -136,7 +136,7 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: swfabrik-europe-food-market-03
+  name: swfabrik-europe-food-market-03-service
   namespace: drr-corpshared-mgmt
   labels:
     darueira.io/tenant: swfabrik-europe
@@ -163,7 +163,7 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: swfabrik-europe-food-market-04
+  name: swfabrik-europe-food-market-04-service
   namespace: drr-corpshared-mgmt
   labels:
     darueira.io/tenant: swfabrik-europe
@@ -190,7 +190,7 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: swfabrik-europe-food-market-05
+  name: swfabrik-europe-food-market-05-service
   namespace: drr-corpshared-mgmt
   labels:
     darueira.io/tenant: swfabrik-europe
@@ -217,7 +217,7 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: swfabrik-europe-food-market-06
+  name: swfabrik-europe-food-market-06-service
   namespace: drr-corpshared-mgmt
   labels:
     darueira.io/tenant: swfabrik-europe

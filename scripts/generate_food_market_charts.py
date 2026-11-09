@@ -9,6 +9,8 @@ Purpose: Generates one Helm chart per food-market project (6 services + 3 front-
            - literal credentials become $(DB_USER)/$(DB_PASSWORD)/$(MQ_USER)/$(MQ_PASSWORD), read from the secrets
              `food-market-db` and `food-market-mq` that scripts/bootstrap_food_market_data.py creates,
            - ports, probes, resources and the rest of the environment are kept.
+Note:    the source `k8s/deployment.yaml` folders were removed once the charts were published; the charts now live in
+         Forgejo and in GitHub (see tenants/). Keep this script only as the generator for new food-market projects.
 Usage:   python3 scripts/generate_food_market_charts.py
 ==============================================================================
 """

@@ -657,3 +657,11 @@ check-nifi-ingestion-flow: ## Diff the versioned NiFi import flow (flow.json) ag
 .PHONY: apply-nifi-ingestion-flow
 apply-nifi-ingestion-flow: ## Create/update the NiFi import flow from flow.json (mutating: one agent at a time)
 	@python3 scripts/apply_nifi_cleanup_flow.py --apply --flow bookanything-geolocation-ingestion
+
+.PHONY: bootstrap-nifi-access
+bootstrap-nifi-access: ## Re-grant NiFi access (node certificate + OIDC admin) after its security files were lost; restarts NiFi
+	@python3 scripts/bootstrap_nifi_access.py
+
+.PHONY: bootstrap-jsreport-templates
+bootstrap-jsreport-templates: ## Load the BookAnything jsreport templates (platform/jsreport/templates) into jsreport
+	@python3 scripts/bootstrap_jsreport_templates.py

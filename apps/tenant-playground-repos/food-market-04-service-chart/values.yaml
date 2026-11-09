@@ -1,0 +1,57 @@
+# Defaults. The image `tag:` is rewritten in values-dev-green.yaml by the Tekton task
+# `task-gitops-helm-promote`; credentials come from secrets, never from this file.
+name: food-market-04-service
+tenant: swfabrik-europe
+env_name: dev
+replicaCount: 1
+runAsUser: 10001
+image:
+  repository: nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-europe/food-market-04-service
+  tag: 0.0.0-bootstrap
+  pullPolicy: IfNotPresent
+containerPort: 8084
+service:
+  port: 8084
+useDatabase: true
+env:
+- name: PORT
+  value: '8084'
+- name: DATABASE_URL
+  value: postgres://$(DB_USER):$(DB_PASSWORD)@tenant-postgres.drr-tnt-swfabrik-europe-dev.svc.cluster.local:5432/drr_tnt_bizapps_db?sslmode=disable
+- name: RABBITMQ_HOST
+  value: message-broker-rabbitmq.drr-corpshared-plat.svc.cluster.local
+- name: RABBITMQ_PORT
+  value: '5672'
+- name: RABBITMQ_USER
+  value: $(MQ_USER)
+- name: RABBITMQ_PASS
+  value: $(MQ_PASSWORD)
+- name: RABBITMQ_VHOST
+  value: /
+- name: APP_MARKET_ID
+  value: MKT-EU-04-PYTHON
+- name: APP_RABBITMQ_TOPIC
+  value: marketplace.foodtrading.topic
+- name: APP_RABBITMQ_QUEUE
+  value: marketplace.foodtrading.queue04
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8084
+  initialDelaySeconds: 5
+  periodSeconds: 10
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 8084
+  initialDelaySeconds: 2
+  periodSeconds: 5
+nodeSelector:
+  kubernetes.io/hostname: nbalns-mifcom-lnx-01

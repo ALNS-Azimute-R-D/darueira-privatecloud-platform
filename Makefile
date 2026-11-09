@@ -634,3 +634,18 @@ clean: ## Clean build artifacts and temporary files
 	@find . -type d -name "build" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name "dist" -exec rm -rf {} + 2>/dev/null || true
 	@echo -e "${GREEN}==> Workspace clean.${NC}"
+
+PLAYGROUND_SRC := apps/tenant-playground-repos
+PLAYGROUND_LINKS := workspace/platf-bizz-apps/swfabrik-europe
+
+.PHONY: link-playground
+link-playground: ## Link apps/tenant-playground-repos/* into workspace/platf-bizz-apps/swfabrik-europe (links are local, not versioned)
+	@mkdir -p $(PLAYGROUND_LINKS)
+	@for d in $(PLAYGROUND_SRC)/*/; do n=$$(basename $$d); t=$(PLAYGROUND_LINKS)/$$n; \
+	  if [ -L $$t ]; then echo "  [=] $$n"; \
+	  elif [ -e $$t ]; then echo -e "${YELLOW}  [!] $$t exists and is not a link; move it away first${NC}"; \
+	  else ln -s ../../../$(PLAYGROUND_SRC)/$$n $$t && echo "  [+] $$n"; fi; done
+
+.PHONY: publish-playground
+publish-playground: ## Publish apps/tenant-playground-repos to the in-cluster Forgejo (needs port-forward svc/forgejo-git 3000:3000)
+	@python3 scripts/publish_food_market_to_forgejo.py --hooks

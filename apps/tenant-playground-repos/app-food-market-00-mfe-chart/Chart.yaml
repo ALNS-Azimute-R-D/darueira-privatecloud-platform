@@ -1,0 +1,6 @@
+apiVersion: v2
+name: app-food-market-00-mfe
+description: Helm chart of app-food-market-00-mfe (tenant swfabrik-europe, food-market marketplace)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

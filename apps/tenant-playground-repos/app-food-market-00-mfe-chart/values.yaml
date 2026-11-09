@@ -1,0 +1,37 @@
+# Defaults. The image `tag:` is rewritten in values-dev-green.yaml by the Tekton task
+# `task-gitops-helm-promote`; credentials come from secrets, never from this file.
+name: app-food-market-00-mfe
+tenant: swfabrik-europe
+env_name: dev
+replicaCount: 1
+runAsUser: 101
+image:
+  repository: nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-europe/app-food-market-00-mfe
+  tag: 0.0.0-bootstrap
+  pullPolicy: IfNotPresent
+containerPort: 8080
+service:
+  port: 80
+useDatabase: false
+env: []
+resources:
+  requests:
+    cpu: 20m
+    memory: 32Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+livenessProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 10
+readinessProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 2
+  periodSeconds: 5
+nodeSelector:
+  kubernetes.io/hostname: nbalns-mifcom-lnx-01

@@ -1,0 +1,69 @@
+# Defaults. The image `tag:` is rewritten in values-dev-green.yaml by the Tekton task
+# `task-gitops-helm-promote`; credentials come from secrets, never from this file.
+name: food-market-01-service
+tenant: swfabrik-europe
+env_name: dev
+replicaCount: 1
+runAsUser: 10001
+image:
+  repository: nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-europe/food-market-01-service
+  tag: 0.0.0-bootstrap
+  pullPolicy: IfNotPresent
+containerPort: 8081
+service:
+  port: 8081
+useDatabase: true
+env:
+- name: SERVER_PORT
+  value: '8081'
+- name: SPRING_DATASOURCE_URL
+  value: jdbc:postgresql://tenant-postgres.drr-tnt-swfabrik-europe-dev.svc.cluster.local:5432/drr_tnt_bizapps_db?currentSchema=schm01
+- name: SPRING_DATASOURCE_USERNAME
+  value: $(DB_USER)
+- name: SPRING_DATASOURCE_PASSWORD
+  value: $(DB_PASSWORD)
+- name: SPRING_RABBITMQ_HOST
+  value: message-broker-rabbitmq.drr-corpshared-plat.svc.cluster.local
+- name: SPRING_RABBITMQ_PORT
+  value: '5672'
+- name: SPRING_RABBITMQ_USERNAME
+  value: $(MQ_USER)
+- name: SPRING_RABBITMQ_PASSWORD
+  value: $(MQ_PASSWORD)
+- name: SPRING_RABBITMQ_VHOST
+  value: /
+- name: APP_MARKET_ID
+  value: MKT-EU-01-SPRING
+- name: APP_RABBITMQ_TOPIC
+  value: marketplace.foodtrading.topic
+- name: APP_RABBITMQ_QUEUE
+  value: marketplace.foodtrading.queue01
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 768Mi
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8081
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8081
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+nodeSelector:
+  kubernetes.io/hostname: nbalns-mifcom-lnx-01
+startupProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8081
+  periodSeconds: 2
+  failureThreshold: 60

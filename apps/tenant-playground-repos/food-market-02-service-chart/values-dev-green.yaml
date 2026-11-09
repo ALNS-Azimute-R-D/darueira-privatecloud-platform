@@ -1,0 +1,3 @@
+# Rewritten by Tekton (task-gitops-helm-promote) after each successful build.
+image:
+  tag: "0.0.0-bootstrap"

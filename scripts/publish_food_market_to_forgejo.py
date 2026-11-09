@@ -2,11 +2,15 @@
 """
 ==============================================================================
 Script: scripts/publish_food_market_to_forgejo.py
-Purpose: Idempotently publishes the food-market projects of tenant swfabrik-europe to the in-cluster Forgejo:
-           - the source repo `<project>` (the legacy `k8s/` folder and IDE files are left out: the chart replaces them),
-           - the chart repo `<project>-chart` (made by scripts/generate_food_market_charts.py),
+Purpose: Idempotently publishes the playground projects of tenant swfabrik-europe from this repository
+         (apps/tenant-playground-repos/) to the in-cluster Forgejo. GitHub keeps the sources; Forgejo is derived:
+           - the source repo `<project>` (build output and IDE files are left out),
+           - the chart repo `<project>-chart`. Its `values-dev-green.yaml` is runtime state (Tekton rewrites the image
+             tag after each build), so a copy already in Forgejo is kept and never overwritten; it is only seeded
+             when missing,
            - with --hooks, the push webhook to the Tekton EventListener (this is what starts the CI/CD build).
-         A repo that already exists is updated with one commit, only when its content changed.
+         A repo that already exists is updated with one commit, only when its content changed. Do not commit to these
+         Forgejo repos by hand: the next run overwrites it. Edit under apps/tenant-playground-repos/ and publish.
 Usage:   kubectl -n drr-corpshared-plat port-forward svc/forgejo-git 3000:3000 &
          python3 scripts/publish_food_market_to_forgejo.py [--hooks] [project ...]
 Env:     FORGEJO_URL (http://127.0.0.1:3000), FORGEJO_USER (drradmin), FORGEJO_PASS, FORGEJO_ORG (swfabrik-europe)
@@ -27,15 +31,16 @@ BASE = os.environ.get("FORGEJO_URL", "http://127.0.0.1:3000").rstrip("/")
 USER = os.environ.get("FORGEJO_USER", "drradmin")
 PASS = os.environ.get("FORGEJO_PASS", "darueira-admin123")
 ORG = os.environ.get("FORGEJO_ORG", "swfabrik-europe")
-ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "workspace", "platf-bizz-apps", "swfabrik-europe")
+ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "apps", "tenant-playground-repos")
 HOOK_URL = "http://el-forgejo-webhook-listener.drr-corpshared-mgmt.svc.cluster.local:8080"
 PROJECTS = [
     "food-market-01-service", "food-market-02-service", "food-market-03-service",
     "food-market-04-service", "food-market-05-service", "food-market-06-service",
     "app-food-market-00-mfe", "app-food-market-01-react", "app-food-market-02-angular",
 ]
-SKIP_DIRS = {"k8s", "node_modules", "target", "dist", "bin", "obj", ".git", ".idea", "__pycache__", ".gradle"}
+SKIP_DIRS = {"node_modules", "target", "dist", "bin", "obj", ".git", ".idea", "__pycache__", ".gradle"}
 SKIP_SUFFIXES = (".iml",)
+RUNTIME_STATE = "values-dev-green.yaml"
 
 
 def api(path, method="GET", data=None):
@@ -73,6 +78,9 @@ def sync_repo(name, src_dir):
             os.makedirs(work, exist_ok=True)
             git("init", "-q", "-b", "master", cwd=work)
             git("remote", "add", "origin", remote, cwd=work)
+        keep = {}
+        if name.endswith("-chart") and os.path.isfile(os.path.join(work, RUNTIME_STATE)):
+            keep[RUNTIME_STATE] = open(os.path.join(work, RUNTIME_STATE), "rb").read()
         for entry in os.listdir(work):  # wipe the working tree except .git, then copy the source
             if entry != ".git":
                 path = os.path.join(work, entry)
@@ -84,6 +92,9 @@ def sync_repo(name, src_dir):
             for f in filenames:
                 if not f.endswith(SKIP_SUFFIXES):
                     shutil.copy2(os.path.join(dirpath, f), os.path.join(work, rel, f))
+        for rel, content in keep.items():  # runtime state written by Tekton wins over the seed in this repository
+            with open(os.path.join(work, rel), "wb") as f:
+                f.write(content)
         git("add", "-A", cwd=work)
         if git("status", "--porcelain", cwd=work).stdout.strip() == "":
             print(f"    [=] {name}: already up to date")

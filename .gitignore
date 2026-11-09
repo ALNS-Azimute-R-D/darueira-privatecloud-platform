@@ -46,5 +46,12 @@ package-lock.json
 **/package-lock.json
 
 
-/workspace/platf-bizz-apps/swfabrik-europe/food-market-05-service/node_modules/
-/workspace/platf-bizz-apps/swfabrik-europe/food-market-02-service/target/
+
+# Playground projects (apps/tenant-playground-repos): local build output and IDE files
+apps/tenant-playground-repos/**/node_modules/
+apps/tenant-playground-repos/**/target/
+apps/tenant-playground-repos/**/bin/
+apps/tenant-playground-repos/**/obj/
+apps/tenant-playground-repos/**/.gradle/
+apps/tenant-playground-repos/**/.idea/
+apps/tenant-playground-repos/**/*.iml

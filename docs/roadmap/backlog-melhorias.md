@@ -497,6 +497,25 @@ infra corporativa central hoje.
 
 ---
 
+### 35. Clavex customizado (limite de Organizations = 10) para a PoC de Token Exchange / EUDI `[dono: Claude — status: feito e validado no cluster; falta commit/push do Git]`
+- Motivo: o plano Free do Clavex (BSL 1.1) limita a 1 Organization; a PoC precisa de 3
+  (`swfabrik-europe`, `swfabrik-latam`, `acme-logistics`). Uso estritamente local/PoC (permitido pelo
+  Additional Use Grant: teste/dev não conta no limite). Não usar em produção com 2+ organizações.
+- Código: clone `clavex-eu/clavex`, branch `alns-darueira-customizations` (commit `1b78839`,
+  `internal/license/license.go`, env `CLAVEX_LICENSE_COMMUNITY_ORG_LIMIT`).
+- Imagens no Nexus: `127.0.0.1:32082/darueira-corpshared/clavex:1.8.2-lab1` e `clavex-ui:1.8.2-lab1`.
+- Chart: Forgejo `darueira-corp/clavex-darueira-chart` (deploy por `helm upgrade --install`, PaaS, ADR-0016).
+- Banco: `drr_clavex_db` no `central-postgres` (namespace `drr-corpshared-plat`).
+- ADR: `specs/adr/0017-clavex-customised-build-for-local-poc.md`.
+- Deploy (2026-11-10): release Helm `clavex` assumiu server/UI/Redis; `clavex.yaml` do kustomize ficou só
+  com o Secret `clavex-secrets` (agora com `CLAVEX_DATABASE_DSN`). Schema na versão 195, 3 orgs ativas
+  (`swfabrik-europe`, `swfabrik-latam`, `acme-logistics`), `first_violation_at` nulo.
+- Superadmin: Secret `clavex-superadmin` (ns `drr-corpshared-plat`; email, org_slug, password).
+- Pendente: segredos em texto puro (ver #1); decidir se desliga o `usage-reporting-worker`
+  (telemetry.clavex.eu); as imagens antigas `clavex:1.8.0/1.8.1/1.8.2` e `clavex-ui:1.8.0` nunca
+  estiveram no Nexus (perdidas no crash do HD); `app-identity-studio` e `checkout-service` seguem em
+  `ImagePullBackOff` (código-fonte perdido).
+
 ## 🟠 Média prioridade
 
 ### 4. Demais passos do NiFi com falha silenciosa

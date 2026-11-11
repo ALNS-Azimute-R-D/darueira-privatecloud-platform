@@ -27,3 +27,9 @@ resources:
   - apache-nifi.yaml
   - temporal.yaml
   - jsreport.yaml
+
+patches:
+  - path: patches/wait-for-keycloak-central-minio.yaml
+  - path: patches/wait-for-keycloak-apache-nifi.yaml
+  - path: patches/wait-for-keycloak-temporal-ui.yaml
+  - path: patches/wait-for-keycloak-drr-iam-authz-svc.yaml

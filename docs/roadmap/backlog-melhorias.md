@@ -516,6 +516,21 @@ infra corporativa central hoje.
   estiveram no Nexus (perdidas no crash do HD); `app-identity-studio` e `checkout-service` seguem em
   `ImagePullBackOff` (código-fonte perdido).
 
+### 36. Ordem de subida: workloads que dependem do Keycloak `[dono: Claude — status: feito e validado no cluster]`
+- Sintoma (2026-11-11): após o start do cluster o login SSO do MinIO corporativo falhava. O log mostrava
+  `Unable to initialize OpenID ... lookup keycloak...: i/o timeout`; o MinIO lê o OpenID só no boot e não
+  tenta de novo (console em `loginStrategy: form`).
+- Correção: `initContainer` `wait-for-keycloak` (curl na URL de discovery que a própria app usa; espera
+  limitada a ~10 min, depois segue - fail-open, igual ao comportamento anterior) via patches de kustomize em
+  `platform/kustomize/base/corpshared-{plat,mgmt}/patches/` para: `central-minio`, `apache-nifi`,
+  `temporal-ui`, `drr-iam-authz-svc` e `backstage`.
+- Fora do escopo de propósito: Argo CD, Grafana e jsreport só consultam o Keycloak sob demanda (login) e se
+  recuperam sozinhos.
+- Aplicado só nos 5 Deployments (diff mostrou apenas o initContainer, sem drift). Validado: initContainers
+  logaram "keycloak ready" e o MinIO voltou a `loginStrategy: redirect`.
+- Falta validar num stop/start real (o cenário que causou o problema). Pendente: `tenant-minio` e demais
+  workloads dos tenants, se algum dia usarem OIDC no boot.
+
 ## 🟠 Média prioridade
 
 ### 4. Demais passos do NiFi com falha silenciosa

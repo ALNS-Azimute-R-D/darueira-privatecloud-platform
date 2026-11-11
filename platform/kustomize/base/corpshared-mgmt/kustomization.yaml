@@ -11,3 +11,6 @@ resources:
   - tekton-pipeline-engine.yaml
   - env-orchestrator-svc.yaml
   - darueira-operator.yaml
+
+patches:
+  - path: patches/wait-for-keycloak-backstage.yaml

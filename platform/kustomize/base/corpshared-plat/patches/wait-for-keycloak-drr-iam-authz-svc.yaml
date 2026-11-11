@@ -1,0 +1,46 @@
+# Wait for Keycloak before the app starts (bounded, fail-open after ~10 min).
+# IAM authz service talks to Keycloak at boot. After a cluster (re)start Keycloak/CoreDNS may not be ready yet.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drr-iam-authz-svc
+  namespace: drr-corpshared-plat
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: wait-for-keycloak
+          image: alpine/k8s:1.31.13
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: WAIT_URL
+              value: "http://keycloak.drr-corpshared-plat.svc.cluster.local:8080/realms/darueira-platform-svcs"
+          command:
+            - sh
+            - -c
+            - |
+              i=0
+              until curl -ksS -m 3 -o /dev/null -f "$WAIT_URL"; do
+                i=$((i+1))
+                if [ "$i" -ge 120 ]; then
+                  echo "keycloak still not ready after ~10 min; continuing anyway"
+                  exit 0
+                fi
+                echo "waiting for keycloak ($i/120): $WAIT_URL"
+                sleep 5
+              done
+              echo "keycloak ready"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi

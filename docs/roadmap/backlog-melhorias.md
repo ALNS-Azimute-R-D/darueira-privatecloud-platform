@@ -531,6 +531,48 @@ infra corporativa central hoje.
 - Falta validar num stop/start real (o cenário que causou o problema). Pendente: `tenant-minio` e demais
   workloads dos tenants, se algum dia usarem OIDC no boot.
 
+### 37. Apps de negócio do `swfabrik-europe` num só lugar no disco, com o Forgejo como `origin` `[dono: Claude — status: feito; falta o André abrir/mergear o PR de sync do voize e validar o pipeline]`
+- Motivo (2026-11-13): `bookanything-platform` existia duplicado (cópia dentro de
+  `workspace/platf-bizz-apps/swfabrik-europe/` + repo em `scout23DF/`). O André quer uma única cópia, no
+  repo de `scout23DF`, e os apps de negócio seguindo o GitOps da plataforma (Forgejo é a origem, GitHub é espelho).
+- `workspace/platf-bizz-apps/swfabrik-europe/` (caminhos relativos, como os `food-market-*`):
+  - `bookanything-platform` → `../../../../../scout23DF/bookanything-platform`
+  - `alns-voize-ehr-integrator` → `../../../../../scout23DF/alns-voize-ehr-integrator`
+  - `alns-voize-ehr-integrator-chart` → `../../../apps/tenant-playground-repos/alns-voize-ehr-integrator-chart`
+    (o chart não é repo próprio: é pasta deste repo, publicada no Forgejo pelo `publish_food_market_to_forgejo.py`).
+- Antes de apagar a cópia antiga do bookanything: arquivos (incluindo ignorados) idênticos, sem stash, sem
+  branch ou commit local fora do remoto; só faltava o remote `forgejo`. Backup temporário removido a pedido.
+- Remotes nos dois repos de `scout23DF`: `origin` = Forgejo (`https://git.darueira-corpshared.127.0.0.1.nip.io/
+  swfabrik-europe/<repo>.git`, via APISIX), `github` = espelho; `master` rastreia `origin/master`.
+  O `/etc/hosts` do host precisa mapear `git.darueira-corpshared.127.0.0.1.nip.io` para `127.0.0.1` (o DNS do
+  FritzBox não resolve `*.nip.io`).
+- TLS: a CA interna (`Darueira Enterprise Root CA`, só o `ca.crt` público do secret `darueira-wildcard-tls`)
+  está em `~/.config/darueira/darueira-root-ca.pem` e vale só para essa URL (`http.<url>.sslCAInfo`), com a
+  verificação ligada.
+- Estado dos repos: `bookanything-platform` idêntico ao Forgejo (`2b445fe`). `alns-voize-ehr-integrator`:
+  Forgejo **2 commits atrás** (`9922f2d`, `7f2adb7`, que foram só para o GitHub). Os links ficam só no disco
+  local (`workspace/.gitignore` ignora tudo), nada foi versionado.
+- Nenhum commit neste repo; mudanças só nos repos de `scout23DF` (configuração de remotes) e no disco.
+- Sincronização do voize (2026-11-13): o Forgejo estava 2 commits atrás (`9922f2d`, `7f2adb7`; fast-forward).
+  Em vez de empurrar a `master`, foi criada e empurrada a branch `sync/github-master` (`7f2adb7`) para um PR
+  no Forgejo (a `master` de lá não tem proteção de branch, mas o André quis o fluxo por PR + merge, para ver o
+  Tekton + ArgoCD rodarem). O push usou a conta `drradmin` (senha default do
+  `scripts/publish_food_market_to_forgejo.py`, ver item 1) via `GIT_ASKPASS` temporário, sem gravar credencial.
+- Permissões no Forgejo (2026-11-13): o `andre.nascimento` (usuário OIDC, sem senha local) só tinha `read` no
+  repo, por isso o botão "Novo Pull Request" ficava desabilitado e o push pelo IDE falhava. A org
+  `swfabrik-europe` só tinha o time `Owners` com o `drradmin`. Feito com a conta `drradmin`:
+  - `andre.nascimento` adicionado ao time `Owners` (permissão efetiva `owner` no repo);
+  - criado o time `Developers` (id 3, todos os repos da org): escrita em code/pulls/issues/releases/wiki/projects,
+    leitura em packages/actions/ext_issues/ext_wiki; `andre.nascimento` também é membro.
+  - Git por HTTPS exige token de acesso pessoal do Forgejo (Settings → Applications), não a senha do login OIDC.
+- Falta: o André abrir o PR (`.../compare/master...sync/github-master`) e fazer o merge; acompanhar o PipelineRun
+  do Tekton e a Application do ArgoCD (não confirmado que o webhook do repo voize existe: ele só é criado com
+  `--hooks` no `publish_food_market_to_forgejo.py`); a branch `feature/005-session-persistence` (16 arquivos não
+  commitados) não existe no Forgejo; os `.idea/vcs.xml` e `misc.xml` do projeto WorkSpaces ainda citam o caminho
+  antigo do bookanything (pode indexar em dobro); docs antigos (`docs/checkpoints/2026-09-14-bookanything-handoff.md`)
+  descrevem a cópia antiga com `origin` = Forgejo e GitHub como `github`; a senha default do `drradmin` segue em
+  texto no repo (item 1) e deve ser rotacionada.
+
 ## 🟠 Média prioridade
 
 ### 4. Demais passos do NiFi com falha silenciosa

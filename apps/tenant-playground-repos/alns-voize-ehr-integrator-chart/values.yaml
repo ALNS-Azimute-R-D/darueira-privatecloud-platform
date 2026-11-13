@@ -4,7 +4,7 @@ tenant: swfabrik-europe
 project: ehr-integrations
 env: dev
 
-replicaCount: 1
+replicaCount: 2           # the session is shared through PostgreSQL (voize spec 006), so more than one replica is safe
 
 image:
   repository: nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-europe/alns-voize-ehr-integrator
@@ -18,6 +18,18 @@ app:
   profile: demo            # `demo` calls the public Vivendi SISWeb demo, `local` expects a WireMock
   defaultAreaId: "94"
   docsEnabled: "true"
+
+# Where the Vivendi session lives (voize spec 006, ADR 0018): `postgres` shares it between replicas and keeps it across
+# restarts; `file` keeps it in the container (lost on restart, one replica only); `none` never stores it.
+# The Secrets are created by scripts/provision_voize_session_db.sh and hold the only credentials (never in values).
+sessionStore:
+  kind: postgres
+  lockWait: 10s
+  databaseSecret: alns-voize-ehr-integrator-db      # keys: url, user, password
+  keySecret: alns-voize-ehr-integrator-session      # key: session-store-key (base64, 32 bytes)
+  schema: public
+  poolMax: "3"
+  timeout: 2s
 
 service:
   type: ClusterIP

@@ -531,7 +531,7 @@ infra corporativa central hoje.
 - Falta validar num stop/start real (o cenário que causou o problema). Pendente: `tenant-minio` e demais
   workloads dos tenants, se algum dia usarem OIDC no boot.
 
-### 37. Apps de negócio do `swfabrik-europe` num só lugar no disco, com o Forgejo como `origin` `[dono: Claude — status: feito e validado no cluster; sessão compartilhada do voize (spec 006): banco, papel, tabela e Secrets criados, falta o chart com 2 réplicas]`
+### 37. Apps de negócio do `swfabrik-europe` num só lugar no disco, com o Forgejo como `origin` `[dono: Claude — status: feito e validado no cluster; sessão compartilhada do voize (spec 006) no ar com 2 réplicas e validada no cluster]`
 - Motivo (2026-11-13): `bookanything-platform` existia duplicado (cópia dentro de
   `workspace/platf-bizz-apps/swfabrik-europe/` + repo em `scout23DF/`). O André quer uma única cópia, no
   repo de `scout23DF`, e os apps de negócio seguindo o GitOps da plataforma (Forgejo é a origem, GitHub é espelho).
@@ -605,9 +605,20 @@ infra corporativa central hoje.
     PostGIS; revogar exigiria grants explícitos para os outros apps. (3) A senha do bookanything é a mesma que foi
     usada como exemplo para o voize; não foi reutilizada. (4) `tenant-postgres` com 5 restarts em 4 dias, causa não
     investigada.
-  - Falta: PR e merge da 006; chart (`VIVENDI_SESSION_STORE=postgres`, `DATABASE_*` e `SESSION_STORE_KEY` dos dois
-    Secrets, `replicaCount: 2`); teste com 2 réplicas (um login, uma linha, derrubar um pod); sonda de dois logins no
-    Vivendi (não autorizada ainda); a árvore principal do voize ainda tem edições antigas sem commit.
+  - Chart e validação no cluster (2026-11-13): spec 006 mergeada (imagem `2026.1113.203922`); o chart ganhou
+    `sessionStore.kind: postgres` e `replicaCount: 2` (branch `feature/006-postgres-session-store` do repo do chart,
+    PR mergeado pelo André; commit `58efca6` na `master`). Um push direto na `master` do chart foi negado pelo
+    classificador do Claude Code (dispararia o ArgoCD sem revisão); seguiu por branch e PR. O repo do chart não passa
+    pelo Tekton: o ArgoCD aplicou o commit sozinho. Validado com `/residents` real (demo do Vivendi):
+    - 2 pods `Ready`, sem restart; um pod fez `login performed (revision 1)`, o outro `session restored from store`;
+    - apagar o pod que logou: o substituto restaurou da tabela, sem login (a linha continuou na revisão 1);
+    - tabela vazia + 2 pods novos + 2 requisições simultâneas: **1 login** (`revision 1`) e o outro pod
+      `login skipped, another instance refreshed`;
+    - linha: `provider=vivendi`, `username=demo01`, payload cifrado (~3,9 KB), `updated_by` = nome do pod.
+    Ainda não observado: a renovação na expiração real (~45 min; observação agendada para 20:50 UTC) e o banco fora
+    do ar no cluster (só nos testes; o `tenant-postgres` é compartilhado, não foi derrubado).
+  - Falta: marcar a spec 006 como `Implemented` (PR no repo voize); sonda de dois logins no Vivendi (não autorizada);
+    a árvore principal do voize ainda tem edições antigas sem commit.
 - Falta (anteriores): o app voize
   não tem rota no APISIX (só acesso interno ou port-forward); os `.idea/vcs.xml` e `misc.xml` do projeto WorkSpaces ainda citam o caminho
   antigo do bookanything (pode indexar em dobro); docs antigos (`docs/checkpoints/2026-09-14-bookanything-handoff.md`)

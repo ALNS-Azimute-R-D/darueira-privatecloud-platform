@@ -40,6 +40,38 @@ spec:
               value: {{ .Values.app.defaultAreaId | quote }}
             - name: VIVENDI_PROFILE
               value: {{ .Values.app.profile | quote }}
+            - name: VIVENDI_SESSION_STORE
+              value: {{ .Values.sessionStore.kind | quote }}
+            {{- if eq .Values.sessionStore.kind "postgres" }}
+            - name: VIVENDI_SESSION_LOCK_WAIT
+              value: {{ .Values.sessionStore.lockWait | quote }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.sessionStore.databaseSecret }}
+                  key: url
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.sessionStore.databaseSecret }}
+                  key: user
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.sessionStore.databaseSecret }}
+                  key: password
+            - name: DATABASE_SCHEMA
+              value: {{ .Values.sessionStore.schema | quote }}
+            - name: DATABASE_POOL_MAX
+              value: {{ .Values.sessionStore.poolMax | quote }}
+            - name: DATABASE_TIMEOUT
+              value: {{ .Values.sessionStore.timeout | quote }}
+            - name: SESSION_STORE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.sessionStore.keySecret }}
+                  key: session-store-key
+            {{- end }}
           livenessProbe:
             httpGet:
               path: {{ .Values.probes.path }}

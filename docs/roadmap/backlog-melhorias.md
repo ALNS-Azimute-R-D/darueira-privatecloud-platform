@@ -531,7 +531,7 @@ infra corporativa central hoje.
 - Falta validar num stop/start real (o cenário que causou o problema). Pendente: `tenant-minio` e demais
   workloads dos tenants, se algum dia usarem OIDC no boot.
 
-### 37. Apps de negócio do `swfabrik-europe` num só lugar no disco, com o Forgejo como `origin` `[dono: Claude — status: feito e validado no cluster (pipeline do voize verde, imagem 2026.1113.130844 no ar)]`
+### 37. Apps de negócio do `swfabrik-europe` num só lugar no disco, com o Forgejo como `origin` `[dono: Claude — status: feito e validado no cluster; sessão compartilhada do voize (spec 006): banco, papel, tabela e Secrets criados, falta o chart com 2 réplicas]`
 - Motivo (2026-11-13): `bookanything-platform` existia duplicado (cópia dentro de
   `workspace/platf-bizz-apps/swfabrik-europe/` + repo em `scout23DF/`). O André quer uma única cópia, no
   repo de `scout23DF`, e os apps de negócio seguindo o GitOps da plataforma (Forgejo é a origem, GitHub é espelho).
@@ -582,7 +582,33 @@ infra corporativa central hoje.
     `GET /swagger-ui` → `200`, `GET /healthz` → `{"status":"UP","profile":"demo"}`.
   - Sem spec nem ADR para a correção do Dockerfile (é só ajuste de build). O `Dockerfile` roda `./gradlew test`
     de novo dentro do build, além da task `test-and-build` do pipeline (que levou 4 s e parece um no-op): não mexido.
-- Falta: a branch `feature/005-session-persistence` (16 arquivos não commitados) não existe no Forgejo; o app voize
+- Sessão do voize no cluster (2026-11-13):
+  - Spec 005 (sessão em arquivo) mergeada e no ar (imagem `2026.1113.152118`). O segundo build quebrou no Kaniko por
+    outro arquivo que some durante o snapshot (`/root/.kotlin/daemon/*.run`, daemon do compilador Kotlin); corrigido no
+    `Dockerfile` com compilador `in-process` e `rm -rf /root/.kotlin` (`dee9a34`, PR #4). `/residents` e o arquivo de
+    sessão testados (modo 600, sem senha). Achado: o arquivo **não sobrevive a `kill 1`** (reinício do container descarta
+    a camada gravável) e não é compartilhável entre réplicas; um `emptyDir` resolveria só o reinício. Daí a spec 006.
+  - Spec 007 (layout de pacotes por domínio, ADR 0019, Antigravity revisou) mergeada; pipeline `...-fp7h9` verde,
+    imagem `2026.1113.200410` no ar. Sem mudança de comportamento.
+  - Spec 006 / ADR 0018 (sessão compartilhada no PostgreSQL do tenant, aprovada pelo Antigravity): implementada na
+    branch `feature/006-shared-session-store` (`4894bea`, 119 testes, adaptador testado contra PostgreSQL 17 real), **sem
+    PR/merge ainda**. O app continua em `file` por padrão.
+  - Provisionamento no `tenant-postgres` (PaaS, ADR-0016) feito com `scripts/provision_voize_session_db.sh`
+    (idempotente, sem segredos, `--rotate` renova senha e chave): papel `dbavoize01` (sem superusuário, `CONNECTION
+    LIMIT 10`), banco `DBVoizeEHRIntegrator` com dono `drr_tnt_svcs_admin`, tabela `tb_shared_auth_session` e
+    `SELECT/INSERT/UPDATE` só nela. Secrets `alns-voize-ehr-integrator-db` (`url`, `user`, `password`) e
+    `alns-voize-ehr-integrator-session` (`session-store-key`, 32 bytes em base64), criados com `kubectl create`.
+    Verificado como o papel (TCP, scram): `SELECT/INSERT/UPDATE` ok, `DELETE` e `CREATE` negados.
+  - Achados: (1) Secrets criados com `kubectl apply` guardam a senha em texto na anotação
+    `last-applied-configuration` (bookanything, `food-market-db`, `tenant-db-credentials`); rotacionar e recriar com
+    `create`. (2) Papéis novos conectam em todos os bancos (`CONNECT` de `PUBLIC`), mas só leem tabelas públicas do
+    PostGIS; revogar exigiria grants explícitos para os outros apps. (3) A senha do bookanything é a mesma que foi
+    usada como exemplo para o voize; não foi reutilizada. (4) `tenant-postgres` com 5 restarts em 4 dias, causa não
+    investigada.
+  - Falta: PR e merge da 006; chart (`VIVENDI_SESSION_STORE=postgres`, `DATABASE_*` e `SESSION_STORE_KEY` dos dois
+    Secrets, `replicaCount: 2`); teste com 2 réplicas (um login, uma linha, derrubar um pod); sonda de dois logins no
+    Vivendi (não autorizada ainda); a árvore principal do voize ainda tem edições antigas sem commit.
+- Falta (anteriores): o app voize
   não tem rota no APISIX (só acesso interno ou port-forward); os `.idea/vcs.xml` e `misc.xml` do projeto WorkSpaces ainda citam o caminho
   antigo do bookanything (pode indexar em dobro); docs antigos (`docs/checkpoints/2026-09-14-bookanything-handoff.md`)
   descrevem a cópia antiga com `origin` = Forgejo e GitHub como `github`; a senha default do `drradmin` segue em

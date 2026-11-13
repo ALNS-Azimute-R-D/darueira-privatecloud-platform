@@ -531,7 +531,7 @@ infra corporativa central hoje.
 - Falta validar num stop/start real (o cenário que causou o problema). Pendente: `tenant-minio` e demais
   workloads dos tenants, se algum dia usarem OIDC no boot.
 
-### 37. Apps de negócio do `swfabrik-europe` num só lugar no disco, com o Forgejo como `origin` `[dono: Claude — status: feito; falta o André abrir/mergear o PR de sync do voize e validar o pipeline]`
+### 37. Apps de negócio do `swfabrik-europe` num só lugar no disco, com o Forgejo como `origin` `[dono: Claude — status: feito e validado no cluster (pipeline do voize verde, imagem 2026.1113.130844 no ar)]`
 - Motivo (2026-11-13): `bookanything-platform` existia duplicado (cópia dentro de
   `workspace/platf-bizz-apps/swfabrik-europe/` + repo em `scout23DF/`). O André quer uma única cópia, no
   repo de `scout23DF`, e os apps de negócio seguindo o GitOps da plataforma (Forgejo é a origem, GitHub é espelho).
@@ -552,7 +552,8 @@ infra corporativa central hoje.
 - Estado dos repos: `bookanything-platform` idêntico ao Forgejo (`2b445fe`). `alns-voize-ehr-integrator`:
   Forgejo **2 commits atrás** (`9922f2d`, `7f2adb7`, que foram só para o GitHub). Os links ficam só no disco
   local (`workspace/.gitignore` ignora tudo), nada foi versionado.
-- Nenhum commit neste repo; mudanças só nos repos de `scout23DF` (configuração de remotes) e no disco.
+- Neste repo só o registro no backlog (commits `2e09dfb` e o desta atualização); o resto foi nos repos de
+  `scout23DF` (configuração de remotes) e no disco.
 - Sincronização do voize (2026-11-13): o Forgejo estava 2 commits atrás (`9922f2d`, `7f2adb7`; fast-forward).
   Em vez de empurrar a `master`, foi criada e empurrada a branch `sync/github-master` (`7f2adb7`) para um PR
   no Forgejo (a `master` de lá não tem proteção de branch, mas o André quis o fluxo por PR + merge, para ver o
@@ -565,10 +566,24 @@ infra corporativa central hoje.
   - criado o time `Developers` (id 3, todos os repos da org): escrita em code/pulls/issues/releases/wiki/projects,
     leitura em packages/actions/ext_issues/ext_wiki; `andre.nascimento` também é membro.
   - Git por HTTPS exige token de acesso pessoal do Forgejo (Settings → Applications), não a senha do login OIDC.
-- Falta: o André abrir o PR (`.../compare/master...sync/github-master`) e fazer o merge; acompanhar o PipelineRun
-  do Tekton e a Application do ArgoCD (não confirmado que o webhook do repo voize existe: ele só é criado com
-  `--hooks` no `publish_food_market_to_forgejo.py`); a branch `feature/005-session-persistence` (16 arquivos não
-  commitados) não existe no Forgejo; os `.idea/vcs.xml` e `misc.xml` do projeto WorkSpaces ainda citam o caminho
+- Pipeline do voize (2026-11-13): o PR #1 (`sync/github-master`) foi mergeado (`6802766`) e o webhook do repo
+  (hook id 1, evento `push`, aponta para o `el-forgejo-webhook-listener`; é do repo, não da org) disparou o
+  PipelineRun `forgejo-ci-alns-voize-ehr-integrator-9fwsg`. **Falhou** em `build-and-publish-image`: o Gradle
+  passou (`BUILD SUCCESSFUL`, testes verdes), mas o Kaniko quebrou ao tirar o snapshot do estágio de build com
+  `Failed to get file info for /tmp/hsperfdata_root/<pid>: no such file or directory` (corrida com as JVMs
+  de teste do Gradle, que apagam o `hsperfdata` ao sair; o `--no-daemon` já estava no Dockerfile).
+  - Correção no repo voize: branch `feature/build-kaniko-no-perfdata` (`1ab1ba8`), `Dockerfile` com
+    `JAVA_TOOL_OPTIONS=-XX:-UsePerfData` no `RUN` do Gradle, para o arquivo nem ser criado. PR mergeado pelo André.
+  - Novo PipelineRun `forgejo-ci-alns-voize-ehr-integrator-snp2h` (commit `7edd835`): as 6 tasks `Succeeded`
+    (`build-and-publish-image` em 2m50s). O Tekton promoveu a tag no chart (`f288d32`, `2026.1113.130844` em
+    `values-dev-green.yaml`), o ArgoCD ficou `Synced/Healthy` na `f288d32` e o pod novo roda a imagem
+    `...alns-voize-ehr-integrator:2026.1113.130844`.
+  - Smoke test via `port-forward` (o app não tem rota no APISIX): `GET /` → `302` para `/swagger-ui` (SRV-15),
+    `GET /swagger-ui` → `200`, `GET /healthz` → `{"status":"UP","profile":"demo"}`.
+  - Sem spec nem ADR para a correção do Dockerfile (é só ajuste de build). O `Dockerfile` roda `./gradlew test`
+    de novo dentro do build, além da task `test-and-build` do pipeline (que levou 4 s e parece um no-op): não mexido.
+- Falta: a branch `feature/005-session-persistence` (16 arquivos não commitados) não existe no Forgejo; o app voize
+  não tem rota no APISIX (só acesso interno ou port-forward); os `.idea/vcs.xml` e `misc.xml` do projeto WorkSpaces ainda citam o caminho
   antigo do bookanything (pode indexar em dobro); docs antigos (`docs/checkpoints/2026-09-14-bookanything-handoff.md`)
   descrevem a cópia antiga com `origin` = Forgejo e GitHub como `github`; a senha default do `drradmin` segue em
   texto no repo (item 1) e deve ser rotacionada.

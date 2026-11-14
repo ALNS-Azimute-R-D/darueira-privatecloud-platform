@@ -655,7 +655,7 @@ infra corporativa central hoje.
   descrevem a cópia antiga com `origin` = Forgejo e GitHub como `github`; a senha default do `drradmin` segue em
   texto no repo (item 1) e deve ser rotacionada.
 
-### 38. RabbitMQ perdia usuários, vhosts e filas a cada recriação do pod `[dono: Claude — status: corrigido; falta validar um reinício]`
+### 38. RabbitMQ perdia usuários, vhosts e filas a cada recriação do pod `[dono: Claude — status: feito e validado no cluster]`
 - Achado (2026-11-14): o `message-broker-rabbitmq` (Deployment, dado em hostPath) usa como nome de nó `rabbit@<nome do pod>`, e o
   nome do pod muda a cada recriação. Cada pod novo abria um Mnesia vazio (só o `drr_admin` padrão); os diretórios
   `mnesia/rabbit@message-broker-rabbitmq-7f7ffdd6cf-*` se acumulavam. O backup a frio de 2026-11-14 (e o de 2026-11-09) recriou
@@ -667,9 +667,22 @@ infra corporativa central hoje.
 - Estado reposto depois da troca (o nó novo nasceu vazio): `make bootstrap-brokers` (vhosts `drr-platform`/`acme`/`globex`,
   usuários, exchanges, filas e bindings) e `scripts/bootstrap_food_market_data.py` (usuário `food_market`, mantém a senha do
   Secret `food-market-mq`). Os 6 `food-market-0N-service` reconectaram (filas com consumidores).
-- Falta: reiniciar o broker uma vez e confirmar que os usuários/filas **sobrevivem** (o reinício foi negado pelo classificador
-  do Claude Code e ficou para o André autorizar ou fazer); os diretórios `mnesia/rabbit@...-<sufixo>` antigos (~1 MB cada)
-  podem ser apagados depois; a senha default `drr_admin`/`darueira-admin123` segue em texto no manifesto (item 1).
+- Validado (2026-11-14, `rollout restart` autorizado pelo André): depois do reinício o nó continuou `rabbit@message-broker-rabbitmq`
+  e os usuários (`acme_user`, `drr_admin`, `food_market`, `globex_user`, `platform_worker`), os 4 vhosts e as 6 filas
+  `marketplace.foodtrading.*` sobreviveram, sem rodar os bootstraps.
+- Falta: os diretórios `mnesia/rabbit@...-<sufixo>` antigos (~1 MB cada) podem ser apagados; a senha default
+  `drr_admin`/`darueira-admin123` segue em texto no manifesto (item 1).
+
+### 39. `food-market-01-service` e `food-market-05-service` não reconectam o consumidor depois de uma queda do broker `[dono: Claude — status: aberto, contornado com restart]`
+- Achado (2026-11-14): no reinício do broker (item 38), os serviços 02, 03, 04 e 06 reconectaram e voltaram a ter 1 consumidor.
+  `queue01` (serviço 01, Spring AMQP) e `queue05` (serviço 05, NestJS) ficaram com 0 consumidores e assim permaneceram. O 05 só
+  loga `Consumer disconnected` no início e nada depois do reinício; o 01 recria a conexão, mas não o consumidor da fila.
+- Contorno aplicado: `kubectl rollout restart` dos dois Deployments; as 6 filas voltaram a 1 consumidor.
+- A fazer: no 01, ver se o listener container se recupera (`missingQueuesFatal`, recovery interval, health check do listener);
+  no 05, religar o consumidor no evento `close`/`error` da conexão, com backoff. Idealmente a readiness falha enquanto não há
+  consumidor, para o Kubernetes reiniciar o pod sozinho. Teste: reiniciar o broker e exigir 1 consumidor por fila em até 1 min.
+
+---
 
 ## 🟠 Média prioridade
 

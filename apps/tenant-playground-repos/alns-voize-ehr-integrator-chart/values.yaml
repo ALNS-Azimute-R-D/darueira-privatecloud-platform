@@ -18,6 +18,7 @@ app:
   profile: demo            # `demo` calls the public Vivendi SISWeb demo, `local` expects a WireMock
   defaultAreaId: "94"
   docsEnabled: "true"
+  logLevel: INFO           # ERROR, WARN, INFO, DEBUG or TRACE (voize spec 008); the dev values raise it to DEBUG
 
 # Where the Vivendi session lives (voize spec 006, ADR 0018): `postgres` shares it between replicas and keeps it across
 # restarts; `file` keeps it in the container (lost on restart, one replica only); `none` never stores it.

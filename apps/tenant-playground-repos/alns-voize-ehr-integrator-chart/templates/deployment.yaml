@@ -36,6 +36,8 @@ spec:
               value: {{ .Values.app.port | quote }}
             - name: SERVICE_DOCS_ENABLED
               value: {{ .Values.app.docsEnabled | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.app.logLevel | quote }}
             - name: VIVENDI_DEFAULT_AREA_ID
               value: {{ .Values.app.defaultAreaId | quote }}
             - name: VIVENDI_PROFILE

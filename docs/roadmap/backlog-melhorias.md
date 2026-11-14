@@ -646,9 +646,14 @@ infra corporativa central hoje.
     pontos de montagem fora das camadas que guarda no cache; o `Dockerfile` do voize usava `WORKDIR /workspace`, então a
     camada `RUN gradlew ... installDist` em cache vinha sem `build/install` e o `COPY --from=builder` quebrava
     (`lstat /kaniko/0/workspace/.../build/install/...`). Frio passa, quente falha. Com `WORKDIR /src` o quente passa e a
-    imagem tem os mesmos 86 arquivos. Correção no repo voize: branch `feature/ci-dockerfile-workdir` (`67dedee`), aguarda
-    PR; validar depois com um redelivery do webhook sobre o mesmo commit. Outros `Dockerfile` da plataforma com
-    `WORKDIR /workspace` em estágio de build podem ter o mesmo defeito (a verificar).
+    imagem tem os mesmos 86 arquivos. Correção no repo voize: PR #11 (`feature/ci-dockerfile-workdir`, merge `5b235a6`).
+    **Validada no cluster (2026-11-14)**: o merge passou frio (~4 min no Kaniko) e o redelivery do webhook sobre o mesmo
+    commit passou quente (run `9q4g4`, `build-and-publish-image` em 52 s, imagem `2026.1114.234417`, ArgoCD `Synced`/`Healthy`);
+    antes falhava em ~34 s. O log do Kaniko do redelivery não foi capturado (a run terminou antes do observador), então
+    a prova do cache é indireta (tempo e sucesso).
+    Outros `Dockerfile` com `WORKDIR /workspace` no estágio de build: `apps/drr-ctlr-cli`, `apps/drr-iam-authz-svc` e
+    `operators/darueira-operator`. Nenhum é construído por pipeline Tekton hoje (só `go build` local, `make build-services`),
+    então não são afetados agora; se entrarem no Tekton com `--cache-repo`, trocar por `WORKDIR /src` antes.
 - Falta (anteriores): o app voize
   não tem rota no APISIX (só acesso interno ou port-forward); os `.idea/vcs.xml` e `misc.xml` do projeto WorkSpaces ainda citam o caminho
   antigo do bookanything (pode indexar em dobro); docs antigos (`docs/checkpoints/2026-09-14-bookanything-handoff.md`)

@@ -531,7 +531,7 @@ infra corporativa central hoje.
 - Falta validar num stop/start real (o cenário que causou o problema). Pendente: `tenant-minio` e demais
   workloads dos tenants, se algum dia usarem OIDC no boot.
 
-### 37. Apps de negócio do `swfabrik-europe` num só lugar no disco, com o Forgejo como `origin` `[dono: Claude — status: feito e validado no cluster; sessão compartilhada do voize (spec 006) no ar com 2 réplicas e validada no cluster]`
+### 37. Apps de negócio do `swfabrik-europe` num só lugar no disco, com o Forgejo como `origin` `[dono: Claude — status: feito e validado no cluster; voize com 2 réplicas e sessão compartilhada (spec 006), logging (spec 008) e fila por sessão com retry de 409 (spec 009) no ar]`
 - Motivo (2026-11-13): `bookanything-platform` existia duplicado (cópia dentro de
   `workspace/platf-bizz-apps/swfabrik-europe/` + repo em `scout23DF/`). O André quer uma única cópia, no
   repo de `scout23DF`, e os apps de negócio seguindo o GitOps da plataforma (Forgejo é a origem, GitHub é espelho).
@@ -617,8 +617,30 @@ infra corporativa central hoje.
     - linha: `provider=vivendi`, `username=demo01`, payload cifrado (~3,9 KB), `updated_by` = nome do pod.
     Ainda não observado: a renovação na expiração real (~45 min; observação agendada para 20:50 UTC) e o banco fora
     do ar no cluster (só nos testes; o `tenant-postgres` é compartilhado, não foi derrubado).
-  - Falta: marcar a spec 006 como `Implemented` (PR no repo voize); sonda de dois logins no Vivendi (não autorizada);
-    a árvore principal do voize ainda tem edições antigas sem commit.
+  - Renovação na expiração real (2026-11-13, 20:50 e 21:36 UTC): **1 login por expiração** (revisão 2 e 3) e o outro pod
+    com `login skipped, another instance refreshed`. A spec 006 foi marcada `Implemented` (PR no repo voize).
+  - **502 `UPSTREAM_ERROR` intermitente (2026-11-14), causa achada:** o Vivendi responde **HTTP 409 (Conflict)** a uma
+    chamada GraphQL que chega enquanto outra chamada **da mesma sessão** ainda roda. Não era o hash `Abfrage-Hash`
+    (a impressão digital do hash era igual nos 2 pods; nenhum código 5011/5017) nem a sessão compartilhada: um **único
+    pod** com 2 requisições simultâneas dava 502 em 10 de 10 rodadas (defeito anterior à spec 006, desde as specs 002 e 003).
+    Hipótese inicial (hash por instância) foi descartada com os logs.
+  - Spec 008 (logging de diagnóstico, Antigravity aprovou; imagem `2026.1114.012427`): id de requisição (`X-Request-Id`,
+    MDC nas coroutines), configuração na inicialização (segredos só `set`/`unset`), decisões da sessão, mutex e lock,
+    chamadas ao Vivendi com `inFlight`, cache do hash (impressão digital de 8 caracteres) e `WARN upstream error` com
+    classe, status e código. `LOG_LEVEL` (padrão `INFO`). Foi ela que mostrou o 409.
+  - Spec 009 / ADR 0020 (aprovados pelo Antigravity; imagem `2026.1114.015816`): as chamadas `server/img` e `graphql`
+    de uma instância rodam **uma por vez**; um 409 residual (outro pod) é repetido até `VIVENDI_CONFLICT_RETRIES`
+    (padrão 3) com espera `VIVENDI_CONFLICT_BACKOFF` (150 ms) dobrada e jitter. Validado no cluster, 10 rodadas cada:
+    1 pod com 2 requisições simultâneas **0 de 20** com 502 (antes 10 de 20); 2 pods com 1 requisição cada **0 de 20**
+    (antes 9 de 20). No caso de 2 pods houve 14 conflitos, todos resolvidos pelo retry (10 na 1ª tentativa, 4 na 2ª);
+    nenhum esgotou o limite. Custo: a chamada que colide espera ~0,2 a 0,6 s a mais. Spec 009 marcada `Implemented`.
+  - Falta: o retry não garante zero conflitos entre pods; se o tráfego real colidir muito, os próximos passos previstos
+    no ADR 0020 são um lock entre instâncias (advisory lock por chamada) ou uma sessão por pod; a sonda de dois logins
+    no Vivendi segue não autorizada; `LOG_LEVEL=DEBUG` ainda não está nos values do chart de dev; o `/healthz` gera
+    uma linha `INFO` a cada 5 s por pod (candidato a `DEBUG`); a falha do Kaniko em builds sem mudança de código
+    (runs `pd2n2` e `2h64w`, logs podados) continua sem causa e a otimização do download do Gradle (camadas do
+    Dockerfile, espelho do Nexus) está adiada por decisão do André; a árvore principal do voize ainda tem edições
+    antigas sem commit.
 - Falta (anteriores): o app voize
   não tem rota no APISIX (só acesso interno ou port-forward); os `.idea/vcs.xml` e `misc.xml` do projeto WorkSpaces ainda citam o caminho
   antigo do bookanything (pode indexar em dobro); docs antigos (`docs/checkpoints/2026-09-14-bookanything-handoff.md`)

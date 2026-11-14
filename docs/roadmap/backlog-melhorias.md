@@ -641,11 +641,35 @@ infra corporativa central hoje.
     (runs `pd2n2` e `2h64w`, logs podados) continua sem causa e a otimização do download do Gradle (camadas do
     Dockerfile, espelho do Nexus) está adiada por decisão do André; a árvore principal do voize ainda tem edições
     antigas sem commit.
+  - Falha do Kaniko em builds sem mudança de código (2026-11-14), **causa achada e reproduzida localmente** (Kaniko
+    `v1.23.2`, registry local como `--cache-repo`): o Tekton monta o volume de trabalho em `/workspace` e o Kaniko deixa
+    pontos de montagem fora das camadas que guarda no cache; o `Dockerfile` do voize usava `WORKDIR /workspace`, então a
+    camada `RUN gradlew ... installDist` em cache vinha sem `build/install` e o `COPY --from=builder` quebrava
+    (`lstat /kaniko/0/workspace/.../build/install/...`). Frio passa, quente falha. Com `WORKDIR /src` o quente passa e a
+    imagem tem os mesmos 86 arquivos. Correção no repo voize: branch `feature/ci-dockerfile-workdir` (`67dedee`), aguarda
+    PR; validar depois com um redelivery do webhook sobre o mesmo commit. Outros `Dockerfile` da plataforma com
+    `WORKDIR /workspace` em estágio de build podem ter o mesmo defeito (a verificar).
 - Falta (anteriores): o app voize
   não tem rota no APISIX (só acesso interno ou port-forward); os `.idea/vcs.xml` e `misc.xml` do projeto WorkSpaces ainda citam o caminho
   antigo do bookanything (pode indexar em dobro); docs antigos (`docs/checkpoints/2026-09-14-bookanything-handoff.md`)
   descrevem a cópia antiga com `origin` = Forgejo e GitHub como `github`; a senha default do `drradmin` segue em
   texto no repo (item 1) e deve ser rotacionada.
+
+### 38. RabbitMQ perdia usuários, vhosts e filas a cada recriação do pod `[dono: Claude — status: corrigido; falta validar um reinício]`
+- Achado (2026-11-14): o `message-broker-rabbitmq` (Deployment, dado em hostPath) usa como nome de nó `rabbit@<nome do pod>`, e o
+  nome do pod muda a cada recriação. Cada pod novo abria um Mnesia vazio (só o `drr_admin` padrão); os diretórios
+  `mnesia/rabbit@message-broker-rabbitmq-7f7ffdd6cf-*` se acumulavam. O backup a frio de 2026-11-14 (e o de 2026-11-09) recriou
+  o pod e o `food-market-01-service` ficou `0/1` com `PLAIN login refused: user 'food_market'`.
+- Correção (`platform/kustomize/base/corpshared-plat/message-broker-rabbitmq.yaml`): `hostname: message-broker-rabbitmq`,
+  `RABBITMQ_NODENAME=rabbit@message-broker-rabbitmq` e `strategy: Recreate` (hostPath RWO e nó fixo: o pod antigo precisa
+  sair antes). Aplicado no cluster com `kubectl apply -f` (o diff mostrava só essas 3 mudanças); o nó passou a ser
+  `rabbit@message-broker-rabbitmq`.
+- Estado reposto depois da troca (o nó novo nasceu vazio): `make bootstrap-brokers` (vhosts `drr-platform`/`acme`/`globex`,
+  usuários, exchanges, filas e bindings) e `scripts/bootstrap_food_market_data.py` (usuário `food_market`, mantém a senha do
+  Secret `food-market-mq`). Os 6 `food-market-0N-service` reconectaram (filas com consumidores).
+- Falta: reiniciar o broker uma vez e confirmar que os usuários/filas **sobrevivem** (o reinício foi negado pelo classificador
+  do Claude Code e ficou para o André autorizar ou fazer); os diretórios `mnesia/rabbit@...-<sufixo>` antigos (~1 MB cada)
+  podem ser apagados depois; a senha default `drr_admin`/`darueira-admin123` segue em texto no manifesto (item 1).
 
 ## 🟠 Média prioridade
 

@@ -9,6 +9,10 @@ metadata:
     darueira.io/tier: enterprise-shared
 spec:
   replicas: 1
+  # Recreate: the data dir is a ReadWriteOnce hostPath and the node name is fixed, so the old pod must be gone before
+  # the new one opens the same Mnesia directory.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: message-broker-rabbitmq
@@ -18,6 +22,9 @@ spec:
         app.kubernetes.io/name: message-broker-rabbitmq
         darueira.io/tier: enterprise-shared
     spec:
+      # Fixed hostname and node name. RabbitMQ keeps its Mnesia database (users, vhosts, queues) under
+      # mnesia/rabbit@<hostname>; with the generated pod name every recreation started an empty broker.
+      hostname: message-broker-rabbitmq
       securityContext:
         runAsNonRoot: true
         runAsUser: 999
@@ -40,6 +47,8 @@ spec:
             - containerPort: 15672
               name: http-mgmt
           env:
+            - name: RABBITMQ_NODENAME
+              value: "rabbit@message-broker-rabbitmq"
             - name: RABBITMQ_DEFAULT_USER
               value: "drr_admin"
             - name: RABBITMQ_DEFAULT_PASS

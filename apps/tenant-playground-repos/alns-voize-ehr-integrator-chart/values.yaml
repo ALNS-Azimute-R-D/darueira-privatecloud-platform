@@ -4,7 +4,7 @@ tenant: swfabrik-europe
 project: ehr-integrations
 env: dev
 
-replicaCount: 2           # the session is shared through PostgreSQL (voize spec 006), so more than one replica is safe
+replicaCount: 1           # one replica for now (frozen project); the session stays in PostgreSQL (voize spec 006), so scaling back up is safe
 
 image:
   repository: nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-europe/alns-voize-ehr-integrator

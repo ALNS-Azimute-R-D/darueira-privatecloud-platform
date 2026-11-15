@@ -55,3 +55,6 @@ apps/tenant-playground-repos/**/obj/
 apps/tenant-playground-repos/**/.gradle/
 apps/tenant-playground-repos/**/.idea/
 apps/tenant-playground-repos/**/*.iml
+
+
+*.local.md

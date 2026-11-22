@@ -2,6 +2,7 @@
   "description": "Relationship tuples that must exist in the OpenFGA store (ADR-0021/0022). User ids are the Keycloak 'sub' of the realm darueira-platform-svcs (the id that ends up in the token). Applied by scripts/seed_openfga_tuples.py. Tuples that drr-tenant-svc writes when a tenant is created do not belong here.",
   "tuples": [
     {"user": "user:5f755d14-065d-4f1e-bb3e-c1f210c93e9a", "relation": "admin", "object": "tenant:swfabrik-europe", "note": "andre.nascimento, platform architect"},
-    {"user": "user:5f755d14-065d-4f1e-bb3e-c1f210c93e9a", "relation": "admin", "object": "tenant:swfabrik-latam", "note": "andre.nascimento, platform architect"}
+    {"user": "user:5f755d14-065d-4f1e-bb3e-c1f210c93e9a", "relation": "admin", "object": "tenant:swfabrik-latam", "note": "andre.nascimento, platform architect"},
+    {"user": "user:5f755d14-065d-4f1e-bb3e-c1f210c93e9a", "relation": "admin", "object": "tenant:darueira-corp", "note": "andre.nascimento: his Keycloak attribute tenant=darueira-corp, the default tenant of forward-auth"}
   ]
 }

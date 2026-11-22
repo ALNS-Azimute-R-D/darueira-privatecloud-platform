@@ -25,6 +25,35 @@ spec:
         fsGroup: 10001
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        # Creates/updates the schema of the datastore before the server starts (ADR-0021).
+        - name: migrate
+          image: openfga/openfga:v1.8.3
+          imagePullPolicy: IfNotPresent
+          args: ["migrate"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: OPENFGA_DATASTORE_ENGINE
+              value: "postgres"
+            - name: OPENFGA_DATASTORE_URI
+              valueFrom:
+                secretKeyRef:
+                  name: openfga-db
+                  key: uri
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
       containers:
         - name: openfga
           image: openfga/openfga:v1.8.3
@@ -42,8 +71,14 @@ spec:
           env:
             - name: OPENFGA_LOG_FORMAT
               value: "json"
+            # PostgreSQL on central-postgres (ADR-0021). "memory" lost every store, model and tuple on each restart.
             - name: OPENFGA_DATASTORE_ENGINE
-              value: "memory"
+              value: "postgres"
+            - name: OPENFGA_DATASTORE_URI
+              valueFrom:
+                secretKeyRef:
+                  name: openfga-db
+                  key: uri
             - name: OPENFGA_PLAYGROUND_ENABLED
               value: "true"
             - name: OPENFGA_PLAYGROUND_PORT

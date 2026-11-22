@@ -429,14 +429,15 @@ validate-backstage: ## Validate Spotify Backstage IDP OIDC authentication, Catal
 	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/validate_backstage_iam.py
 
 .PHONY: bootstrap-openfga
-bootstrap-openfga: ## Configure OpenFGA ReBAC store, authorization model, and relationship tuples
-	@echo -e "${GREEN}==> Bootstrapping OpenFGA ReBAC Model & Relationship Tuples...${NC}"
-	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/bootstrap_openfga_rebac.py
+bootstrap-openfga: ## Create the OpenFGA database, store and authorization model from authz/schema.fga (ADR-0021; no tuples)
+	@echo -e "${GREEN}==> Provisioning OpenFGA datastore, store and authorization model...${NC}"
+	./scripts/provision_openfga_db.sh
+	python3 scripts/bootstrap_openfga_rebac.py
 
 .PHONY: validate-openfga
-validate-openfga: ## Validate OpenFGA ReBAC engine, relationship checks, and cross-tenant boundaries
-	@echo -e "${GREEN}==> Validating OpenFGA ReBAC & Zero Trust Authorization Suite...${NC}"
-	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/validate_openfga_rebac.py
+validate-openfga: ## Run authz/tests.fga.yaml against the live OpenFGA (throw-away stores)
+	@echo -e "${GREEN}==> Validating the ReBAC model (authz/tests.fga.yaml)...${NC}"
+	./scripts/validate_openfga_model.sh
 
 .PHONY: bootstrap-spire
 bootstrap-spire: ## Configure SPIRE Workload Registrations and OpenBao PKI, SPIFFE Auth & Dynamic Secrets

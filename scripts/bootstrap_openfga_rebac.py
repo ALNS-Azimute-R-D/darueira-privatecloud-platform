@@ -2,224 +2,146 @@
 """
 ==============================================================================
 Darueira Private Cloud Platform - Enterprise Shared Services
-OpenFGA Fine-Grained Authorization (ReBAC) & Zero Trust Bootstrapper
+OpenFGA store + authorization model provisioning (ADR-0021)
 ==============================================================================
+The authorization model comes from authz/schema.fga, the source of truth (SDD): it is converted with the official
+`openfga/cli` image (`fga model transform`), so no model is duplicated in this script.
+
+What it does (idempotent):
+  1. converts authz/schema.fga to the JSON model;
+  2. creates the store `darueira-rebac-store` if it does not exist;
+  3. writes a new authorization model only if it differs from the latest one;
+  4. records the ids in the ConfigMap `openfga-ids` (drr-corpshared-plat) and restarts drr-iam-authz-svc when they changed.
+
+It writes NO relationship tuples: tuples are written by the platform (drr-tenant-svc writes `user:<id> admin tenant:<id>` when a
+tenant is created). Granting permissions to existing tenants is a separate decision of the platform owner.
+
+Requirements: kubectl access to the cluster and docker (for the fga CLI image). OpenFGA is reached through a temporary
+`kubectl port-forward`.
+
+Usage: python3 scripts/bootstrap_openfga_rebac.py [--no-restart]
+  --no-restart  record the ids but do not restart drr-iam-authz-svc (the operator restarts it).
 """
 
-import sys
-import os
 import json
-import urllib.request
-import urllib.error
+import os
+import subprocess
+import sys
 import time
+import urllib.error
+import urllib.request
 
-OPENFGA_HOST = os.environ.get("OPENFGA_HOST", "openfga.drr-corpshared-plat.svc.cluster.local:8080")
-OPENFGA_BASE_URL = f"http://{OPENFGA_HOST}"
+NAMESPACE = "drr-corpshared-plat"
 STORE_NAME = "darueira-rebac-store"
+IDS_CONFIGMAP = "openfga-ids"
+CONSUMER_DEPLOYMENT = "drr-iam-authz-svc"
+FGA_CLI_IMAGE = os.environ.get("FGA_CLI_IMAGE", "openfga/cli:latest")
+LOCAL_PORT = int(os.environ.get("OPENFGA_LOCAL_PORT", "18080"))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+AUTHZ_DIR = os.path.join(ROOT, "authz")
 
-AUTH_MODEL = {
-    "schema_version": "1.1",
-    "type_definitions": [
-        {"type": "user"},
-        {
-            "type": "organization",
-            "relations": {
-                "admin": {"this": {}},
-                "member": {"this": {}}
-            },
-            "metadata": {
-                "relations": {
-                    "admin": {"directly_related_user_types": [{"type": "user"}]},
-                    "member": {"directly_related_user_types": [{"type": "user"}]}
-                }
-            }
-        },
-        {
-            "type": "project",
-            "relations": {
-                "parent_org": {"this": {}},
-                "owner": {"this": {}},
-                "maintainer": {
-                    "union": {
-                        "child": [
-                            {"this": {}},
-                            {"computedUserset": {"relation": "owner"}}
-                        ]
-                    }
-                },
-                "writer": {
-                    "union": {
-                        "child": [
-                            {"this": {}},
-                            {"computedUserset": {"relation": "maintainer"}}
-                        ]
-                    }
-                },
-                "reader": {
-                    "union": {
-                        "child": [
-                            {"this": {}},
-                            {"computedUserset": {"relation": "writer"}}
-                        ]
-                    }
-                }
-            },
-            "metadata": {
-                "relations": {
-                    "parent_org": {"directly_related_user_types": [{"type": "organization"}]},
-                    "owner": {"directly_related_user_types": [{"type": "user"}]},
-                    "maintainer": {"directly_related_user_types": [{"type": "user"}]},
-                    "writer": {"directly_related_user_types": [{"type": "user"}]},
-                    "reader": {"directly_related_user_types": [{"type": "user"}]}
-                }
-            }
-        },
-        {
-            "type": "environment",
-            "relations": {
-                "parent_project": {"this": {}},
-                "admin": {"this": {}},
-                "operator": {
-                    "union": {
-                        "child": [
-                            {"this": {}},
-                            {"computedUserset": {"relation": "admin"}}
-                        ]
-                    }
-                },
-                "viewer": {
-                    "union": {
-                        "child": [
-                            {"this": {}},
-                            {"computedUserset": {"relation": "operator"}}
-                        ]
-                    }
-                },
-                "can_read": {
-                    "union": {
-                        "child": [
-                            {"computedUserset": {"relation": "viewer"}},
-                            {"tupleToUserset": {"tupleset": {"relation": "parent_project"}, "computedUserset": {"relation": "reader"}}}
-                        ]
-                    }
-                },
-                "can_write": {
-                    "union": {
-                        "child": [
-                            {"computedUserset": {"relation": "operator"}},
-                            {"tupleToUserset": {"tupleset": {"relation": "parent_project"}, "computedUserset": {"relation": "writer"}}}
-                        ]
-                    }
-                },
-                "can_delete": {
-                    "union": {
-                        "child": [
-                            {"computedUserset": {"relation": "admin"}},
-                            {"tupleToUserset": {"tupleset": {"relation": "parent_project"}, "computedUserset": {"relation": "owner"}}}
-                        ]
-                    }
-                }
-            },
-            "metadata": {
-                "relations": {
-                    "parent_project": {"directly_related_user_types": [{"type": "project"}]},
-                    "admin": {"directly_related_user_types": [{"type": "user"}]},
-                    "operator": {"directly_related_user_types": [{"type": "user"}]},
-                    "viewer": {"directly_related_user_types": [{"type": "user"}]},
-                    "can_read": {"directly_related_user_types": []},
-                    "can_write": {"directly_related_user_types": []},
-                    "can_delete": {"directly_related_user_types": []}
-                }
-            }
-        }
-    ]
-}
 
-RELATIONSHIP_TUPLES = [
-    {"user": "user:andre.nascimento", "relation": "admin", "object": "organization:darueira"},
-    {"user": "user:andre.nascimento", "relation": "admin", "object": "environment:acme-storefront-prod"},
-    {"user": "user:andre.nascimento", "relation": "admin", "object": "environment:acme-logistics-prod"},
-    {"user": "user:alice.developer", "relation": "member", "object": "organization:acme"},
-    {"user": "user:alice.developer", "relation": "viewer", "object": "environment:acme-storefront-prod"},
-    {"user": "user:bob.engineer", "relation": "member", "object": "organization:acme"},
-    {"user": "user:bob.engineer", "relation": "operator", "object": "environment:acme-storefront-prod"},
-    {"user": "user:carol.contractor", "relation": "member", "object": "organization:globex"},
-    {"user": "organization:acme", "relation": "parent_org", "object": "project:acme-storefront"},
-    {"user": "organization:acme", "relation": "parent_org", "object": "project:acme-logistics"},
-    {"user": "organization:globex", "relation": "parent_org", "object": "project:globex-audit"},
-    {"user": "project:acme-storefront", "relation": "parent_project", "object": "environment:acme-storefront-prod"},
-    {"user": "project:acme-logistics", "relation": "parent_project", "object": "environment:acme-logistics-prod"},
-    {"user": "project:globex-audit", "relation": "parent_project", "object": "environment:globex-audit-prod"}
-]
+def run(cmd, **kw):
+    return subprocess.run(cmd, capture_output=True, text=True, check=True, **kw).stdout
+
+
+def api(method, path, body=None):
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{LOCAL_PORT}{path}", method=method,
+        data=None if body is None else json.dumps(body).encode(),
+        headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return json.loads(resp.read().decode() or "{}")
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"OpenFGA {method} {path} -> {e.code}: {e.read().decode()}") from e
+
+
+def transform_model():
+    out = run(["docker", "run", "--rm", "-v", f"{AUTHZ_DIR}:/authz:ro", FGA_CLI_IMAGE,
+               "model", "transform", "--file", "/authz/schema.fga"])
+    model = json.loads(out)
+    if not model.get("type_definitions"):
+        sys.exit("schema.fga produced an empty model")
+    return model
+
+
+def canonical(model):
+    """Comparable form: the server may add/omit empty fields, so keep only what defines the model."""
+    return json.dumps({"schema_version": model.get("schema_version"),
+                       "type_definitions": sorted(model.get("type_definitions", []), key=lambda t: t["type"])},
+                      sort_keys=True)
 
 
 def get_or_create_store():
-    req = urllib.request.Request(f"{OPENFGA_BASE_URL}/stores")
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        stores_data = json.loads(resp.read().decode())
-        for s in stores_data.get("stores", []):
-            if s.get("name") == STORE_NAME:
-                print(f"    [✓] Reusing existing OpenFGA Store: {s.get('id')}")
-                return s.get("id")
-
-    req_create = urllib.request.Request(
-        f"{OPENFGA_BASE_URL}/stores",
-        data=json.dumps({"name": STORE_NAME}).encode(),
-        headers={"Content-Type": "application/json"},
-        method="POST"
-    )
-    with urllib.request.urlopen(req_create, timeout=10) as resp:
-        s = json.loads(resp.read().decode())
-        print(f"    [✓] Created OpenFGA Store: {s.get('id')}")
-        return s.get("id")
+    for s in api("GET", "/stores").get("stores", []):
+        if s.get("name") == STORE_NAME:
+            print(f"    [=] Store reused: {s['id']}")
+            return s["id"], False
+    s = api("POST", "/stores", {"name": STORE_NAME})
+    print(f"    [+] Store created: {s['id']}")
+    return s["id"], True
 
 
-def bootstrap_auth_model(store_id):
-    req = urllib.request.Request(
-        f"{OPENFGA_BASE_URL}/stores/{store_id}/authorization-models",
-        data=json.dumps(AUTH_MODEL).encode(),
-        headers={"Content-Type": "application/json"},
-        method="POST"
-    )
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        data = json.loads(resp.read().decode())
-        model_id = data.get("authorization_model_id")
-        print(f"    [✓] Registered Authorization Model: {model_id}")
-        return model_id
+def ensure_model(store_id, model):
+    latest = api("GET", f"/stores/{store_id}/authorization-models?page_size=1").get("authorization_models", [])
+    if latest and canonical(latest[0]) == canonical(model):
+        print(f"    [=] Model unchanged: {latest[0]['id']}")
+        return latest[0]["id"]
+    created = api("POST", f"/stores/{store_id}/authorization-models", model)
+    print(f"    [+] Model written: {created['authorization_model_id']}")
+    return created["authorization_model_id"]
 
 
-def bootstrap_tuples(store_id):
-    payload = {
-        "writes": {
-            "tuple_keys": RELATIONSHIP_TUPLES
-        }
-    }
-    req = urllib.request.Request(
-        f"{OPENFGA_BASE_URL}/stores/{store_id}/write",
-        data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json"},
-        method="POST"
-    )
+def record_ids(store_id, model_id):
+    """ConfigMap with the ids; restarts the consumer when they changed."""
+    current = {}
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            print(f"    [✓] Written {len(RELATIONSHIP_TUPLES)} relationship tuples into OpenFGA Store.")
-    except urllib.error.HTTPError as e:
-        if e.code == 400 and "cannot write a tuple which already exists" in e.read().decode():
-            print(f"    [✓] Relationship tuples already written.")
-        else:
-            raise
+        current = json.loads(run(["kubectl", "-n", NAMESPACE, "get", "cm", IDS_CONFIGMAP, "-o", "jsonpath={.data}"]) or "{}")
+    except subprocess.CalledProcessError:
+        pass
+    desired = {"store-id": store_id, "model-id": model_id}
+    manifest = run(["kubectl", "-n", NAMESPACE, "create", "configmap", IDS_CONFIGMAP,
+                    f"--from-literal=store-id={store_id}", f"--from-literal=model-id={model_id}",
+                    "--dry-run=client", "-o", "yaml"])
+    labelled = run(["kubectl", "-n", NAMESPACE, "label", "--local", "-f", "-", "app.kubernetes.io/name=openfga",
+                    "darueira.io/tier=enterprise-shared", "-o", "yaml"], input=manifest)
+    subprocess.run(["kubectl", "apply", "-f", "-"], input=labelled, capture_output=True, text=True, check=True)
+    if current == desired:
+        print(f"    [=] ConfigMap {IDS_CONFIGMAP} unchanged")
+        return False
+    print(f"    [+] ConfigMap {IDS_CONFIGMAP} updated")
+    return True
 
 
 def main():
     print("==================================================================")
-    print("  Bootstrapping OpenFGA ReBAC Fine-Grained Authorization Engine   ")
+    print("  OpenFGA store + authorization model (from authz/schema.fga)     ")
     print("==================================================================")
-
-    store_id = get_or_create_store()
-    bootstrap_auth_model(store_id)
-    bootstrap_tuples(store_id)
-
-    print("\n[✓] OpenFGA ReBAC bootstrap completed successfully!")
+    model = transform_model()
+    print(f"    [=] schema.fga: {len(model['type_definitions'])} types")
+    pf = subprocess.Popen(["kubectl", "-n", NAMESPACE, "port-forward", "svc/openfga", f"{LOCAL_PORT}:8080"],
+                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        for _ in range(30):
+            try:
+                api("GET", "/stores")
+                break
+            except Exception:
+                time.sleep(1)
+        else:
+            sys.exit("OpenFGA is not reachable through port-forward")
+        store_id, _ = get_or_create_store()
+        model_id = ensure_model(store_id, model)
+    finally:
+        pf.terminate()
+    changed = record_ids(store_id, model_id)
+    if changed and "--no-restart" not in sys.argv:
+        run(["kubectl", "-n", NAMESPACE, "rollout", "restart", f"deploy/{CONSUMER_DEPLOYMENT}"])
+        print(f"    [+] {CONSUMER_DEPLOYMENT} restarted to pick up the new ids")
+    elif changed:
+        print(f"    [!] ids changed: restart {CONSUMER_DEPLOYMENT} to pick them up")
+    print("\n[✓] OpenFGA store and model are in place (no tuples written, by design).")
 
 
 if __name__ == "__main__":

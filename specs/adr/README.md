@@ -23,3 +23,4 @@ This directory contains Architecture Decision Records (ADRs) following the MADR 
 - [ADR-0018: Tenant Relational Data on PostgreSQL Only — Decommission `tenant-mysql`](0018-tenant-relational-data-on-postgresql-only.md)
 - [ADR-0019: PostgreSQL as the Only Tenant Data Store — Decommission `tenant-mongodb`](0019-postgresql-as-the-only-tenant-data-store-decommission-tenant-mongodb.md)
 - [ADR-0020: Observability Stack Upgrade, Metric Exporters and 3-Day Log Retention](0020-observability-stack-upgrade-exporters-and-log-retention.md)
+- [ADR-0021: OpenFGA on a Persistent Datastore and Store/Model Provisioning from `authz/schema.fga`](0021-openfga-persistent-datastore-and-model-provisioning-from-schema.md)

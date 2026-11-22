@@ -59,6 +59,7 @@ spec:
             # A directory mount, not subPath: the kubelet never refreshes subPath mounts, so a config change would not arrive.
             - {name: config, mountPath: /etc/alertmanager-config, readOnly: true}
             - {name: webhook, mountPath: /etc/alertmanager/webhook, readOnly: true}
+            - {name: smtp, mountPath: /etc/alertmanager/smtp, readOnly: true}
             - {name: data, mountPath: /alertmanager}
       volumes:
         - name: config
@@ -67,6 +68,9 @@ spec:
         - name: webhook
           secret:
             secretName: alertmanager-webhook
+        - name: smtp
+          secret:
+            secretName: alertmanager-smtp
         # Silences and the notification log live here: they are lost when the pod restarts (lab trade-off).
         - name: data
           emptyDir: {}

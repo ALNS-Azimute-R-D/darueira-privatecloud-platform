@@ -1,7 +1,6 @@
 # Alertmanager configuration (ADR-0020, backlog item 48). The webhook URL is a Secret (url_file), never a value in Git.
 # Every alert goes to two places: the webhook (default: an in-cluster receiver that logs it) and an e-mail to the platform admin and to andre.nascimento
-# mailbox on the in-cluster Stalwart. The e-mail is a LOCAL TEST: it is delivered to a local domain on port 25 without
-# authentication (as an MX would receive it), so no credential is involved.
+# mailbox on the in-cluster Stalwart, sent with an authenticated account so that it is not treated as spam.
 global:
   resolve_timeout: 5m
 
@@ -31,9 +30,13 @@ receivers:
     email_configs:
       - to: "admin@darueira.local, andre.nascimento@darueira.local"
         from: alertmanager@darueira.local
-        smarthost: stalwart-mail.drr-corpshared-plat.svc.cluster.local:25
+        # Authenticated submission (implicit TLS on 465; Stalwart has no listener on 587). The account is a user of the
+        # Authentik directory created by scripts/provision_alertmanager_mail.py; the password is the Secret alertmanager-smtp.
+        smarthost: stalwart-mail.drr-corpshared-plat.svc.cluster.local:465
+        auth_username: alertmanager@darueira.local
+        auth_password_file: /etc/alertmanager/smtp/password
         hello: alertmanager.drr-corpshared-obs.svc.cluster.local
-        require_tls: false
+        require_tls: true
         tls_config:
           insecure_skip_verify: true   # lab: the Stalwart certificate is not issued by a CA the pod trusts
         send_resolved: true

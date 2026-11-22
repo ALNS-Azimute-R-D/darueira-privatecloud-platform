@@ -1,16 +1,19 @@
 # Alertmanager configuration (ADR-0020, backlog item 48). The webhook URL is a Secret (url_file), never a value in Git.
+# Every alert goes to two places: the webhook (default: an in-cluster receiver that logs it) and an e-mail to the platform admin and to andre.nascimento
+# mailbox on the in-cluster Stalwart. The e-mail is a LOCAL TEST: it is delivered to a local domain on port 25 without
+# authentication (as an MX would receive it), so no credential is involved.
 global:
   resolve_timeout: 5m
 
 route:
-  receiver: webhook
+  receiver: default
   group_by: [alertname, service]
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 4h
   routes:
     - matchers: [severity="critical"]
-      receiver: webhook
+      receiver: default
       repeat_interval: 1h
 
 # A critical alert of a service hides the warnings of the same service: one page, not two.
@@ -20,8 +23,17 @@ inhibit_rules:
     equal: [service]
 
 receivers:
-  - name: webhook
+  - name: default
     webhook_configs:
       - url_file: /etc/alertmanager/webhook/url
         send_resolved: true
         max_alerts: 20
+    email_configs:
+      - to: "admin@darueira.local, andre.nascimento@darueira.local"
+        from: alertmanager@darueira.local
+        smarthost: stalwart-mail.drr-corpshared-plat.svc.cluster.local:25
+        hello: alertmanager.drr-corpshared-obs.svc.cluster.local
+        require_tls: false
+        tls_config:
+          insecure_skip_verify: true   # lab: the Stalwart certificate is not issued by a CA the pod trusts
+        send_resolved: true

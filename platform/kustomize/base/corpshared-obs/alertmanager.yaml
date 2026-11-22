@@ -34,7 +34,7 @@ spec:
         - name: alertmanager
           image: prom/alertmanager:v0.35.0
           args:
-            - --config.file=/etc/alertmanager/alertmanager.yml
+            - --config.file=/etc/alertmanager-config/alertmanager.yml
             - --storage.path=/alertmanager
             - --web.external-url=http://alertmanager.drr-corpshared-obs.svc.cluster.local:9093
           ports:
@@ -56,7 +56,8 @@ spec:
             requests: {cpu: 20m, memory: 32Mi}
             limits: {cpu: 200m, memory: 96Mi}
           volumeMounts:
-            - {name: config, mountPath: /etc/alertmanager/alertmanager.yml, subPath: alertmanager.yml}
+            # A directory mount, not subPath: the kubelet never refreshes subPath mounts, so a config change would not arrive.
+            - {name: config, mountPath: /etc/alertmanager-config, readOnly: true}
             - {name: webhook, mountPath: /etc/alertmanager/webhook, readOnly: true}
             - {name: data, mountPath: /alertmanager}
       volumes:

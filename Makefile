@@ -444,6 +444,11 @@ bootstrap-openfga: ## Create the OpenFGA database, store and authorization model
 	./scripts/provision_openfga_db.sh
 	python3 scripts/bootstrap_openfga_rebac.py
 
+.PHONY: seed-openfga
+seed-openfga: ## Write the tuples of authz/seed-tuples.json to OpenFGA (idempotent, insert-only) and verify them
+	@echo -e "${GREEN}==> Seeding OpenFGA relationship tuples...${NC}"
+	python3 scripts/seed_openfga_tuples.py
+
 .PHONY: validate-openfga
 validate-openfga: ## Run authz/tests.fga.yaml against the live OpenFGA (throw-away stores)
 	@echo -e "${GREEN}==> Validating the ReBAC model (authz/tests.fga.yaml)...${NC}"

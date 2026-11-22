@@ -316,14 +316,14 @@ proxy-privileged: ## Start APISIX Ingress Reverse Proxy on default Ports 80 & 44
 .PHONY: bootstrap-apisix
 bootstrap-apisix: ## Seed all cluster routes and SSL certificates into APISIX Gateway and ETCD
 	@echo -e "${GREEN}==> Seeding platform routes and SSL into APISIX Gateway & ETCD...${NC}"
-	@$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway 9180:9180 >/dev/null & PF=$$!; \
+	@$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway-internal 9180:9180 >/dev/null & PF=$$!; \
 	sleep 2; \
 	rc=0; APISIX_ADMIN_URL=http://127.0.0.1:9180/apisix/admin python3 scripts/bootstrap_apisix_routes.py || rc=$$?; \
 	kill $$PF; exit $$rc
 
 .PHONY: check-apisix-routes
 check-apisix-routes: ## Diff scripts/bootstrap_apisix_routes.py (source of truth) against live APISIX routes
-	@$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway 9180:9180 >/dev/null & PF=$$!; \
+	@$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway-internal 9180:9180 >/dev/null & PF=$$!; \
 	sleep 2; \
 	rc=0; APISIX_ADMIN_URL=http://127.0.0.1:9180/apisix/admin python3 scripts/bootstrap_apisix_routes.py --check || rc=$$?; \
 	kill $$PF; exit $$rc
@@ -331,7 +331,7 @@ check-apisix-routes: ## Diff scripts/bootstrap_apisix_routes.py (source of truth
 .PHONY: smoke-apisix-upstreams
 smoke-apisix-upstreams: ## TCP-probe every APISIX route upstream from the gateway's own network identity
 	@echo -e "${GREEN}==> Probing all APISIX upstreams from inside the apisix-gateway pod...${NC}"
-	@$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway 9180:9180 >/dev/null & PF=$$!; \
+	@$(KUBECTL) port-forward -n drr-corpshared-plat svc/apisix-gateway-internal 9180:9180 >/dev/null & PF=$$!; \
 	sleep 2; \
 	rc=0; KUBECTL="$(KUBECTL)" python3 scripts/smoke_apisix_upstreams.py || rc=$$?; \
 	kill $$PF; exit $$rc

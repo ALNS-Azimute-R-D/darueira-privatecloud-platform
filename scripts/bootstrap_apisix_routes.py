@@ -31,7 +31,7 @@ def _secret(key, env_name=None):
 
 OIDC_CLIENT_SECRET = _secret("oidc-client-secret", "OIDC_CLIENT_SECRET")
 
-ADMIN_URL = os.environ.get("APISIX_ADMIN_URL", "http://apisix-gateway.drr-corpshared-plat.svc.cluster.local:9180/apisix/admin")
+ADMIN_URL = os.environ.get("APISIX_ADMIN_URL", "http://127.0.0.1:9180/apisix/admin")
 ADMIN_KEY = _secret("admin-key", "APISIX_ADMIN_KEY")
 
 # SSL Certificate definition

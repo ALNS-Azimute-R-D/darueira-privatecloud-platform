@@ -36,10 +36,10 @@ data:
         timeout: 30
       admin:
         allow_admin:
-          - 0.0.0.0/0
+          - 127.0.0.1/32   # only kubectl port-forward (source 127.0.0.1); the Service no longer publishes this port (ADR-0020/backlog 51)
         admin_key:
           - name: admin
-            key: edd1c9f034335f136f87ad84b625c8f1
+            key: ${{APISIX_ADMIN_KEY}}   # from the Secret apisix-secrets
             role: admin
     nginx_config:
       http_configuration_snippet: |
@@ -129,6 +129,12 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - docker-start
+          env:
+            - name: APISIX_ADMIN_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: apisix-secrets
+                  key: admin-key
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -226,6 +232,22 @@ spec:
       targetPort: 9443
       nodePort: 30444
       name: https-direct
+---
+# Internal-only ports. They used to be on the NodePort Service above, which gave the Admin API and the metrics a port on the host
+# (reachable from the LAN); a ClusterIP Service does not. Admin: `kubectl port-forward svc/apisix-gateway-internal 9180:9180`.
+apiVersion: v1
+kind: Service
+metadata:
+  name: apisix-gateway-internal
+  namespace: drr-corpshared-plat
+  labels:
+    app.kubernetes.io/name: apisix-gateway
+    darueira.io/tier: enterprise-shared
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: apisix-gateway
+  ports:
     - port: 9091
       targetPort: 9091
       name: prometheus

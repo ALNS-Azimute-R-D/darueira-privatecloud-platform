@@ -38,7 +38,7 @@ def update_apisix_oidc_routes():
     print("--> Updating APISIX Gateway Ingress Routes with Keycloak OIDC Security...")
     # Port forward apisix gateway to seed routes
     pf = subprocess.Popen(
-        "microk8s kubectl port-forward -n drr-corpshared-plat svc/apisix-gateway 9180:9180",
+        "microk8s kubectl port-forward -n drr-corpshared-plat svc/apisix-gateway-internal 9180:9180",
         shell=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL

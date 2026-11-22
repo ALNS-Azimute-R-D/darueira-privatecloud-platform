@@ -45,6 +45,11 @@ PROJECTS = [
 # Folder under apps/tenant-playground-repos -> Forgejo repo name, only where they differ. The chart folder is
 # `<folder>-chart` and its repo `<repo name>-chart`.
 REPO_NAMES = {"caseforce-legalhub-solutions": "legaltech-caseforce-solutions"}
+# Files at the root of a source folder that stay in the workspace but are not published to Forgejo
+# (case-study leftovers: they are not part of what the platform builds or runs).
+EXCLUDE_FROM_FORGEJO = {
+    "caseforce-legalhub-solutions": {"docker-compose.yml", "AGY.md", "batch-onboarding-payload.json"},
+}
 SKIP_DIRS = {"node_modules", "target", "dist", "bin", "obj", ".git", ".idea", "__pycache__", ".gradle", ".kotlin", "build"}
 SKIP_SUFFIXES = (".iml",)
 RUNTIME_STATE = "values-dev-green.yaml"
@@ -76,7 +81,7 @@ def git(*args, cwd):
     return res
 
 
-def sync_repo(name, src_dir):
+def sync_repo(name, src_dir, exclude_root=frozenset()):
     """Makes the repo content equal to src_dir (minus skipped paths) with one commit when something changed."""
     remote = f"http://{USER}:{PASS}@{BASE.split('://', 1)[1]}/{ORG}/{name}.git"
     with tempfile.TemporaryDirectory() as tmp:
@@ -97,6 +102,8 @@ def sync_repo(name, src_dir):
             rel = os.path.relpath(dirpath, src_dir)
             os.makedirs(os.path.join(work, rel), exist_ok=True)
             for f in filenames:
+                if rel == "." and f in exclude_root:
+                    continue
                 if not f.endswith(SKIP_SUFFIXES):
                     shutil.copy2(os.path.join(dirpath, f), os.path.join(work, rel, f))
         for rel, content in keep.items():  # runtime state written by Tekton wins over the seed in this repository
@@ -138,7 +145,7 @@ def main():
                 print(f"    [-] {repo}: not under apps/tenant-playground-repos, left alone")
                 continue
             ensure_repo(repo)
-            sync_repo(repo, folder)
+            sync_repo(repo, folder, EXCLUDE_FROM_FORGEJO.get(project, frozenset()) if repo == name else frozenset())
         if hooks and os.path.isdir(os.path.join(ROOT, project)):
             ensure_hook(name)
 

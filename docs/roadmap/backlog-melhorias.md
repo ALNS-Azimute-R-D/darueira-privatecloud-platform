@@ -718,7 +718,7 @@ infra corporativa central hoje.
 - Validado: webhook (hook 12) -> 2 PipelineRuns Succeeded (2m51s / 4m12s) -> promote -> ArgoCD `Synced/Healthy` -> pods novos sem restarts, Swagger 200 pelo gateway.
 - Incidente durante a troca: o chart novo apontava as imagens antigas para o host `nexus-oss...:8082`, onde elas não existem (só no cache do nó como
   `127.0.0.1:32082`); com `Recreate` o backend ficou fora do ar por ~5 min até eu voltar o host. Resolvido; depois do primeiro build do CI o host padrão voltou.
-- Pendente / observações: `docker-compose.yml`, `AGY.md` e o payload de onboarding vieram do case study e foram publicados no Forgejo (decidir se ficam);
+- Pendente / observações: `docker-compose.yml`, `AGY.md` e `batch-onboarding-payload.json` vieram do case study: seguem na pasta do workspace, mas o publish não os envia mais ao Forgejo (`EXCLUDE_FROM_FORGEJO`; a fixture de teste `src/test/resources/fake-test-data/...json` ficou, o backend precisa dela);
   os PipelineRuns manuais antigos em `pipelineruns-swfabrik-europe.yaml` citam um pipeline `polyglot-ci-cd-pipeline` e imagens com nomes antigos;
   o `bootstrap_tenant_cicd_gitops.py` procura `workspace/.../<repo>` e a pasta agora se chama outra coisa (não verifiquei se ele simplesmente pula o caseforce); o caminho atual de publicação é `make publish-playground`. Os ~400 restarts antigos (`UnknownHostException` do MySQL na partida) não se repetiram nos primeiros minutos (0 restarts), mas a causa original não foi investigada.
 

@@ -13,6 +13,7 @@ resources:
   - opensearch.yaml
   - opensearch-dashboards.yaml
   - fluent-bit.yaml
+  - exporters.yaml
 
 generatorOptions:
   disableNameSuffixHash: true

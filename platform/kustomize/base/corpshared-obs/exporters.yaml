@@ -1,0 +1,355 @@
+# Metric exporters of the observability tier (ADR-0020): kube-state-metrics (object state), node-exporter (host) and
+# postgres-exporter (one Deployment per PostgreSQL; credentials come from Secrets created by
+# scripts/provision_postgres_monitoring.sh, never from Git).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-state-metrics
+  namespace: drr-corpshared-obs
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kube-state-metrics
+rules:
+  - apiGroups: [""]
+    resources: [pods, nodes, namespaces, resourcequotas, limitranges, persistentvolumeclaims, persistentvolumes, services, endpoints]
+    verbs: [list, watch]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets, daemonsets, replicasets]
+    verbs: [list, watch]
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kube-state-metrics
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kube-state-metrics
+subjects:
+  - kind: ServiceAccount
+    name: kube-state-metrics
+    namespace: drr-corpshared-obs
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-state-metrics
+  namespace: drr-corpshared-obs
+  labels:
+    app.kubernetes.io/name: kube-state-metrics
+    darueira.io/tier: enterprise-shared
+    darueira.io/subsystem: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kube-state-metrics
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kube-state-metrics
+        darueira.io/tier: enterprise-shared
+        darueira.io/subsystem: observability
+    spec:
+      serviceAccountName: kube-state-metrics
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: kube-state-metrics
+          image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.20.0
+          args:
+            - --port=8080
+            - --resources=pods,nodes,namespaces,resourcequotas,limitranges,persistentvolumeclaims,persistentvolumes,deployments,statefulsets,daemonsets,replicasets,jobs,cronjobs
+          ports:
+            - containerPort: 8080
+              name: http
+          readinessProbe:
+            httpGet: {path: /readyz, port: 8081}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests: {cpu: 20m, memory: 64Mi}
+            limits: {cpu: 200m, memory: 192Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-state-metrics
+  namespace: drr-corpshared-obs
+  labels:
+    app.kubernetes.io/name: kube-state-metrics
+spec:
+  selector:
+    app.kubernetes.io/name: kube-state-metrics
+  ports:
+    - {name: http, port: 8080, targetPort: 8080}
+---
+# node-exporter reads the host's /proc, /sys and / (read-only). It runs on the pod network: a pod cannot reach a hostNetwork
+# port on the node IP here (host firewall), so Prometheus scrapes the pod IP. Trade-off: the host's own network interface
+# counters are not visible (per-container network metrics come from cAdvisor).
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-exporter
+  namespace: drr-corpshared-obs
+  labels:
+    app.kubernetes.io/name: node-exporter
+    darueira.io/tier: enterprise-shared
+    darueira.io/subsystem: observability
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: node-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: node-exporter
+        darueira.io/tier: enterprise-shared
+        darueira.io/subsystem: observability
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: node-exporter
+          image: prom/node-exporter:v1.13.1
+          args:
+            - --path.procfs=/host/proc
+            - --path.sysfs=/host/sys
+            - --path.rootfs=/host/root
+            - --web.listen-address=:9100
+            - --no-collector.netdev
+            - --no-collector.netclass
+            - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+|var/snap/microk8s/.+)($|/)
+          ports:
+            - containerPort: 9100
+              name: metrics
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests: {cpu: 20m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 96Mi}
+          volumeMounts:
+            - {name: proc, mountPath: /host/proc, readOnly: true}
+            - {name: sys, mountPath: /host/sys, readOnly: true}
+            - {name: root, mountPath: /host/root, readOnly: true, mountPropagation: HostToContainer}
+      tolerations:
+        - operator: Exists
+      volumes:
+        - {name: proc, hostPath: {path: /proc}}
+        - {name: sys, hostPath: {path: /sys}}
+        - {name: root, hostPath: {path: /}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-exporter-central
+  namespace: drr-corpshared-obs
+  labels:
+    app.kubernetes.io/name: postgres-exporter
+    darueira.io/instance: central
+    darueira.io/tier: enterprise-shared
+    darueira.io/subsystem: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres-exporter
+      darueira.io/instance: central
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres-exporter
+        darueira.io/instance: central
+        darueira.io/tier: enterprise-shared
+        darueira.io/subsystem: observability
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres-exporter
+          image: quay.io/prometheuscommunity/postgres-exporter:v0.21.1
+          args:
+            - --web.listen-address=:9187
+          env:
+            - name: DATA_SOURCE_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-exporter-central
+                  key: dsn
+          ports:
+            - containerPort: 9187
+              name: metrics
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests: {cpu: 10m, memory: 24Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-exporter-europe
+  namespace: drr-corpshared-obs
+  labels:
+    app.kubernetes.io/name: postgres-exporter
+    darueira.io/instance: europe
+    darueira.io/tier: enterprise-shared
+    darueira.io/subsystem: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres-exporter
+      darueira.io/instance: europe
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres-exporter
+        darueira.io/instance: europe
+        darueira.io/tier: enterprise-shared
+        darueira.io/subsystem: observability
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres-exporter
+          image: quay.io/prometheuscommunity/postgres-exporter:v0.21.1
+          args:
+            - --web.listen-address=:9187
+          env:
+            - name: DATA_SOURCE_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-exporter-europe
+                  key: dsn
+          ports:
+            - containerPort: 9187
+              name: metrics
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests: {cpu: 10m, memory: 24Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-exporter-latam
+  namespace: drr-corpshared-obs
+  labels:
+    app.kubernetes.io/name: postgres-exporter
+    darueira.io/instance: latam
+    darueira.io/tier: enterprise-shared
+    darueira.io/subsystem: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres-exporter
+      darueira.io/instance: latam
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres-exporter
+        darueira.io/instance: latam
+        darueira.io/tier: enterprise-shared
+        darueira.io/subsystem: observability
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres-exporter
+          image: quay.io/prometheuscommunity/postgres-exporter:v0.21.1
+          args:
+            - --web.listen-address=:9187
+          env:
+            - name: DATA_SOURCE_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-exporter-latam
+                  key: dsn
+          ports:
+            - containerPort: 9187
+              name: metrics
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests: {cpu: 10m, memory: 24Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-exporter-central
+  namespace: drr-corpshared-obs
+  labels:
+    app.kubernetes.io/name: postgres-exporter
+spec:
+  selector:
+    app.kubernetes.io/name: postgres-exporter
+    darueira.io/instance: central
+  ports:
+    - {name: metrics, port: 9187, targetPort: 9187}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-exporter-europe
+  namespace: drr-corpshared-obs
+  labels:
+    app.kubernetes.io/name: postgres-exporter
+spec:
+  selector:
+    app.kubernetes.io/name: postgres-exporter
+    darueira.io/instance: europe
+  ports:
+    - {name: metrics, port: 9187, targetPort: 9187}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-exporter-latam
+  namespace: drr-corpshared-obs
+  labels:
+    app.kubernetes.io/name: postgres-exporter
+spec:
+  selector:
+    app.kubernetes.io/name: postgres-exporter
+    darueira.io/instance: latam
+  ports:
+    - {name: metrics, port: 9187, targetPort: 9187}

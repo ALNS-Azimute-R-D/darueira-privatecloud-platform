@@ -109,6 +109,36 @@ data:
             target_label: __metrics_path__
             replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
 
+      - job_name: "node-exporter"
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [drr-corpshared-obs]
+            selectors:
+              - role: pod
+                label: "app.kubernetes.io/name=node-exporter"
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: instance
+          - source_labels: [__address__]
+            regex: "(.+):.*"
+            target_label: __address__
+            replacement: "$1:9100"
+
+      - job_name: "kube-state-metrics"
+        honor_labels: true
+        static_configs:
+          - targets: ["kube-state-metrics.drr-corpshared-obs.svc.cluster.local:8080"]
+
+      - job_name: "postgres"
+        static_configs:
+          - targets: ["postgres-exporter-central.drr-corpshared-obs.svc.cluster.local:9187"]
+            labels: {instance_name: central-postgres, tier: enterprise-shared}
+          - targets: ["postgres-exporter-europe.drr-corpshared-obs.svc.cluster.local:9187"]
+            labels: {instance_name: tenant-postgres-europe, tier: tenant-workload}
+          - targets: ["postgres-exporter-latam.drr-corpshared-obs.svc.cluster.local:9187"]
+            labels: {instance_name: tenant-postgres-latam, tier: tenant-workload}
+
       - job_name: "otel-collector"
         static_configs:
           - targets: ["otel-collector.drr-corpshared-obs.svc.cluster.local:8889"]

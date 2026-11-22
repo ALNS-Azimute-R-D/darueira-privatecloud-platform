@@ -78,6 +78,16 @@ spec:
         - ports:
             - port: "8060" # bookanything-monolith-backend-01
               protocol: TCP
+    # Allow the observability tier's postgres-exporter to read tenant-postgres
+    # statistics with the read-only pg_monitor role (ADR-0020).
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: postgres-exporter
+            k8s:io.kubernetes.pod.namespace: drr-corpshared-obs
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
     # Allow SPIFFE / SPIRE attestation agent
     - fromEntities:
         - host

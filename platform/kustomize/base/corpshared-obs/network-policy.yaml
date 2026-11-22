@@ -72,6 +72,18 @@ spec:
     - fromEndpoints:
         - matchLabels:
             darueira.io/subsystem: observability
+    # 3. Prometheus scrapes the exporters of this namespace (ADR-0020).
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "8080" # kube-state-metrics
+              protocol: TCP
+            - port: "9187" # postgres-exporter
+              protocol: TCP
+            - port: "9100" # node-exporter
+              protocol: TCP
   egress:
     # 1. CoreDNS
     - toEndpoints:

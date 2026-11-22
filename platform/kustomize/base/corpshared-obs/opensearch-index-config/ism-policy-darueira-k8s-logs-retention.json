@@ -1,13 +1,13 @@
 {
   "policy": {
-    "description": "Delete darueira-k8s-logs-* daily indices older than 2 days",
+    "description": "Delete darueira-k8s-logs-* daily indices older than 3 days",
     "default_state": "hot",
     "states": [
       {
         "name": "hot",
         "actions": [],
         "transitions": [
-          { "state_name": "delete", "conditions": { "min_index_age": "2d" } }
+          { "state_name": "delete", "conditions": { "min_index_age": "3d" } }
         ]
       },
       {

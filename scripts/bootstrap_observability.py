@@ -157,9 +157,11 @@ def provision_opensearch_indices():
             opensearch_api("PUT", f"{index}/_mapping",
                            '{"properties": {"log_processed": {"type": "flat_object"}}}')
         except RuntimeError as e:
-            if "Limit of total fields" not in str(e):
+            # Field limit, or log_processed already mapped as a regular object (index
+            # created before the flat_object template): history only, retention deletes it.
+            if "Limit of total fields" not in str(e) and "can't merge a non object mapping" not in str(e):
                 raise
-            print(f"    [~] {index}: already at the field limit, log_processed not mapped (read-only history)")
+            print(f"    [~] {index}: log_processed not remapped (field limit or object mapping, read-only history)")
     print("    [✓] Existing indices: retention attached, replicas 0, log_processed mapped")
 
 

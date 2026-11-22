@@ -21,7 +21,7 @@
 | :--- | :--- |
 | `Merge_Log_Key log_processed`: o JSON dos apps vai para uma chave única | `platform/kustomize/base/corpshared-obs/fluent-bit.yaml` |
 | Index template `darueira-k8s-logs`: `log_processed` como `flat_object` (conta como 1 campo), `replicas: 0`, `translog.durability: async`, `sync_interval`/`refresh_interval` de 30 s | `platform/kustomize/base/corpshared-obs/opensearch-index-config/index-template-darueira-k8s-logs.json` |
-| Política ISM `darueira-k8s-logs-retention`: **apaga índices com mais de 2 dias** (retenção escolhida pelo usuário) | `…/opensearch-index-config/ism-policy-darueira-k8s-logs-retention.json` |
+| Política ISM `darueira-k8s-logs-retention`: **apaga índices com mais de 3 dias** (retenção escolhida pelo usuário) | `…/opensearch-index-config/ism-policy-darueira-k8s-logs-retention.json` |
 | Provisionamento idempotente: template + ISM, e nos índices existentes anexa a política, aplica os settings e mapeia `log_processed` | `scripts/bootstrap_observability.py` → `provision_opensearch_indices()`, chamado pelo `make bootstrap-observability` |
 
 As buscas e visualizações provisionadas (`scripts/generate_opensearch_saved_objects.py`) só usam `kubernetes.*`, `stream`, `log` e `@timestamp`. O `Keep_Log On` preserva o `log` original, então nenhuma delas quebrou. O JSON estruturado dos apps agora se consulta como `log_processed.<chave>`.

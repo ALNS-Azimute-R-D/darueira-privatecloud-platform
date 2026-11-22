@@ -26,7 +26,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: prometheus
-          image: prom/prometheus:v2.53.1
+          image: prom/prometheus:v3.16.0
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
@@ -112,10 +112,6 @@ data:
       - job_name: "otel-collector"
         static_configs:
           - targets: ["otel-collector.drr-corpshared-obs.svc.cluster.local:8889"]
-
-      - job_name: "drr-iam-authz-svc"
-        static_configs:
-          - targets: ["drr-iam-authz-svc.drr-corpshared-plat.svc.cluster.local:8080"]
 
       - job_name: "keycloak"
         metrics_path: "/metrics"

@@ -191,7 +191,7 @@ gantt
 - **Task 6.1:** Unit tests:
   - `WebhookSignerSpec.groovy`: verify signature accuracy and tamper resistance.
   - `UrlSecurityValidatorSpec.groovy`: verify SSRF blacklist/whitelist filtering.
-- **Task 6.2:** Integration tests (Spock + TestContainers MySQL 8):
+- **Task 6.2:** Integration tests (Spock + TestContainers PostgreSQL 17):
   - `WebhookSubscriptionControllerSpec.groovy`: full CRUD, validation, permissions.
   - `WebhookDeliverySpec.groovy`: end-to-end event generation -> webhook dispatch -> mock HTTP endpoint -> delivery record validation.
   - `BulkCaseReassignSpec.groovy`: bulk update execution, progress polling, event verification.
@@ -308,7 +308,7 @@ gantt
 - **Task 6.1:** Unit tests:
   - `WebhookSignerSpec.groovy`: verify signature accuracy and tamper resistance.
   - `UrlSecurityValidatorSpec.groovy`: verify SSRF blacklist/whitelist filtering.
-- **Task 6.2:** Integration tests (Spock + TestContainers MySQL 8):
+- **Task 6.2:** Integration tests (Spock + TestContainers PostgreSQL 17):
   - `WebhookSubscriptionControllerSpec.groovy`: full CRUD, validation, permissions.
   - `WebhookDeliverySpec.groovy`: end-to-end event generation -> webhook dispatch -> mock HTTP endpoint -> delivery record validation.
   - `BulkCaseReassignSpec.groovy`: bulk update execution, progress polling, event verification.

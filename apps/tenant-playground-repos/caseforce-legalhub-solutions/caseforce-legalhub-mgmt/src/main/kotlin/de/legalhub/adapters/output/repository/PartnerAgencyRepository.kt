@@ -7,7 +7,7 @@ import io.micronaut.data.repository.CrudRepository
 
 import java.util.Optional
 
-@JdbcRepository(dialect = Dialect.MYSQL)
+@JdbcRepository(dialect = Dialect.POSTGRES)
 interface PartnerAgencyRepository : CrudRepository<PartnerAgency, Long> {
     fun findByAlias(alias: String): Optional<PartnerAgency>
     fun findByAliasAndDeletedAtIsNull(alias: String): Optional<PartnerAgency>

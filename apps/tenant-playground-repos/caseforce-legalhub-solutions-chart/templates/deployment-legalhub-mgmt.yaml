@@ -46,16 +46,18 @@ spec:
               value: {{ $s.containerPort | quote }}
             - name: LOG_LEVEL
               value: {{ $s.logLevel | quote }}
-            - name: MYSQL_HOST
-              value: {{ $s.mysql.host | quote }}
-            - name: MYSQL_PORT
-              value: {{ $s.mysql.port | quote }}
-            - name: MYSQL_DATABASE
-              valueFrom: { secretKeyRef: { name: tenant-mysql-credentials, key: database } }
-            - name: MYSQL_USER
-              valueFrom: { secretKeyRef: { name: tenant-mysql-credentials, key: username } }
-            - name: MYSQL_PASSWORD
-              valueFrom: { secretKeyRef: { name: tenant-mysql-credentials, key: password } }
+            # PostgreSQL (ADR-0018): host, port, database and credentials all come from the Secret caseforce-db,
+            # created by scripts/provision_caseforce_db.sh (not in Git).
+            - name: DB_HOST
+              valueFrom: { secretKeyRef: { name: caseforce-db, key: host } }
+            - name: DB_PORT
+              valueFrom: { secretKeyRef: { name: caseforce-db, key: port } }
+            - name: DB_NAME
+              valueFrom: { secretKeyRef: { name: caseforce-db, key: database } }
+            - name: DB_USER
+              valueFrom: { secretKeyRef: { name: caseforce-db, key: username } }
+            - name: DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: caseforce-db, key: password } }
             - name: RABBITMQ_ENABLED
               value: {{ $s.rabbitmq.enabled | quote }}
             - name: RABBITMQ_HOST

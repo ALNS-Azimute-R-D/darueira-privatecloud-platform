@@ -13,5 +13,4 @@ resources:
   - tenant-mongodb.yaml
   - tenant-keycloak.yaml
   - tenant-openbao.yaml
-  - tenant-mysql.yaml
   - acme-storefront-app.yaml

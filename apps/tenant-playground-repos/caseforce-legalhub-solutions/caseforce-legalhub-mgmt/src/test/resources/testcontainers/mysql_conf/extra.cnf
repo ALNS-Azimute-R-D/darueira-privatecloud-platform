@@ -1,3 +1,0 @@
-[mysqld]
-log_bin_trust_function_creators=ON
-sql_mode=''

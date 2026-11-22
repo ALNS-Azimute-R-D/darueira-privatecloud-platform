@@ -1,7 +1,8 @@
 # Defaults. The image tags live in values-dev-green.yaml, where the Tekton task `task-gitops-helm-promote` rewrites them
 # (the `# promote: <image>` markers tell it which tag belongs to which image). Credentials come from Secrets, never from Git:
-#   tenant-mysql-credentials (platform, key: username/password/database) and caseforce-credentials (keys: jwt-secret,
-#   mq-username, mq-password, fake-agency-password; created outside Git, see backlog item 41).
+#   caseforce-db (keys: host, port, database, username, password; created by scripts/provision_caseforce_db.sh,
+#   ADR-0018) and caseforce-credentials (keys: jwt-secret, mq-username, mq-password, fake-agency-password; created
+#   outside Git, see backlog item 41).
 tenant: swfabrik-europe
 nodeSelector:
   kubernetes.io/hostname: nbalns-mifcom-lnx-01
@@ -25,9 +26,6 @@ legalhubMgmt:
     tcpSocket: { port: 8080 }
     initialDelaySeconds: 30
     periodSeconds: 5
-  mysql:
-    host: tenant-mysql.drr-tnt-swfabrik-europe-dev.svc.cluster.local
-    port: "3306"
   rabbitmq:
     host: message-broker-rabbitmq.drr-corpshared-plat.svc.cluster.local
     port: "5672"

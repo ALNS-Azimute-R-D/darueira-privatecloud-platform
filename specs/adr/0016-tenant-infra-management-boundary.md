@@ -44,7 +44,7 @@ The Platform Architect (André Nascimento) clarified the intended architectural 
 - Repositories are preserved to retain commit history and audit trails, while preventing accidental commits or GitOps sync conflicts.
 
 ### 5. Tenant Baseline Specification Closure
-- Added `tenant-mysql.yaml` to `platform/kustomize/base/tnt-tenant-base/` and its `kustomization.yaml`, formally closing the documentation and template gap identified in `specs/01-initial-spec.md` §11.2 item 4.
+- Added `tenant-mysql.yaml` to `platform/kustomize/base/tnt-tenant-base/` and its `kustomization.yaml`, formally closing the documentation and template gap identified in `specs/01-initial-spec.md` §11.2 item 4. *(Superseded by ADR-0018: `tenant-mysql` was removed from the baseline on 2026-11-22.)*
 
 ## Consequences
 - **Unified Platform Lifecycle**: Platform engineers can patch CVEs, upgrade database engines, and tune health probes across all tenants simultaneously from a single repository.

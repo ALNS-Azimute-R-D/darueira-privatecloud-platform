@@ -32,11 +32,10 @@ dependencies {
     runtimeOnly("org.yaml:snakeyaml")
     runtimeOnly("ch.qos.logback:logback-classic")
     runtimeOnly("io.micronaut.sql:micronaut-jdbc-hikari")
-    runtimeOnly("mysql:mysql-connector-java")
-    runtimeOnly("org.flywaydb:flyway-mysql")
+    runtimeOnly("org.postgresql:postgresql")
 
     testImplementation("io.micronaut.test:micronaut-test-spock")
-    testImplementation("org.testcontainers:mysql")
+    testImplementation("org.testcontainers:postgresql")
     testImplementation("org.testcontainers:spock")
     testImplementation("org.testcontainers:testcontainers")
     testImplementation("org.apache.groovy:groovy:4.0.16")

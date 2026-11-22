@@ -26,13 +26,13 @@ The project workspace is structured into dedicated modules:
 ## 3. Project Stack & Constraints
 - **Language & Runtime:** Kotlin 1.9.21, Java 17, Gradle (in `caseforce-legalhub-mgmt/`); Java 25, Spring Boot 4.1.1, Maven (in `fake-helpers-apps/fake-legal-partners-agencies-app/`).
 - **Core Framework:** Micronaut 4.2.0 (Netty runtime).
-- **Data Access:** Micronaut Data JDBC (Dialect: MySQL), HikariCP.
+- **Data Access:** Micronaut Data JDBC (Dialect: PostgreSQL), HikariCP.
 - **Serialization:** Micronaut Serde Jackson (`@Serdeable` / `@Serdeable.Deserializable`).
 - **Database Migrations:** Flyway (Location: `caseforce-legalhub-mgmt/src/main/resources/databasemigrations/`).
 - **Messaging:** Micronaut RabbitMQ (`RabbitEntityEventClient`, `EntityEvent`, `EntityType`).
 - **Asynchrony:** Project Reactor (`Mono`, `Flux`) and Micronaut `@Async`.
 - **Security:** Micronaut Security JWT, custom `@NeedsPermission` and `Permission` enum.
-- **Testing:** Spock 2.3 + Groovy 4 + TestContainers (MySQL 8) for Micronaut; JUnit 5 + MockMvc for Spring Boot simulator.
+- **Testing:** Spock 2.3 + Groovy 4 + TestContainers (PostgreSQL 17) for Micronaut; JUnit 5 + MockMvc for Spring Boot simulator.
 
 ---
 
@@ -40,7 +40,7 @@ The project workspace is structured into dedicated modules:
 
 ### 4.1 Kotlin & Micronaut Patterns
 - **Serialization:** ALWAYS annotate DTOs, Commands, Responses, and Entities with `@Serdeable` or `@Serdeable.Deserializable`.
-- **Entities & Repos:** Use `@MappedEntity("table_name")` and `@JdbcRepository(dialect = Dialect.MYSQL)`. Repositories must extend `CrudRepository` or `PageableRepository`.
+- **Entities & Repos:** Use `@MappedEntity("table_name")` and `@JdbcRepository(dialect = Dialect.POSTGRES)`. Repositories must extend `CrudRepository` or `PageableRepository`.
 - **Immutability:** Prefer `val` and immutable data classes. Use `var` only for mutable state fields in entities (e.g., `status`, `attemptCount`, `updatedAt`).
 - **Null Safety:** Leverage Kotlin's type system cleanly (`?`, `?:`, `let`, `takeIf`). Never use `!!` unless verified by prior assertion.
 - **Dependency Injection:** Use constructor injection with `@Singleton` or `@Controller`.

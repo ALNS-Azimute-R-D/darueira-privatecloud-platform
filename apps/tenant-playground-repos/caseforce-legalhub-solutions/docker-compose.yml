@@ -1,13 +1,16 @@
+# Local development only (workspace; it is not published to Forgejo). Since ADR-0018 the platform uses PostgreSQL.
+# The application defaults match this file: DB_HOST=localhost, DB_PORT=5432, DB_NAME=caseforce, DB_USER/DB_PASSWORD=postgres.
 services:
-  mysql:
-    image: mysql:8.0.38
+  postgres:
+    image: postgres:17-alpine
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: caseforce
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: caseforce
     ports:
-      - "3307:3306"
+      - "5432:5432"
     volumes:
-      - mysql-data:/var/lib/mysql
+      - postgres-data:/var/lib/postgresql/data
 
   rabbitmq:
     image: rabbitmq:3.8-management-alpine
@@ -19,4 +22,4 @@ services:
       - "15673:15672"
 
 volumes:
-  mysql-data:
+  postgres-data:

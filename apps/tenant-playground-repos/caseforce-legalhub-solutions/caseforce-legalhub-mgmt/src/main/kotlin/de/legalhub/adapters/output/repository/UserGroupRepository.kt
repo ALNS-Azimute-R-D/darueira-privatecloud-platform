@@ -7,7 +7,7 @@ import io.micronaut.data.model.query.builder.sql.Dialect
 import io.micronaut.data.repository.CrudRepository
 import java.util.Optional
 
-@JdbcRepository(dialect = Dialect.MYSQL)
+@JdbcRepository(dialect = Dialect.POSTGRES)
 interface UserGroupRepository : CrudRepository<UserGroup, Long> {
 
     @Query(
@@ -15,7 +15,7 @@ interface UserGroupRepository : CrudRepository<UserGroup, Long> {
         SELECT COUNT(*) > 0 FROM tb_user_group ug
         JOIN tb_permission_group g ON ug.group_id = g.id
         WHERE ug.user_id = :userId
-        AND JSON_CONTAINS(g.js_permissions, CONCAT('"', :permission, '"'))
+        AND jsonb_exists(g.js_permissions, :permission)
         """
     )
     fun hasPermission(userId: Long, permission: String): Boolean

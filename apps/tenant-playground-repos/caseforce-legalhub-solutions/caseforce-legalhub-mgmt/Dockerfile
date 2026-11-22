@@ -9,7 +9,10 @@ WORKDIR /src
 COPY settings.gradle.kts build.gradle.kts gradle.properties ./
 COPY src ./src
 # The integration tests need Docker (TestContainers), so the image build skips them.
-RUN gradle --no-daemon -x test buildLayers
+# The Kotlin compiler runs in-process and /root/.kotlin is removed in the same layer: its daemon leaves a temporary file
+# (/root/.kotlin/daemon/*.run) that can vanish while Kaniko takes the filesystem snapshot, which aborts the build
+# ("failed to take snapshot: lstat ... no such file").
+RUN gradle --no-daemon -Pkotlin.compiler.execution.strategy=in-process -x test buildLayers && rm -rf /root/.kotlin
 
 # ==============================================================================
 # Runtime Stage (non-root, minimal JRE)

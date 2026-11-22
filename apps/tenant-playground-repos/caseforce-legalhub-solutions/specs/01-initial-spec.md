@@ -49,7 +49,7 @@ flowchart TD
         EvtProcessor["WebhookEntityEventProcessor (Domain)"]
     end
 
-    subgraph Database["MySQL 8 (Micronaut Data JDBC)"]
+    subgraph Database["PostgreSQL 17 (Micronaut Data JDBC)"]
         DBCase[("tb_legal_case / action")]
         DBSub[("tb_webhook_subscription")]
         DBDeliv[("tb_webhook_delivery")]
@@ -266,7 +266,7 @@ sequenceDiagram
     participant RMQ as RabbitMQ (entity.events)
     participant Listener as EntityEventListener
     participant Processor as WebhookEntityEventProcessor
-    participant DB as MySQL DB
+    participant DB as PostgreSQL DB
     participant Engine as WebhookDeliveryService
     participant Target as Partner Agency Webhook Server
 
@@ -307,7 +307,7 @@ sequenceDiagram
 1. **Unit Tests:**
    - `WebhookSignerSpec`: Tests HMAC signature generation, timestamp formatting, and verification logic.
    - `UrlSecurityValidatorSpec`: Validates SSRF prevention rules against various malicious/internal URLs.
-2. **Integration Tests (Spock + TestContainers MySQL 8):**
+2. **Integration Tests (Spock + TestContainers PostgreSQL 17):**
    - `WebhookSubscriptionControllerSpec`: Tests full CRUD operations, authentication, and validation.
    - `WebhookDeliveryIntegrationSpec`: Tests full end-to-end flow: Case update -> Event ingestion -> Subscribed partner lookup -> Delivery log generation -> Mock HTTP server payload & HMAC signature verification.
    - `BulkCaseReassignmentSpec`: Tests bulk reassignment logic, async job progress polling, and verification that individual entity events are emitted.

@@ -6,7 +6,7 @@ import io.micronaut.data.model.query.builder.sql.Dialect
 import io.micronaut.data.repository.CrudRepository
 import java.util.Optional
 
-@JdbcRepository(dialect = Dialect.MYSQL)
+@JdbcRepository(dialect = Dialect.POSTGRES)
 interface GroupRepository : CrudRepository<Group, Long> {
 
     fun findByName(name: String): Optional<Group>

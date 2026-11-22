@@ -45,7 +45,7 @@ As the project root folder and for this workspace, consider the content root of 
 4. **Declarative CI/CD & GitOps Engine (ADR-0016 Boundary)**:
    - In-cluster declarative task and pipeline execution managed via **Tekton Pipelines & Triggers**.
    - Continuous deployment and state reconciliation managed via **ArgoCD**, strictly reserved for **tenant business applications (SaaS)**.
-   - Platform infrastructure (both corporate `corpshared-*` and tenant common services `tenant-postgres`, `tenant-keycloak`, `tenant-minio`, `tenant-mongodb`, `tenant-openbao`, `tenant-mysql`) is **PaaS**, managed directly via the platform repo and Kustomize overlays (`make diff-tenant-infra` / `make deploy-tenant-infra TENANT=<tenant>`).
+   - Platform infrastructure (both corporate `corpshared-*` and tenant common services `tenant-postgres`, `tenant-keycloak`, `tenant-minio`, `tenant-mongodb`, `tenant-openbao`) is **PaaS**, managed directly via the platform repo and Kustomize overlays (`make diff-tenant-infra` / `make deploy-tenant-infra TENANT=<tenant>`).
 5. **Trust Domain Separation (EDP / EliaGroup/50-Hertz / MCCS Inspired)**:
    - Strict segregation between:
      - **Enterprise Shared Services / Control Plane** (`drr-corpshared-*`); and

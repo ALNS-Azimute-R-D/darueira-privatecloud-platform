@@ -722,6 +722,27 @@ infra corporativa central hoje.
   os PipelineRuns manuais antigos em `pipelineruns-swfabrik-europe.yaml` citam um pipeline `polyglot-ci-cd-pipeline` e imagens com nomes antigos;
   o `bootstrap_tenant_cicd_gitops.py` procura `workspace/.../<repo>` e a pasta agora se chama outra coisa (não verifiquei se ele simplesmente pula o caseforce); o caminho atual de publicação é `make publish-playground`. Os ~400 restarts antigos (`UnknownHostException` do MySQL na partida) não se repetiram nos primeiros minutos (0 restarts), mas a causa original não foi investigada.
 
+
+### 42. CaseForce em PostgreSQL e descomissionamento do `tenant-mysql` `[dono: Claude — status: feito e validado no cluster]`
+- Decisão: ADR-0018 (PostgreSQL é o único motor relacional do tenant; o `tenant-mysql` só tinha o caseforce como consumidor, e o do latam estava sem uso).
+- Banco: `drr_tnt_caseforce_db`, role `caseforce_app` (sem superusuário, dona do banco para o Flyway), Secret `caseforce-db`; criados por `scripts/provision_caseforce_db.sh`
+  (idempotente, a senha só existe em memória e no Secret). Rodar o script de novo não muda nada.
+- Backend: as migrations V1..V8 de MySQL viraram um baseline Postgres (`V1__init_postgres.sql` + `V2__seed_data.sql`): identity, trigger no lugar de `ON UPDATE CURRENT_TIMESTAMP`,
+  `JSONB`, `TIMESTAMPTZ`, índices nas FKs, `jsonb_exists` no lugar de `JSON_CONTAINS`; dialeto POSTGRES; testes com Testcontainers Postgres 17.
+  **51 testes Spock passando (a suíte inteira rodou pela primeira vez).** O banco começou vazio; o dado do MySQL era só seed.
+- Chart: `MYSQL_*` virou `DB_*`, todos vindos do Secret `caseforce-db`.
+- Validado: Flyway aplicou V1 e V2 no Postgres, login, `/users` (exige permissão, exercita `jsonb_exists`), `/partner-agencies`, `/groups`, e onboarding pelo fake agency (gravou agência
+  e subscription com `js_event_types` JSONB); os registros de teste foram removidos.
+- Descomissionado nos dois tenants (europe e latam): StatefulSet, Service, PVC, Secret `tenant-mysql-credentials` e os 2 PVs apagados do cluster; manifests, PVs de `storage-pvs.yaml`,
+  diretório em `setup_host_storage.sh` e o port-forward do Makefile removidos. **Os diretórios de dados no host ficaram** (`/mnt/FileBuckets01/darueira-platform/data/tenants/*/tenant-mysql`);
+  removê-los exige root, ficam com o André. Dumps do banco `caseforce` das duas instâncias: scratchpad da sessão de 2026-11-22 (europe 17 KB, latam vazio).
+- Diferença de comportamento: o Postgres compara strings com diferenciação de maiúsculas e minúsculas (o MySQL não); o caseforce grava tudo em minúsculas hoje.
+- Incidentes do caminho: (1) a imagem nova lê `DB_*` e o chart antigo injetava `MYSQL_*`; um sync automático (depois de alguém reiniciar o MicroK8s) aplicou o chart novo com a tag antiga e o
+  backend ficou fora do ar por ~15 min até o build novo sair. (2) o build do backend no Kaniko falhava ao tirar o snapshot (`lstat /root/.kotlin/daemon/*.run`, corrida do daemon do Kotlin);
+  o Dockerfile agora compila em processo (`kotlin.compiler.execution.strategy=in-process`) e remove `/root/.kotlin`. Outros Dockerfiles Gradle que o Tekton construir podem ter o mesmo problema.
+  (3) um push anterior (retirada de arquivos do repo) reconstruiu e reimplantou as imagens sem eu ter percebido: a entrega do webhook é assíncrona.
+- Desvio que NÃO é desta mudança: o `tenant-mongodb` está com `replicas: 0` no cluster e `1` no overlay (alguém o escalou para zero). `make deploy-tenant-infra` o religaria; por isso nada foi aplicado pelo overlay,
+  só `kubectl delete` por nome.
 ---
 
 ## 🟠 Média prioridade

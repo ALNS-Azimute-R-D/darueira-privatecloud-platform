@@ -13,7 +13,7 @@
    - Event-driven Webhook Delivery Engine with HMAC-SHA256 signing and SSRF protection
    - Scheduled Background Job for automatic retry of failed webhook deliveries
    - Bulk Case Reassignment API with asynchronous job execution and RabbitMQ event publication
-   - Spock 2.3 Integration Test Suite with real MySQL TestContainers (10 test specifications)
+   - Spock 2.3 Integration Test Suite with real PostgreSQL 17 TestContainers (10 test specifications)
 2. **`fake-helpers-apps/fake-legal-partners-agencies-app/`**: Multi-Agency Simulation Application
    - Built with Java 17/25, Spring Boot 3.4.1, Maven, and persistent H2 File Database + Web H2-Console
    - Dedicated DTO-driven simulator service and controllers
@@ -81,7 +81,7 @@ caseforce-legalhub-solutions/
 │   └── adr/
 ├── DECISIONS.md                              # Architectural Decisions & Rationale
 ├── TODO.md                                   # Task progress checklist
-├── docker-compose.yml                        # Local MySQL 8 & RabbitMQ infrastructure
+├── docker-compose.yml                        # Local PostgreSQL 17 & RabbitMQ infrastructure
 └── AGY.md                                    # Agent configuration and workspace rules
 ```
 
@@ -98,7 +98,7 @@ caseforce-legalhub-solutions/
 
 ### 1. Core Service: `caseforce-legalhub-mgmt`
 
-#### Run Tests (Spock + MySQL TestContainers)
+#### Run Tests (Spock + PostgreSQL TestContainers)
 ```bash
 cd caseforce-legalhub-mgmt
 ./gradlew test
@@ -106,7 +106,7 @@ cd caseforce-legalhub-mgmt
 
 #### Run Locally
 ```bash
-# 1. Start MySQL & RabbitMQ infrastructure (from repository root)
+# 1. Start PostgreSQL & RabbitMQ infrastructure (from repository root)
 docker compose up -d
 
 # 2. Run Micronaut application

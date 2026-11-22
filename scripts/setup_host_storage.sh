@@ -43,7 +43,6 @@ STORAGE_MAPPINGS=(
   "${STORAGE_ROOT}/tenants/swfabrik-europe/tenant-postgres:1001:1001:700"
   "${STORAGE_ROOT}/tenants/swfabrik-europe/tenant-mongodb:999:999:775"
   "${STORAGE_ROOT}/tenants/swfabrik-europe/tenant-minio:10001:10001:775"
-  "${STORAGE_ROOT}/tenants/swfabrik-europe/tenant-mysql:999:999:775"
 )
 
 for entry in "${STORAGE_MAPPINGS[@]}"; do

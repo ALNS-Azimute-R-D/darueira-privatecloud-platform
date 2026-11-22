@@ -69,7 +69,7 @@ An enterprise-grade, on-premise **Private Cloud and Internal Developer Platform 
 |  * Edge & Ingress: Apache APISIX DataPlane                                        |
 |  * In-Pod Enforcement: Envoy Proxy PEP + OPA PDP Sidecars (ext_authz :9191)       |
 |  * Dynamic Secrets: OpenBao Tenant Mounts via SPIFFE SVID                          |
-|  * Tenant Storage: MinIO Dedicated Buckets + PostgreSQL / MongoDB / MySQL         |
+|  * Tenant Storage: MinIO Dedicated Buckets + PostgreSQL / MongoDB                 |
 |  * Tenant IAM: dedicated Keycloak per tenant environment                          |
 |  * Event Streaming & Messaging: shared Redpanda (Kafka API) + RabbitMQ            |
 |  * Workload Identity: SPIRE Agent Pod Attestation                                 |
@@ -236,7 +236,7 @@ make proxy
 
 ### 7.3 Isolated Tenant Admin Consoles (Example: Tenant `acme`)
 
-Every tenant environment receives dedicated, isolated instances of OpenBao, Keycloak, MinIO, PostgreSQL and MongoDB (MySQL is also deployed on the running tenants). APISIX exposes the Vault, Keycloak and MinIO consoles; the example below uses tenant `acme`, and the `swfabrik-europe` tenant follows the same pattern with `*.swfabrik-europe.127.0.0.1.nip.io` hosts:
+Every tenant environment receives dedicated, isolated instances of OpenBao, Keycloak, MinIO, PostgreSQL and MongoDB (PostgreSQL is the only relational engine, ADR-0018). APISIX exposes the Vault, Keycloak and MinIO consoles; the example below uses tenant `acme`, and the `swfabrik-europe` tenant follows the same pattern with `*.swfabrik-europe.127.0.0.1.nip.io` hosts:
 
 | Tenant Service | Clean HTTPS URL (Port 443) | Clean HTTP URL (Port 80) | Default Credentials |
 |---|---|---|---|

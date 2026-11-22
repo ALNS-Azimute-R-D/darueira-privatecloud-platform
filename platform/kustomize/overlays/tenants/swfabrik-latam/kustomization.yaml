@@ -15,4 +15,3 @@ resources:
   - 04-tenant-openbao.yaml
   - 05-tenant-keycloak.yaml
   - 06-tenant-opa-policies.yaml
-  - 07-tenant-mysql.yaml

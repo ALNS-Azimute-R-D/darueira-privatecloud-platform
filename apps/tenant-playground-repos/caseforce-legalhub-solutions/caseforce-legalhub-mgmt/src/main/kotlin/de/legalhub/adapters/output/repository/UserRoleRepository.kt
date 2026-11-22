@@ -6,7 +6,7 @@ import io.micronaut.data.jdbc.annotation.JdbcRepository
 import io.micronaut.data.model.query.builder.sql.Dialect
 import io.micronaut.data.repository.CrudRepository
 
-@JdbcRepository(dialect = Dialect.MYSQL)
+@JdbcRepository(dialect = Dialect.POSTGRES)
 interface UserRoleRepository : CrudRepository<UserRole, Long> {
 
     fun findByUserId(userId: Long): List<UserRole>

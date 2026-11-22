@@ -27,7 +27,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: iam-authz-svc
-          image: localhost:8082/drr-iam-authz-svc:metrics-202611222314
+          image: localhost:8082/drr-iam-authz-svc:authz-202611230007
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -47,7 +47,12 @@ spec:
             - name: METRICS_PORT
               value: "9102"
             - name: APP_VERSION
-              value: "metrics-202611222314"
+              value: "authz-202611230007"
+            # Token validation (ADR-0022): issuer = public URL of the realm (the "iss" claim); keys fetched in-cluster.
+            - name: OIDC_ISSUER_URL
+              value: "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs"
+            - name: OIDC_JWKS_URL
+              value: "http://keycloak.drr-corpshared-plat.svc.cluster.local:8080/realms/darueira-platform-svcs/protocol/openid-connect/certs"
             - name: KEYCLOAK_URL
               value: "http://keycloak.drr-corpshared-plat.svc.cluster.local:8080"
             - name: OPENFGA_API_URL

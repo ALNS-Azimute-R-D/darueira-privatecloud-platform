@@ -721,9 +721,10 @@ ROUTES = [
     },
     {
         "id": "route-host-api-authz",
-        "name": "AuthZ Microservice API",
-        "desc": "Platform Authorization Engine API",
-        "uri": "/*",
+        "name": "AuthZ Microservice API (health only)",
+        "desc": "Only the health probes of the authorization engine are public. The authorization API (check, batch-check, tuple mutation, forward-auth) is internal-only: tuple mutation without authentication would let any client grant itself permissions (ADR-0022).",
+        "uris": ["/healthz", "/readyz"],
+        "methods": ["GET"],
         "hosts": [
             "api.authz.darueira-corpshared.127.0.0.1.nip.io",
             "api.authz.darueira-corpshared.local"

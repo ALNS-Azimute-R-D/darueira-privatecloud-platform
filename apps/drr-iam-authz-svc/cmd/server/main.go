@@ -28,7 +28,10 @@ func main() {
 		log.Fatalf("[FATAL] Failed to initialize OpenFGA adapter: %v", err)
 	}
 
-	oidcValidator := oidc.NewOIDCValidator(cfg.OIDCIssuer, cfg.OIDCSecret)
+	oidcValidator := oidc.NewOIDCValidator(oidc.Options{Issuer: cfg.OIDCIssuer, JWKSURL: cfg.OIDCJWKSURL, Audience: cfg.OIDCAudience})
+	if cfg.OIDCIssuer == "" || cfg.OIDCJWKSURL == "" {
+		log.Printf("[WARN] OIDC_ISSUER_URL/OIDC_JWKS_URL not set: every bearer token will be rejected")
+	}
 
 	// 2. Initialize Application Core Service
 	authzSvc := service.NewAuthzService(fgaAdapter, oidcValidator)

@@ -12,7 +12,8 @@ type Config struct {
 	StoreID      string
 	ModelID      string
 	OIDCIssuer   string
-	OIDCSecret   string
+	OIDCJWKSURL  string
+	OIDCAudience string
 	KafkaBrokers string
 	KafkaTopic   string
 }
@@ -25,8 +26,10 @@ func Load() *Config {
 		OpenFGAURL:   getEnv("OPENFGA_API_URL", "http://openfga.drr-corpshared-plat.svc.cluster.local:8080"),
 		StoreID:      getEnv("OPENFGA_STORE_ID", ""),
 		ModelID:      getEnv("OPENFGA_MODEL_ID", ""),
-		OIDCIssuer:   getEnv("OIDC_ISSUER_URL", "http://authentik-server.drr-corpshared-plat.svc.cluster.local:9000/application/o/darueira/"),
-		OIDCSecret:   getEnv("OIDC_CLIENT_SECRET", ""),
+		// No defaults for token validation: without an issuer and a JWKS URL every token is rejected (ADR-0022).
+		OIDCIssuer:   getEnv("OIDC_ISSUER_URL", ""),
+		OIDCJWKSURL:  getEnv("OIDC_JWKS_URL", ""),
+		OIDCAudience: getEnv("OIDC_AUDIENCE", ""),
 		KafkaBrokers: getEnv("KAFKA_BROKERS", "kafka-cluster-kafka-bootstrap.drr-corpshared-plat.svc.cluster.local:9092"),
 		KafkaTopic:   getEnv("KAFKA_TUPLE_TOPIC", "drr.authz.tuple-events"),
 	}

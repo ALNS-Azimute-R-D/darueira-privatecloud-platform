@@ -885,5 +885,5 @@ ADR-0020. Commits `2b46f1e`..(série `feat(observability)`), na `master`, sem pu
 - **Retenção:** a política ISM estava no Git mas não instalada (14 índices, ~3 GB acumulados). Reinstalada com 3 dias via `bootstrap_observability.py`; índices antigos já apagados.
 - **Alvo removido:** `drr-iam-authz-svc` (sem `/metrics`). **Pendente:** implementar `/metrics` no serviço e recolocar o job.
 - **Confirmado por André (UI, 2026-11-22):** os 10 dashboards aparecem no Grafana 13.3.1.
-- **Não confirmado:** (a) datasource OpenSearch conectando; (b) datasource Jaeger do Grafana: deu 404 com o Jaeger 2.23; corrigido fixando 2.20.0, reteste pendente com André; (c) Jaeger guarda traces em memória e só tem o serviço `jaeger`: nenhuma app envia traces ainda.
+- **Não confirmado:** (a) datasource OpenSearch conectando; (b) datasource Jaeger do Grafana: deu 404 com o Jaeger 2.23; corrigido fixando 2.20.0, confirmado por André após o reteste (2026-11-22); (c) Jaeger guarda traces em memória e só tem o serviço `jaeger`: nenhuma app envia traces ainda.
 - **Dívidas:** alias `otlp` do exporter do collector está deprecado (`otlp_grpc`); `kube_resourcequota` está vazio (o cluster não define ResourceQuota nos tenants; avaliar criar, a regra do AGY.md pede limites por namespace); `limits` do Prometheus em 1 GiB pode apertar com os novos alvos (observar).

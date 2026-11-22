@@ -187,3 +187,49 @@ func TestHandleTupleMutation_Insert(t *testing.T) {
 		t.Errorf("expected WriteTuples to be called")
 	}
 }
+
+func TestValidateAndCheck_DefaultsToMemberOfTheTokenTenant(t *testing.T) {
+	var asked domain.PermissionCheckRequest
+	mockFGA := &MockOpenFGAAdapter{CheckFunc: func(ctx context.Context, req domain.PermissionCheckRequest) (bool, error) {
+		asked = req
+		return true, nil
+	}}
+	validator := func(claims *domain.TokenClaims) *MockTokenValidator {
+		return &MockTokenValidator{ValidateTokenFunc: func(ctx context.Context, tokenString string) (*domain.TokenClaims, error) { return claims, nil }}
+	}
+
+	svc := service.NewAuthzService(mockFGA, validator(&domain.TokenClaims{Subject: "alice-id", TenantID: "acme"}))
+	resp, _, err := svc.ValidateAndCheck(context.Background(), "Bearer t", "", "")
+	if err != nil || !resp.Allowed {
+		t.Fatalf("expected allowed, got resp=%+v err=%v", resp, err)
+	}
+	if asked.User != "user:alice-id" || asked.Relation != "member" || asked.Object != "tenant:acme" {
+		t.Errorf("unexpected default check: %+v", asked)
+	}
+
+	// A relation without an object (or the opposite) also falls back to the tenant check, never to a caller-chosen object.
+	asked = domain.PermissionCheckRequest{}
+	_, _, _ = svc.ValidateAndCheck(context.Background(), "Bearer t", "admin", "")
+	if asked.Relation != "member" || asked.Object != "tenant:acme" {
+		t.Errorf("partial input must use the full default, got %+v", asked)
+	}
+}
+
+func TestValidateAndCheck_DefaultFailsClosedWithoutAValidTenant(t *testing.T) {
+	called := false
+	mockFGA := &MockOpenFGAAdapter{CheckFunc: func(ctx context.Context, req domain.PermissionCheckRequest) (bool, error) {
+		called = true
+		return true, nil
+	}}
+	for _, tenant := range []string{"", "acme:evil", "a#b", "a b", "*"} {
+		claims := &domain.TokenClaims{Subject: "alice-id", TenantID: tenant}
+		svc := service.NewAuthzService(mockFGA, &MockTokenValidator{ValidateTokenFunc: func(ctx context.Context, tokenString string) (*domain.TokenClaims, error) { return claims, nil }})
+		resp, _, err := svc.ValidateAndCheck(context.Background(), "Bearer t", "", "")
+		if err == nil || resp.Allowed {
+			t.Errorf("tenant %q: expected an error and no access, got resp=%+v err=%v", tenant, resp, err)
+		}
+	}
+	if called {
+		t.Error("OpenFGA must not be asked when the token has no valid tenant")
+	}
+}

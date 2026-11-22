@@ -84,6 +84,16 @@ func (s *AuthzService) ValidateAndCheck(ctx context.Context, tokenString string,
 		fgaUser = fmt.Sprintf("user:%s", claims.Email)
 	}
 
+	// Without an explicit relation and object, the check is "is this user a member of the tenant of the token?".
+	// The tenant comes from the validated token, never from the request, so a caller cannot pick another tenant by omission.
+	if relation == "" || object == "" {
+		if !validObjectID(claims.TenantID) {
+			return domain.PermissionCheckResponse{Allowed: false}, claims, errors.New("token has no valid tenant_id claim for the default tenant check")
+		}
+		relation = DefaultForwardAuthRelation
+		object = "tenant:" + claims.TenantID
+	}
+
 	resp, err := s.CheckPermission(ctx, domain.PermissionCheckRequest{
 		User:     fgaUser,
 		Relation: relation,
@@ -94,4 +104,16 @@ func (s *AuthzService) ValidateAndCheck(ctx context.Context, tokenString string,
 	}
 
 	return resp, claims, nil
+}
+
+// DefaultForwardAuthRelation is the relation checked on the tenant of the token when forward-auth gets no explicit
+// relation/object. It must exist on the `tenant` type of authz/schema.fga (admin and member do; viewer does not).
+const DefaultForwardAuthRelation = "member"
+
+// validObjectID reports whether v can be used as the id part of an OpenFGA object ("type:id") without changing its meaning.
+func validObjectID(v string) bool {
+	if v == "" {
+		return false
+	}
+	return !strings.ContainsAny(v, ":#* \t\r\n")
 }

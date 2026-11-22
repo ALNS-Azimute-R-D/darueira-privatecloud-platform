@@ -174,12 +174,7 @@ func (h *AuthzHandler) HandleForwardAuth(w http.ResponseWriter, r *http.Request)
 	relation := r.URL.Query().Get("relation")
 	object := r.URL.Query().Get("object")
 
-	if relation == "" || object == "" {
-		// Default to read/viewer check if not explicitly provided
-		relation = "viewer"
-		object = "tenant:default"
-	}
-
+	// Empty relation or object: the service checks membership of the tenant in the token (see ValidateAndCheck).
 	resp, claims, err := h.authzService.ValidateAndCheck(r.Context(), authHeader, relation, object)
 	if err != nil {
 		h.observe("forward_auth", "error")

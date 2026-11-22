@@ -428,6 +428,16 @@ validate-backstage: ## Validate Spotify Backstage IDP OIDC authentication, Catal
 	@echo -e "${GREEN}==> Validating Spotify Backstage IDP OIDC & Software Templates...${NC}"
 	$(KUBECTL) exec -i -n drr-corpshared-plat deploy/authentik-server -c server -- python3 < scripts/validate_backstage_iam.py
 
+.PHONY: test-prometheus-rules
+test-prometheus-rules: ## Check and unit-test the Prometheus alerting rules with promtool (offline, via docker)
+	@echo -e "${GREEN}==> Testing Prometheus alerting rules...${NC}"
+	@for f in platform/kustomize/base/corpshared-obs/alerts/*.rules.yml; do \
+		docker run --rm --entrypoint promtool -v "$$PWD/platform/kustomize/base/corpshared-obs/alerts":/alerts:ro prom/prometheus:v3.16.0 check rules /alerts/$$(basename $$f) || exit 1; \
+	done
+	@for f in platform/kustomize/base/corpshared-obs/alerts/*.rules.test.yml; do \
+		docker run --rm --entrypoint promtool -v "$$PWD/platform/kustomize/base/corpshared-obs/alerts":/alerts:ro prom/prometheus:v3.16.0 test rules /alerts/$$(basename $$f) || exit 1; \
+	done
+
 .PHONY: bootstrap-openfga
 bootstrap-openfga: ## Create the OpenFGA database, store and authorization model from authz/schema.fga (ADR-0021; no tuples)
 	@echo -e "${GREEN}==> Provisioning OpenFGA datastore, store and authorization model...${NC}"

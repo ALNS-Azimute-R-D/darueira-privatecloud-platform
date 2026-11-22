@@ -1,0 +1,39 @@
+# Prometheus alerting rules for drr-iam-authz-svc (backlog item 48, ADR-0020).
+# Test with: make test-prometheus-rules   (promtool, offline)
+groups:
+  - name: iam-authz
+    rules:
+      - alert: IamAuthzDown
+        expr: up{job="drr-iam-authz-svc"} == 0 or absent(up{job="drr-iam-authz-svc"})
+        for: 2m
+        labels:
+          severity: critical
+          service: drr-iam-authz-svc
+        annotations:
+          summary: "drr-iam-authz-svc cannot be scraped"
+          description: "No metrics from drr-iam-authz-svc for 2 minutes. Every authorization check that goes through it (APISIX forward-auth, tenant/orchestrator services) is failing or being denied."
+
+      # An 'error' decision is neither allowed nor denied: the service could not decide (OpenFGA unreachable, store or model id
+      # unknown, relation not in the model, invalid token). Real denials are not errors and never fire these alerts.
+      - alert: IamAuthzDecisionErrors
+        expr: sum(increase(drr_iam_authz_decisions_total{decision="error"}[10m])) >= 3
+        for: 5m
+        labels:
+          severity: warning
+          service: drr-iam-authz-svc
+        annotations:
+          summary: "drr-iam-authz-svc is failing to decide ({{ $value | printf \"%.0f\" }} errors in 10 minutes)"
+          description: "Authorization checks ended in 'error' instead of allowed/denied. Look at which endpoint (drr_iam_authz_decisions_total by endpoint), then check OpenFGA (store/model in the ConfigMap openfga-ids, pod restarts), Keycloak (token validation) and the service logs."
+
+      - alert: IamAuthzDecisionErrorRatioHigh
+        expr: |
+          sum(increase(drr_iam_authz_decisions_total{decision="error"}[10m]))
+            / sum(increase(drr_iam_authz_decisions_total[10m])) > 0.5
+          and sum(increase(drr_iam_authz_decisions_total[10m])) >= 5
+        for: 5m
+        labels:
+          severity: critical
+          service: drr-iam-authz-svc
+        annotations:
+          summary: "More than half of the authorization decisions fail ({{ $value | humanizePercentage }})"
+          description: "Over the last 10 minutes most checks ended in 'error'. The authorization path is effectively down (fail-closed): check OpenFGA first."

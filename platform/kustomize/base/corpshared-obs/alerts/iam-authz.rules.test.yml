@@ -1,0 +1,80 @@
+rule_files:
+  - iam-authz.rules.yml
+evaluation_interval: 1m
+
+tests:
+  # A burst of errors that persists fires the warning, and the ratio is 100% so the critical alert fires too.
+  - interval: 1m
+    input_series:
+      - series: 'drr_iam_authz_decisions_total{job="drr-iam-authz-svc",endpoint="check",decision="error"}'
+        values: '0+2x30'
+      - series: 'drr_iam_authz_decisions_total{job="drr-iam-authz-svc",endpoint="check",decision="allowed"}'
+        values: '0+0x30'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: IamAuthzDecisionErrors
+        exp_alerts: []          # condition true but not yet for 5m
+      - eval_time: 15m
+        alertname: IamAuthzDecisionErrors
+        exp_alerts:
+          - exp_labels: {severity: warning, service: drr-iam-authz-svc}
+            exp_annotations:
+              summary: "drr-iam-authz-svc is failing to decide (20 errors in 10 minutes)"
+              description: "Authorization checks ended in 'error' instead of allowed/denied. Look at which endpoint (drr_iam_authz_decisions_total by endpoint), then check OpenFGA (store/model in the ConfigMap openfga-ids, pod restarts), Keycloak (token validation) and the service logs."
+      - eval_time: 15m
+        alertname: IamAuthzDecisionErrorRatioHigh
+        exp_alerts:
+          - exp_labels: {severity: critical, service: drr-iam-authz-svc}
+            exp_annotations:
+              summary: "More than half of the authorization decisions fail (100%)"
+              description: "Over the last 10 minutes most checks ended in 'error'. The authorization path is effectively down (fail-closed): check OpenFGA first."
+
+  # Normal operation: many denials, a single stray error. Denials are not errors, one error is below the threshold.
+  - interval: 1m
+    input_series:
+      - series: 'drr_iam_authz_decisions_total{job="drr-iam-authz-svc",endpoint="check",decision="denied"}'
+        values: '0+5x30'
+      - series: 'drr_iam_authz_decisions_total{job="drr-iam-authz-svc",endpoint="check",decision="allowed"}'
+        values: '0+5x30'
+      - series: 'drr_iam_authz_decisions_total{job="drr-iam-authz-svc",endpoint="check",decision="error"}'
+        values: '0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: IamAuthzDecisionErrors
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: IamAuthzDecisionErrorRatioHigh
+        exp_alerts: []
+
+  # A few errors among healthy traffic: the warning fires, the critical ratio does not.
+  - interval: 1m
+    input_series:
+      - series: 'drr_iam_authz_decisions_total{job="drr-iam-authz-svc",endpoint="forward_auth",decision="allowed"}'
+        values: '0+10x30'
+      - series: 'drr_iam_authz_decisions_total{job="drr-iam-authz-svc",endpoint="forward_auth",decision="error"}'
+        values: '0+1x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: IamAuthzDecisionErrors
+        exp_alerts:
+          - exp_labels: {severity: warning, service: drr-iam-authz-svc}
+            exp_annotations:
+              summary: "drr-iam-authz-svc is failing to decide (10 errors in 10 minutes)"
+              description: "Authorization checks ended in 'error' instead of allowed/denied. Look at which endpoint (drr_iam_authz_decisions_total by endpoint), then check OpenFGA (store/model in the ConfigMap openfga-ids, pod restarts), Keycloak (token validation) and the service logs."
+      - eval_time: 20m
+        alertname: IamAuthzDecisionErrorRatioHigh
+        exp_alerts: []
+
+  # Target down, and target gone from Prometheus altogether (absent).
+  - interval: 1m
+    input_series:
+      - series: 'up{job="drr-iam-authz-svc"}'
+        values: '1 1 1 0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: IamAuthzDown
+        exp_alerts:
+          - exp_labels: {severity: critical, service: drr-iam-authz-svc, job: drr-iam-authz-svc}
+            exp_annotations:
+              summary: "drr-iam-authz-svc cannot be scraped"
+              description: "No metrics from drr-iam-authz-svc for 2 minutes. Every authorization check that goes through it (APISIX forward-auth, tenant/orchestrator services) is failing or being denied."

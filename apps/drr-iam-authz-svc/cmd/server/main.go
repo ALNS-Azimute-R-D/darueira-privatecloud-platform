@@ -11,6 +11,7 @@ import (
 	"time"
 
 	adapterHttp "github.com/dexterity/darueira/apps/drr-iam-authz-svc/internal/adapter/http"
+	"github.com/dexterity/darueira/apps/drr-iam-authz-svc/internal/adapter/metrics"
 	"github.com/dexterity/darueira/apps/drr-iam-authz-svc/internal/adapter/oidc"
 	"github.com/dexterity/darueira/apps/drr-iam-authz-svc/internal/adapter/openfga"
 	"github.com/dexterity/darueira/apps/drr-iam-authz-svc/internal/config"
@@ -34,12 +35,22 @@ func main() {
 
 	// 3. Initialize HTTP Handlers
 	mux := http.NewServeMux()
-	handler := adapterHttp.NewAuthzHandler(authzSvc)
+	appMetrics := metrics.New(cfg.Version)
+	handler := adapterHttp.NewAuthzHandler(authzSvc, adapterHttp.WithDecisionObserver(appMetrics.ObserveDecision))
 	handler.RegisterRoutes(mux)
+
+	// /metrics is served on its own port, never on the API port that APISIX publishes.
+	metricsServer := appMetrics.Server(cfg.MetricsPort)
+	go func() {
+		log.Printf("[INFO] Prometheus metrics listening at http://0.0.0.0:%s/metrics", cfg.MetricsPort)
+		if err := metricsServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("[FATAL] Metrics server error: %v", err)
+		}
+	}()
 
 	server := &http.Server{
 		Addr:         ":" + cfg.Port,
-		Handler:      mux,
+		Handler:      appMetrics.Middleware(mux),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -56,6 +67,7 @@ func main() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
+		_ = metricsServer.Shutdown(ctx)
 		shutdownErr <- server.Shutdown(ctx)
 	}()
 

@@ -8,14 +8,31 @@ import (
 	"github.com/dexterity/darueira/apps/drr-iam-authz-svc/internal/domain"
 )
 
-type AuthzHandler struct {
-	authzService domain.AuthzServicePort
+// DecisionObserver receives the outcome ("allowed", "denied", "error") of every authorization decision, by endpoint.
+type DecisionObserver func(endpoint, decision string)
+
+// Option customizes an AuthzHandler.
+type Option func(*AuthzHandler)
+
+// WithDecisionObserver registers a callback for authorization outcomes (used to export metrics).
+func WithDecisionObserver(o DecisionObserver) Option {
+	return func(h *AuthzHandler) { h.observe = o }
 }
 
-func NewAuthzHandler(authzService domain.AuthzServicePort) *AuthzHandler {
-	return &AuthzHandler{
+type AuthzHandler struct {
+	authzService domain.AuthzServicePort
+	observe      DecisionObserver
+}
+
+func NewAuthzHandler(authzService domain.AuthzServicePort, opts ...Option) *AuthzHandler {
+	h := &AuthzHandler{
 		authzService: authzService,
+		observe:      func(string, string) {},
 	}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
 }
 
 func (h *AuthzHandler) RegisterRoutes(mux *http.ServeMux) {
@@ -49,15 +66,24 @@ func (h *AuthzHandler) HandleCheck(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.authzService.CheckPermission(r.Context(), req)
 	if err != nil {
+		h.observe("check", "error")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 
+	h.observe("check", decisionOf(resp.Allowed))
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(resp)
+}
+
+func decisionOf(allowed bool) string {
+	if allowed {
+		return "allowed"
+	}
+	return "denied"
 }
 
 func (h *AuthzHandler) HandleBatchCheck(w http.ResponseWriter, r *http.Request) {
@@ -69,12 +95,16 @@ func (h *AuthzHandler) HandleBatchCheck(w http.ResponseWriter, r *http.Request) 
 
 	resp, err := h.authzService.BatchCheckPermission(r.Context(), req)
 	if err != nil {
+		h.observe("batch_check", "error")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 
+	for _, result := range resp.Results {
+		h.observe("batch_check", decisionOf(result.Allowed))
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(resp)
@@ -136,6 +166,7 @@ func (h *AuthzHandler) HandleTupleMutation(w http.ResponseWriter, r *http.Reques
 func (h *AuthzHandler) HandleForwardAuth(w http.ResponseWriter, r *http.Request) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
+		h.observe("forward_auth", "error")
 		http.Error(w, "Unauthorized: missing Authorization header", http.StatusUnauthorized)
 		return
 	}
@@ -151,10 +182,12 @@ func (h *AuthzHandler) HandleForwardAuth(w http.ResponseWriter, r *http.Request)
 
 	resp, claims, err := h.authzService.ValidateAndCheck(r.Context(), authHeader, relation, object)
 	if err != nil {
+		h.observe("forward_auth", "error")
 		http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
 		return
 	}
 
+	h.observe("forward_auth", decisionOf(resp.Allowed))
 	if !resp.Allowed {
 		http.Error(w, "Forbidden: permission denied by OpenFGA policy", http.StatusForbidden)
 		return

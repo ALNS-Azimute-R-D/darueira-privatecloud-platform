@@ -6,6 +6,8 @@ import (
 
 type Config struct {
 	Port         string
+	MetricsPort  string
+	Version      string
 	OpenFGAURL   string
 	StoreID      string
 	ModelID      string
@@ -18,6 +20,8 @@ type Config struct {
 func Load() *Config {
 	return &Config{
 		Port:         getEnv("PORT", "8080"),
+		MetricsPort:  getEnv("METRICS_PORT", "9102"),
+		Version:      getEnv("APP_VERSION", "dev"),
 		OpenFGAURL:   getEnv("OPENFGA_API_URL", "http://openfga.drr-corpshared-plat.svc.cluster.local:8080"),
 		StoreID:      getEnv("OPENFGA_STORE_ID", ""),
 		ModelID:      getEnv("OPENFGA_MODEL_ID", ""),

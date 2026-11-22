@@ -143,6 +143,10 @@ data:
         static_configs:
           - targets: ["otel-collector.drr-corpshared-obs.svc.cluster.local:8889"]
 
+      - job_name: "drr-iam-authz-svc"
+        static_configs:
+          - targets: ["drr-iam-authz-svc.drr-corpshared-plat.svc.cluster.local:9102"]
+
       - job_name: "keycloak"
         metrics_path: "/metrics"
         static_configs:

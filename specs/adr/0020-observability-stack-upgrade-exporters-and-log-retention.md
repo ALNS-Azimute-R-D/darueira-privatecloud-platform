@@ -39,8 +39,9 @@ move from literal values in the Deployment to a Secret (guardrail: no hardcoded 
 Every new workload has resource requests/limits and a Cilium NetworkPolicy.
 
 ### 4. Targets
-`drr-iam-authz-svc` is removed from the scrape list until the service implements `/metrics` (tracked in the backlog); a target
-that can never be up only hides real failures. Probe-level availability of that service stays covered by the APISIX metrics.
+`drr-iam-authz-svc` was removed from the scrape list while the service had no metrics endpoint. The service now exports
+Prometheus metrics on a dedicated port (`9102`, not the API port, because its APISIX route publishes every path of `8080`) and the
+job is back, pointing at `:9102` (backlog item 46).
 
 ### 5. Log retention: 3 days
 The ISM policy `darueira-k8s-logs-retention` deletes `darueira-k8s-logs-*` indices older than 3 days (was 2 in Git, 0 installed).

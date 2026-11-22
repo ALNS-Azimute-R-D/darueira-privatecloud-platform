@@ -128,3 +128,34 @@ func TestHandler_ForwardAuth(t *testing.T) {
 		t.Errorf("expected X-Auth-Subject bob-123, got %s", w.Header().Get("X-Auth-Subject"))
 	}
 }
+
+func TestDecisionObserverReceivesOutcomes(t *testing.T) {
+	var got []string
+	svc := &MockAuthzService{
+		CheckPermissionFunc: func(ctx context.Context, req domain.PermissionCheckRequest) (domain.PermissionCheckResponse, error) {
+			return domain.PermissionCheckResponse{Allowed: req.User == "user:alice"}, nil
+		},
+	}
+	h := adapterHttp.NewAuthzHandler(svc, adapterHttp.WithDecisionObserver(func(endpoint, decision string) {
+		got = append(got, endpoint+"/"+decision)
+	}))
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	for _, user := range []string{"user:alice", "user:mallory"} {
+		body, _ := json.Marshal(domain.PermissionCheckRequest{User: user, Relation: "viewer", Object: "tenant:acme"})
+		mux.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/api/v1/authz/check", bytes.NewReader(body)))
+	}
+	// Missing Authorization header on forward-auth is an error outcome.
+	mux.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api/v1/authz/forward-auth", nil))
+
+	want := []string{"check/allowed", "check/denied", "forward_auth/error"}
+	if len(got) != len(want) {
+		t.Fatalf("observed %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("observed %v, want %v", got, want)
+		}
+	}
+}

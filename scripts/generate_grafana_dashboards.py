@@ -382,6 +382,35 @@ def postgresql():
         variables=[query_variable("pg", "Instance", 'label_values(pg_up, instance_name)')])
 
 
+def iam_authz():
+    j = 'job="drr-iam-authz-svc"'
+    return dashboard(
+        "iam-authz-service", "Darueira Security - IAM AuthZ Service",
+        "drr-iam-authz-svc (OpenFGA ReBAC gateway): availability, traffic, latency and authorization decisions. Metrics come "
+        "from the dedicated /metrics port (9102). A burst of 'error' decisions usually means OpenFGA or Keycloak is unavailable.",
+        ["security", "authz", "openfga"], [
+            (4, [
+                stat("Service up", f'min(up{{{j}}})', "short", (("red", None), ("green", 1))),
+                stat("Requests/s", f'sum(rate(drr_iam_authz_http_requests_total{{{j}}}[5m]))', "reqps", decimals=2),
+                stat("5xx ratio", f'100 * sum(rate(drr_iam_authz_http_requests_total{{{j},code=~"5.."}}[5m])) / sum(rate(drr_iam_authz_http_requests_total{{{j}}}[5m])) or vector(0)',
+                     "percent", (("green", None), ("yellow", 1), ("red", 5)), decimals=1),
+                stat("Decision errors (1h)", f'sum(increase(drr_iam_authz_decisions_total{{{j},decision="error"}}[1h])) or vector(0)', "short", (("green", None), ("red", 1)),
+                     description="Checks that failed instead of allow/deny: OpenFGA down, store/model id unknown, or invalid token."),
+                stat("Denied (1h)", f'sum(increase(drr_iam_authz_decisions_total{{{j},decision="denied"}}[1h])) or vector(0)'),
+                stat("Memory (RSS)", f'process_resident_memory_bytes{{{j}}}', "bytes"),
+            ]),
+            (8, [
+                timeseries("Decisions per second", [(f'sum by (endpoint,decision) (rate(drr_iam_authz_decisions_total{{{j}}}[5m]))', "{{endpoint}} {{decision}}")], "ops", stack=True),
+                timeseries("Requests per second by route and code", [(f'sum by (route,code) (rate(drr_iam_authz_http_requests_total{{{j}}}[5m]))', "{{route}} {{code}}")], "reqps"),
+            ]),
+            (8, [
+                timeseries("Latency p50 / p95 / p99 (authz check routes)",
+                           [(f'histogram_quantile({q}, sum by (le) (rate(drr_iam_authz_http_request_duration_seconds_bucket{{{j},route=~".*authz.*"}}[5m])))', f"p{int(q*100)}") for q in (0.5, 0.95, 0.99)], "s", minimum=0),
+                timeseries("Goroutines and memory", [(f'go_goroutines{{{j}}}', "goroutines"), (f'go_memstats_heap_inuse_bytes{{{j}}}', "heap in use (bytes)")], "short"),
+            ]),
+        ])
+
+
 GENERATED = {
     "platform-overview.json": platform_overview,
     "tenant-resources.json": tenant_resources,
@@ -391,6 +420,7 @@ GENERATED = {
     "kubernetes-state.json": kubernetes_state,
     "host-node.json": host_node,
     "postgresql.json": postgresql,
+    "iam-authz.json": iam_authz,
 }
 
 if __name__ == "__main__":

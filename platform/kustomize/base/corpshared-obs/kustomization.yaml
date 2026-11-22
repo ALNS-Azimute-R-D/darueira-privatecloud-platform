@@ -34,6 +34,7 @@ configMapGenerator:
       - dashboards/grafana/kubernetes-state.json
       - dashboards/grafana/host-node.json
       - dashboards/grafana/postgresql.json
+      - dashboards/grafana/iam-authz.json
     options:
       labels:
         app.kubernetes.io/name: grafana

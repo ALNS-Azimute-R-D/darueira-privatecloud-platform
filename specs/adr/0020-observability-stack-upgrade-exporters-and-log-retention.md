@@ -22,7 +22,7 @@ review (backlog item 44) found:
 | Grafana | 11.1.0 | 13.3.1 | state is `emptyDir` and fully provisioned from files, so no DB migration risk |
 | OpenSearch | 2.15.0 | 2.19.7 then 3.10.0 | 3.x supports upgrades only from 2.19; two hops, one restart each |
 | OpenSearch Dashboards | 2.15.0 | 3.10.0 | must match OpenSearch |
-| Jaeger | 1.59.0 all-in-one | 2.23.0 | v1 reached end of life; v2 is configured by an OTel-style YAML |
+| Jaeger | 1.59.0 all-in-one | 2.20.0 (pinned) | v1 reached end of life. Pinned below 2.21: that release removed the v1 HTTP API the Grafana Jaeger datasource still calls (found by testing the datasource, 2026-11-22) |
 | OTel Collector (contrib) | 0.106.1 | 0.165.0 | `0.165.1` is not on Docker Hub yet |
 | Fluent Bit | 3.1.4 | 5.2.0 | |
 Each step is applied alone, validated, and committed; a failed step is reverted without touching the next ones.

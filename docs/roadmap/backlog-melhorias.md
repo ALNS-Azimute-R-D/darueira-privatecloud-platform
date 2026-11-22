@@ -756,6 +756,24 @@ infra corporativa central hoje.
   Nenhum evento restou. O André disse que não foi ele; pode ter sido outro agente ou uma sessão anterior.
 - Pendente: os títulos de um painel do OpenSearch (`scripts/generate_opensearch_saved_objects.py`, linhas 447 e 534, e o `.ndjson` gerado) ainda citam MongoDB; precisa regenerar e reimportar.
   Os runbooks e discussões antigos (`docs/runbooks`, `docs/discussions`) foram mantidos como registro histórico. Os diretórios vazios do host (`.../tenant-mongodb`) ficam para o André remover (root).
+
+### 44. Painéis do OpenSearch Dashboards e do Grafana regenerados `[dono: Claude — status: feito; Grafana sem confirmação pela API]`
+- **OpenSearch Dashboards** (`scripts/generate_opensearch_saved_objects.py`, importado com `make import-dashboards`): 8 dashboards, 48 visualizações, 14 buscas.
+  Bug antigo corrigido: as queries `kubernetes.namespace_name: drr-corpshared-*`, `drr-tnt-*` e `drr-tnt-acme` usavam o campo `text` (o hífen quebra o termo) e casavam quase tudo, então
+  "Platform", "Tenants" e "ACME" mostravam os mesmos 703 mil logs/dia. Agora tudo consulta `.keyword` (platform 204 mil, tenants 499 mil, acme 0). "Erro" passou a ser `ERROR|Exception|FATAL|panic`
+  (a definição antiga contava todo WARN e todo stderr, 18% dos logs). Saíram os objetos do ACME e do MongoDB; entraram os deep-dives de `swfabrik-europe` e `swfabrik-latam`, CI/CD & GitOps,
+  Data Stores & Messaging e Errors Triage. O import agora **poda** objetos órfãos (prefixos `dashboard-`, `vis-`, `search-` fora do bundle). As 21 queries distintas retornam resultado.
+- **Grafana** (`scripts/generate_grafana_dashboards.py` + `validate_grafana_dashboards.py`, `make generate-grafana-dashboards` / `make validate-grafana-dashboards`): 7 dashboards em `dashboards/grafana/`,
+  geradas como ConfigMap pelo kustomize (o ConfigMap embutido no `grafana.yaml` saiu). Antes, `platform-overview` tinha 2 de 4 painéis vazios (`node_*` e `openfga_*`) e `tenant-quotas` era 100% vazio
+  (`kube_resourcequota`); não há node-exporter nem kube-state-metrics. Agora: nó via cgroup raiz do cAdvisor, uso contra limite via `container_spec_*`, OOM, reinícios, throttling.
+  Novos: Resource Usage vs Limits (variável de tenant), Containers Health, Keycloak JVM & DB pool, Observability Stack. O de pods ganhou variável de namespace e o do APISIX teve o painel de latência
+  de upstream corrigido (usava uma métrica inexistente). 79 queries validadas no Prometheus, 0 erros; 2 vazias por serem legítimas (sem OOM, sem reinícios).
+- **Não confirmado pela API do Grafana:** o classificador bloqueou ler a senha de admin, então só tenho: os 7 arquivos montados no pod, nenhum erro de provisionamento no log, e as queries validadas. O erro
+  `could not resolve dashboards:uid:...` apareceu quando troquei o uid de `platform-overview.json`: o Grafana liga o arquivo ao dashboard, então esse uid tem de continuar `darueira-platform-overview`.
+- Achados sem ação (decisão do André): (1) o datasource **OpenSearch do Grafana está morto**: o plugin `opensearch` não está instalado e o índice configurado é `[logs-]YYYY.MM.DD`, quando o real é
+  `darueira-k8s-logs-YYYY.MM.DD`; corrigir exige reiniciar o Grafana, e o `grafana-storage` é `emptyDir` (apaga o que foi criado pela UI). (2) O alvo `drr-iam-authz-svc` do Prometheus está
+  **down** desde sempre (404 em qualquer caminho HTTP; o serviço não expõe métricas): remover o job ou implementar `/metrics`. (3) Sem kube-state-metrics, node-exporter e exporter de Postgres, não há painel de
+  réplicas, quotas, I/O de disco nem de banco; instalar custa memória, então só se você quiser. (4) O coletor OTel não exporta nenhuma série (`scrape_samples_scraped 0`).
 ---
 
 ## 🟠 Média prioridade

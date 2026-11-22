@@ -67,6 +67,28 @@ IMPORT_OUTPUT=$(${KUBECTL} exec -n drr-corpshared-obs "${DASHBOARDS_POD}" -c ope
 echo -e "${GREEN}[SUCCESS] Saved objects import result:${NC}"
 echo "${IMPORT_OUTPUT}" | jq . || echo "${IMPORT_OUTPUT}"
 
+# The import only creates or overwrites. The bundle is the source of truth, so every dashboard, visualization or search
+# with one of our id prefixes (dashboard-*, vis-*, search-*) that is NOT in the bundle is an orphan (renamed or removed
+# by the generator, e.g. the objects of the removed tenant ACME) and is deleted. Objects made by hand in the UI have
+# generated ids without these prefixes and are left alone.
+echo -e "${BLUE}[INFO] Pruning saved objects that are no longer in the bundle...${NC}"
+BUNDLE_IDS=$(jq -r '.id' "${DASHBOARDS_FILE}" | sort -u)
+PRUNED=0
+for OBJ_TYPE in dashboard visualization search; do
+    LIVE_IDS=$(${KUBECTL} exec -n drr-corpshared-obs "${DASHBOARDS_POD}" -c opensearch-dashboards -- \
+        curl -s "http://localhost:5601/api/saved_objects/_find?type=${OBJ_TYPE}&per_page=1000&fields=title" | jq -r '.saved_objects[].id')
+    for OBJ_ID in ${LIVE_IDS}; do
+        case "${OBJ_ID}" in dashboard-*|vis-*|search-*) ;; *) continue ;; esac
+        if ! grep -qx "${OBJ_ID}" <<< "${BUNDLE_IDS}"; then
+            CODE=$(${KUBECTL} exec -n drr-corpshared-obs "${DASHBOARDS_POD}" -c opensearch-dashboards -- \
+                curl -s -o /dev/null -w '%{http_code}' -X DELETE "http://localhost:5601/api/saved_objects/${OBJ_TYPE}/${OBJ_ID}" -H "osd-xsrf: true")
+            echo "    ${OBJ_TYPE}/${OBJ_ID} -> HTTP ${CODE}"
+            PRUNED=$((PRUNED + 1))
+        fi
+    done
+done
+echo -e "${GREEN}[SUCCESS] Pruned ${PRUNED} orphan object(s).${NC}"
+
 echo -e "${BLUE}[INFO] Setting default index pattern to darueira-k8s-logs...${NC}"
 ${KUBECTL} exec -n drr-corpshared-obs "${DASHBOARDS_POD}" -c opensearch-dashboards -- \
     curl -s -X POST "http://localhost:5601/api/opensearch-dashboards/settings/defaultIndex" \

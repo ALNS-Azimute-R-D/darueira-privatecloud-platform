@@ -429,129 +429,107 @@ def make_dashboard(dash_id, title, description, panels, query_str=""):
         }
     }
 
+# Exact (keyword) fields. The analysed text fields split `drr-corpshared-plat` at the hyphens, so a wildcard such as
+# `kubernetes.namespace_name: drr-tnt-*` matched almost every document and "Platform", "Tenants" and "ACME" showed the
+# same logs. Always query the `.keyword` sub-fields for namespaces and pods.
+NS = "kubernetes.namespace_name.keyword"
+POD = "kubernetes.pod_name.keyword"
+# "Error" means the application said so. The old definition also counted every WARN, every `fail*` and the whole stderr
+# stream (Java apps log INFO to stderr), which made 18% of all logs look like errors.
+ERR = "log: (ERROR OR Exception OR FATAL OR panic)"
+
+TENANT_NAMESPACES = [
+    # (key, label, namespace)
+    ("europe", "swfabrik-europe", "drr-tnt-swfabrik-europe-dev"),
+    ("latam", "swfabrik-latam", "drr-tnt-swfabrik-latam-dev"),
+]
+
+def scope_objects(key, label, scope_q, group_field, search_title, search_desc, all_q=None):
+    """The six visualisations (+ the saved search) every scoped dashboard is made of."""
+    err_q = scope_q if key == "errors" else f"({scope_q}) AND {ERR}"
+    objs = [
+        make_vis_metric(f"vis-{key}-total-logs", f"Total {label} Logs", all_q or scope_q, f"{label} Logs"),
+        make_vis_metric(f"vis-{key}-total-errors", f"Total {label} Errors", err_q, f"{label} Errors"),
+        make_vis_histogram(f"vis-{key}-log-timeline", f"{label} Log Volume (Timeline)", scope_q, group_field),
+        make_vis_pie(f"vis-{key}-share", f"{label} Breakdown", scope_q, group_field),
+        make_vis_horizontal_bar(f"vis-{key}-top-pods", f"Top {label} Pods by Log Volume", scope_q, POD, 15),
+        make_vis_histogram(f"vis-{key}-errors-timeline", f"{label} Errors Timeline", err_q, POD),
+    ]
+    objs.append(make_search(f"search-{key}-logs", search_title, search_desc, scope_q))
+    return objs
+
+
+def scope_dashboard(key, dash_id, title, description, scope_q):
+    panels = [
+        (1, "visualization", f"vis-{key}-total-logs", 0, 0, 12, 6),
+        (2, "visualization", f"vis-{key}-total-errors", 12, 0, 12, 6),
+        (3, "visualization", f"vis-{key}-log-timeline", 0, 6, 24, 12),
+        (4, "visualization", f"vis-{key}-share", 0, 18, 12, 12),
+        (5, "visualization", f"vis-{key}-top-pods", 12, 18, 12, 12),
+        (6, "visualization", f"vis-{key}-errors-timeline", 0, 30, 24, 12),
+        (7, "search", f"search-{key}-logs", 0, 42, 24, 16),
+    ]
+    return make_dashboard(dash_id, title, description, panels, scope_q)
+
+
 def generate_bundle():
-    objects = []
+    objects = [make_index_pattern()]
 
-    # 1. Index Pattern
-    objects.append(make_index_pattern())
-
-    # 2. Saved Searches (Discover Pre-saved Queries)
-    searches = [
-        ("search-all-logs", "🔍 [All Logs] Platform & All Tenants", "Raw log stream across all cluster namespaces and workloads", "*"),
-        ("search-platform-logs", "🏢 [Platform] Enterprise Shared Services Logs", "Logs strictly from drr-corpshared-* namespaces (plat, mgmt, secr, obs)", "kubernetes.namespace_name: drr-corpshared-*"),
-        ("search-tenants-all-logs", "👥 [Tenants] All Multi-Tenant Workload Logs", "Logs strictly from all tenant environments (drr-tnt-*)", "kubernetes.namespace_name: drr-tnt-*"),
-        ("search-tenant-acme-logs", "🎯 [Tenant ACME] Dedicated Workload Logs", "Logs from Tenant ACME (drr-tnt-acme)", "kubernetes.namespace_name: drr-tnt-acme"),
-        ("search-errors-exceptions", "🚨 [Errors & Warnings] Critical Log Stream", "Aggregated errors, exceptions, fatals, panics and stderr streams", "log: (ERROR OR Error OR Exception OR fatal OR panic OR fail* OR WARN) OR stream: \"stderr\""),
-        ("search-cicd-gitops-logs", "⚙️ [CI/CD & GitOps] ArgoCD, Tekton & Forgejo Logs", "Activity logs from ArgoCD, Tekton Pipelines, Forgejo Git, and Nexus", "kubernetes.pod_name: (argocd* OR tekton* OR el-forgejo* OR forgejo* OR nexus*)"),
-        ("search-security-authz-logs", "🛡️ [Security & Zero-Trust] APISIX, Keycloak, OpenFGA, Vault", "Authentication, authorization, and ingress security stream", "kubernetes.pod_name: (apisix* OR authentik* OR keycloak* OR openfga* OR openbao* OR spire*)"),
-        ("search-persistence-db-logs", "💾 [Persistence] Postgres, MinIO & MongoDB Logs", "Central & Tenant database and object store persistence logs", "kubernetes.pod_name: (central-postgres* OR central-minio* OR tenant-postgres* OR tenant-minio* OR tenant-mongodb*)")
+    # Scopes: (key, dashboard id, title, description, query, group field, search title, search description)
+    scopes = [
+        ("platform", "dashboard-platform-overview", "🏢 Darueira Platform - Enterprise Control Plane Overview",
+         "All Corporate Shared Services (drr-corpshared-*: plat, mgmt, secr, obs)",
+         f"{NS}: drr-corpshared-*", NS,
+         "🏢 [Platform] Enterprise Shared Services Logs", "Logs from the drr-corpshared-* namespaces"),
+        ("tenants", "dashboard-tenants-overview", "👥 Darueira Tenants - Multi-Tenant Workloads Overview",
+         "Log activity across every tenant namespace (drr-tnt-*)",
+         f"{NS}: drr-tnt-*", NS,
+         "👥 [Tenants] All Multi-Tenant Workload Logs", "Logs from every tenant environment (drr-tnt-*)"),
     ]
-
-    for sid, title, desc, q in searches:
-        objects.append(make_search(sid, title, desc, q))
-
-    # 3. Visualizations
-    # Platform Visualizations
-    objects.append(make_vis_histogram("vis-platform-log-timeline", "Platform Services Log Volume (Timeline)", "kubernetes.namespace_name: drr-corpshared-*", "kubernetes.namespace_name.keyword"))
-    objects.append(make_vis_pie("vis-platform-namespace-share", "Platform Namespaces Breakdown", "kubernetes.namespace_name: drr-corpshared-*", "kubernetes.namespace_name.keyword"))
-    objects.append(make_vis_horizontal_bar("vis-platform-top-pods", "Top Platform Pods by Volume", "kubernetes.namespace_name: drr-corpshared-*", "kubernetes.pod_name.keyword", 15))
-    objects.append(make_vis_histogram("vis-platform-errors-timeline", "Platform Errors & Warnings Timeline", "kubernetes.namespace_name: drr-corpshared-* AND (log: (ERROR OR Error OR Exception OR fatal OR panic OR fail*) OR stream: \"stderr\")", "kubernetes.pod_name.keyword"))
-    objects.append(make_vis_metric("vis-platform-total-logs", "Total Platform Logs", "kubernetes.namespace_name: drr-corpshared-*", "Platform Logs"))
-    objects.append(make_vis_metric("vis-platform-total-errors", "Total Platform Errors", "kubernetes.namespace_name: drr-corpshared-* AND (log: (ERROR OR Error OR Exception OR fatal OR panic OR fail*) OR stream: \"stderr\")", "Platform Errors"))
-
-    # Tenants Visualizations
-    objects.append(make_vis_histogram("vis-tenants-log-timeline", "All Tenants Log Activity Timeline", "kubernetes.namespace_name: drr-tnt-*", "kubernetes.namespace_name.keyword"))
-    objects.append(make_vis_pie("vis-tenants-namespace-share", "Tenant Workload Distribution", "kubernetes.namespace_name: drr-tnt-*", "kubernetes.namespace_name.keyword"))
-    objects.append(make_vis_horizontal_bar("vis-tenants-top-pods", "Top Tenant Pods by Log Volume", "kubernetes.namespace_name: drr-tnt-*", "kubernetes.pod_name.keyword", 15))
-    objects.append(make_vis_histogram("vis-tenants-errors-timeline", "Tenants Errors & Warnings Timeline", "kubernetes.namespace_name: drr-tnt-* AND (log: (ERROR OR Error OR Exception OR fatal OR panic OR fail*) OR stream: \"stderr\")", "kubernetes.namespace_name.keyword"))
-    objects.append(make_vis_metric("vis-tenants-total-logs", "Total Tenant Logs", "kubernetes.namespace_name: drr-tnt-*", "Tenant Logs"))
-    objects.append(make_vis_metric("vis-tenants-total-errors", "Total Tenant Errors", "kubernetes.namespace_name: drr-tnt-* AND (log: (ERROR OR Error OR Exception OR fatal OR panic OR fail*) OR stream: \"stderr\")", "Tenant Errors"))
-
-    # Tenant ACME Visualizations
-    objects.append(make_vis_histogram("vis-tenant-acme-timeline", "Tenant ACME Pod Log Timeline", "kubernetes.namespace_name: drr-tnt-acme", "kubernetes.pod_name.keyword"))
-    objects.append(make_vis_pie("vis-tenant-acme-pods-share", "Tenant ACME Component Breakdown", "kubernetes.namespace_name: drr-tnt-acme", "kubernetes.pod_name.keyword"))
-    objects.append(make_vis_horizontal_bar("vis-tenant-acme-pods-bar", "Tenant ACME Pods Activity", "kubernetes.namespace_name: drr-tnt-acme", "kubernetes.pod_name.keyword", 10))
-    objects.append(make_vis_histogram("vis-tenant-acme-errors-timeline", "Tenant ACME Error Timeline", "kubernetes.namespace_name: drr-tnt-acme AND (log: (ERROR OR Error OR Exception OR fatal OR panic OR fail*) OR stream: \"stderr\")", "kubernetes.pod_name.keyword"))
-    objects.append(make_vis_metric("vis-tenant-acme-total-logs", "Tenant ACME Total Logs", "kubernetes.namespace_name: drr-tnt-acme", "ACME Logs"))
-    objects.append(make_vis_metric("vis-tenant-acme-total-errors", "Tenant ACME Total Errors", "kubernetes.namespace_name: drr-tnt-acme AND (log: (ERROR OR Error OR Exception OR fatal OR panic OR fail*) OR stream: \"stderr\")", "ACME Errors"))
-
-    # Security & Zero-Trust Visualizations
-    objects.append(make_vis_histogram("vis-security-events-timeline", "Security & Zero-Trust Events Timeline", "kubernetes.pod_name: (apisix* OR authentik* OR keycloak* OR openfga* OR openbao* OR spire*)", "kubernetes.pod_name.keyword"))
-    objects.append(make_vis_pie("vis-security-components-share", "Security Components Log Share", "kubernetes.pod_name: (apisix* OR authentik* OR keycloak* OR openfga* OR openbao* OR spire*)", "kubernetes.pod_name.keyword"))
-    objects.append(make_vis_horizontal_bar("vis-security-top-pods", "Top Security Workloads", "kubernetes.pod_name: (apisix* OR authentik* OR keycloak* OR openfga* OR openbao* OR spire*)", "kubernetes.pod_name.keyword", 10))
-    objects.append(make_vis_metric("vis-security-total-events", "Total Security Events", "kubernetes.pod_name: (apisix* OR authentik* OR keycloak* OR openfga* OR openbao* OR spire*)", "Security Events"))
-
-    # 4. Dashboards
-    # Dashboard 1: Platform Overview
-    dash_platform_panels = [
-        (1, "visualization", "vis-platform-total-logs", 0, 0, 12, 6),
-        (2, "visualization", "vis-platform-total-errors", 12, 0, 12, 6),
-        (3, "visualization", "vis-platform-log-timeline", 0, 6, 24, 12),
-        (4, "visualization", "vis-platform-namespace-share", 0, 18, 12, 12),
-        (5, "visualization", "vis-platform-top-pods", 12, 18, 12, 12),
-        (6, "visualization", "vis-platform-errors-timeline", 0, 30, 24, 12),
-        (7, "search", "search-platform-logs", 0, 42, 24, 16)
+    for key, label, ns in TENANT_NAMESPACES:
+        scopes.append((
+            key, f"dashboard-tenant-{key}-deepdive", f"🎯 Tenant Deep-Dive - {label} ({ns})",
+            f"Workloads of tenant {label}: business apps, tenant-postgres, tenant-minio, tenant-keycloak, tenant-openbao",
+            f"{NS}: {ns}", POD,
+            f"🎯 [Tenant {label}] Dedicated Workload Logs", f"Logs from {ns}"))
+    scopes += [
+        ("security", "dashboard-security-zerotrust", "🛡️ Darueira Security & Zero-Trust Audit",
+         "Authentication, authorization, secrets access and ingress security (APISIX, Keycloak, Authentik, OpenFGA, OpenBao, SPIRE)",
+         f"{POD}: (apisix* OR authentik* OR keycloak* OR openfga* OR openbao* OR spire*)", POD,
+         "🛡️ [Security & Zero-Trust] APISIX, Keycloak, OpenFGA, Vault", "Authentication, authorization and ingress security stream"),
+        ("cicd", "dashboard-cicd-gitops", "⚙️ CI/CD & GitOps - Forgejo, Tekton, ArgoCD & Nexus",
+         "Build and delivery activity: pipelines, webhooks, image registry and GitOps sync",
+         f"{POD}: (argocd* OR tekton* OR el-forgejo* OR forgejo* OR nexus*)", POD,
+         "⚙️ [CI/CD & GitOps] ArgoCD, Tekton & Forgejo Logs", "Activity logs from ArgoCD, Tekton, Forgejo and Nexus"),
+        ("data", "dashboard-data-messaging", "💾 Data Stores & Messaging - PostgreSQL, MinIO, RabbitMQ, Redpanda, Temporal, NiFi",
+         "Persistence, brokers and workflow engines (PostgreSQL is the only tenant database, ADR-0018/0019)",
+         f"{POD}: (central-postgres* OR central-minio* OR tenant-postgres* OR tenant-minio* OR message-broker* OR redpanda* OR kafka* OR temporal* OR apache-nifi*)", POD,
+         "💾 [Data & Messaging] PostgreSQL, MinIO, brokers, Temporal, NiFi", "Database, object store, broker and workflow engine logs"),
+        ("errors", "dashboard-errors-triage", "🚨 Errors Triage - Where Is the Platform Complaining?",
+         "Application errors (ERROR, Exception, FATAL, panic) across every namespace, to find the noisy and the broken workloads",
+         ERR, NS,
+         "🚨 [Errors] ERROR, Exception, FATAL, panic", "Log lines where the application reported an error"),
     ]
-    objects.append(make_dashboard(
-        "dashboard-platform-overview",
-        "🏢 Darueira Platform - Enterprise Control Plane Overview",
-        "Comprehensive observability dashboard for all Corporate Shared Services (Security, Platform, Obs, Mgmt)",
-        dash_platform_panels,
-        "kubernetes.namespace_name: drr-corpshared-*"
-    ))
+    labels = {"platform": "Platform", "tenants": "Tenant", "europe": "swfabrik-europe", "latam": "swfabrik-latam",
+              "security": "Security", "cicd": "CI/CD", "data": "Data & Messaging", "errors": "Cluster"}
+    for key, dash_id, title, desc, q, group, s_title, s_desc in scopes:
+        objects += scope_objects(key, labels[key], q, group, s_title, s_desc, all_q="*" if key == "errors" else None)
+        objects.append(scope_dashboard(key, dash_id, title, desc, q))
 
-    # Dashboard 2: Tenants Overview
-    dash_tenants_panels = [
-        (1, "visualization", "vis-tenants-total-logs", 0, 0, 12, 6),
-        (2, "visualization", "vis-tenants-total-errors", 12, 0, 12, 6),
-        (3, "visualization", "vis-tenants-log-timeline", 0, 6, 24, 12),
-        (4, "visualization", "vis-tenants-namespace-share", 0, 18, 12, 12),
-        (5, "visualization", "vis-tenants-top-pods", 12, 18, 12, 12),
-        (6, "visualization", "vis-tenants-errors-timeline", 0, 30, 24, 12),
-        (7, "search", "search-tenants-all-logs", 0, 42, 24, 16)
+    # Searches that have no dashboard of their own
+    objects += [
+        make_search("search-all-logs", "🔍 [All Logs] Platform & All Tenants", "Raw log stream across all cluster namespaces and workloads", "*"),
+        make_search("search-errors-exceptions", "🚨 [Errors & Warnings] Broad Stream (incl. WARN and stderr)",
+                    "Wider than the Errors dashboard: WARN, fail* and the whole stderr stream", 'log: (ERROR OR Error OR Exception OR fatal OR panic OR fail* OR WARN) OR stream: "stderr"'),
+        make_search("search-persistence-db-logs", "💾 [Persistence] PostgreSQL, MinIO & Nexus Logs", "Central and tenant database and object store logs",
+                    f"{POD}: (central-postgres* OR central-minio* OR tenant-postgres* OR tenant-minio* OR nexus*)"),
+        make_search("search-messaging-logs", "📨 [Messaging] RabbitMQ, Redpanda, Temporal & NiFi", "Brokers and workflow engines",
+                    f"{POD}: (message-broker* OR redpanda* OR kafka* OR temporal* OR apache-nifi*)"),
+        make_search("search-caseforce-logs", "⚖️ [CaseForce] LegalHub backend & Fake Agency", "Logs of the CaseForce suite (tenant swfabrik-europe)",
+                    f"{POD}: (caseforce* OR fake-legal*)"),
+        make_search("search-food-market-logs", "🍽️ [Food Market] Services & front-ends", "Logs of the nine food-market projects (tenant swfabrik-europe)",
+                    f"{POD}: (food-market* OR app-food-market*)"),
     ]
-    objects.append(make_dashboard(
-        "dashboard-tenants-overview",
-        "👥 Darueira Tenants - Multi-Tenant Workloads Overview",
-        "Aggregated log and health overview across all tenant namespaces (drr-tnt-*)",
-        dash_tenants_panels,
-        "kubernetes.namespace_name: drr-tnt-*"
-    ))
-
-    # Dashboard 3: Tenant Deep-Dive (ACME)
-    dash_tenant_acme_panels = [
-        (1, "visualization", "vis-tenant-acme-total-logs", 0, 0, 12, 6),
-        (2, "visualization", "vis-tenant-acme-total-errors", 12, 0, 12, 6),
-        (3, "visualization", "vis-tenant-acme-timeline", 0, 6, 24, 12),
-        (4, "visualization", "vis-tenant-acme-pods-share", 0, 18, 12, 12),
-        (5, "visualization", "vis-tenant-acme-pods-bar", 12, 18, 12, 12),
-        (6, "visualization", "vis-tenant-acme-errors-timeline", 0, 30, 24, 12),
-        (7, "search", "search-tenant-acme-logs", 0, 42, 24, 16)
-    ]
-    objects.append(make_dashboard(
-        "dashboard-tenant-acme-deepdive",
-        "🎯 Tenant Deep-Dive - ACME Corporation (drr-tnt-acme)",
-        "Focused observability for Tenant ACME workloads (tenant-postgres, tenant-minio, tenant-keycloak, tenant-openbao, tenant-mongodb)",
-        dash_tenant_acme_panels,
-        "kubernetes.namespace_name: drr-tnt-acme"
-    ))
-
-    # Dashboard 4: Security & Zero-Trust Audit
-    dash_security_panels = [
-        (1, "visualization", "vis-security-total-events", 0, 0, 24, 6),
-        (2, "visualization", "vis-security-events-timeline", 0, 6, 24, 12),
-        (3, "visualization", "vis-security-components-share", 0, 18, 12, 12),
-        (4, "visualization", "vis-security-top-pods", 12, 18, 12, 12),
-        (5, "search", "search-security-authz-logs", 0, 30, 24, 16)
-    ]
-    objects.append(make_dashboard(
-        "dashboard-security-zerotrust",
-        "🛡️ Darueira Security & Zero-Trust Audit",
-        "Authentication, authorization, secrets access, and ingress security log analysis (APISIX, Keycloak, OpenFGA, Vault, SPIRE)",
-        dash_security_panels,
-        "kubernetes.pod_name: (apisix* OR authentik* OR keycloak* OR openfga* OR openbao* OR spire*)"
-    ))
-
     return objects
 
 if __name__ == "__main__":

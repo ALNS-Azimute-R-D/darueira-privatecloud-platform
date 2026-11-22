@@ -118,9 +118,19 @@ bootstrap-control-plane: deploy-crds ## Apply Kustomize manifests to deploy Ente
 	@bash platform/bootstrap/01-deploy-control-plane.sh
 
 .PHONY: import-dashboards
-import-dashboards: ## Generate and import declarative OpenSearch Dashboards, Visualizations, and Saved Searches
+import-dashboards: ## Generate and import declarative OpenSearch Dashboards, Visualizations, and Saved Searches (also prunes orphans)
 	@echo -e "${GREEN}==> Provisioning OpenSearch Dashboards Saved Objects...${NC}"
 	@bash scripts/import_opensearch_dashboards.sh
+
+.PHONY: generate-grafana-dashboards
+generate-grafana-dashboards: ## Regenerate the code-built Grafana dashboards (platform/kustomize/base/corpshared-obs/dashboards/grafana/)
+	@echo -e "${GREEN}==> Generating Grafana dashboards...${NC}"
+	@python3 scripts/generate_grafana_dashboards.py
+
+.PHONY: validate-grafana-dashboards
+validate-grafana-dashboards: ## Evaluate every Grafana dashboard query on the live Prometheus (errors fail, empty panels are listed)
+	@$(KUBECTL) port-forward -n drr-corpshared-obs svc/prometheus 19090:9090 >/dev/null 2>&1 & PF=$$!; \
+	sleep 3; PROM_URL=http://127.0.0.1:19090 python3 scripts/validate_grafana_dashboards.py; RC=$$?; kill $$PF 2>/dev/null; exit $$RC
 
 .PHONY: validate-manifests
 validate-manifests: ## Validate all Kustomize base manifests

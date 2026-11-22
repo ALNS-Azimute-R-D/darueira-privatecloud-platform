@@ -5,10 +5,9 @@ Generates the Grafana dashboards of the Darueira Private Cloud that are built fr
 platform/kustomize/base/corpshared-obs/dashboards/grafana/. Kustomize turns that folder into the ConfigMap
 `grafana-dashboards-data`, which Grafana reads with file provisioning.
 
-Only metrics that Prometheus really has are used. Prometheus scrapes cAdvisor (container_*, machine_*), Keycloak,
-APISIX and the OTel collector. There is no kube-state-metrics and no node-exporter, so:
-  - node CPU/memory come from the root cgroup of cAdvisor (id="/") and machine_* instead of node_*;
-  - usage against limits comes from container_spec_* instead of kube_resourcequota.
+Only metrics that Prometheus really has are used. Prometheus scrapes cAdvisor (container_*, machine_*), kube-state-metrics
+(kube_*), node-exporter (node_*), postgres-exporter (pg_*), Keycloak, APISIX and the OTel collector (ADR-0020).
+Usage against limits comes from container_spec_*: the cluster defines no ResourceQuota objects.
 Run scripts/validate_grafana_dashboards.py after changing a query: it evaluates every expression on Prometheus.
 
 The two hand-maintained dashboards (apisix-metrics.json, k8s-pod-resource-analytics.json) live next to the generated ones.
@@ -285,12 +284,113 @@ def observability_stack():
         ])
 
 
+def kubernetes_state():
+    ns = 'namespace=~"$ns"'
+    return dashboard(
+        "kubernetes-state", "Darueira Kubernetes - Workload State",
+        "Replicas, pod phases, restarts and volumes, from kube-state-metrics.",
+        ["kubernetes", "workloads"], [
+            (4, [
+                stat("Pods running", f'sum(kube_pod_status_phase{{{ns},phase="Running"}})'),
+                stat("Pods not ready/failed", f'sum(kube_pod_status_phase{{{ns},phase=~"Failed|Unknown|Pending"}}) or vector(0)', "short", (("green", None), ("red", 1))),
+                stat("Deployments below desired", f'count(kube_deployment_spec_replicas{{{ns}}} > kube_deployment_status_replicas_available{{{ns}}}) or vector(0)', "short", (("green", None), ("red", 1)),
+                     description="Includes deployments scaled to 0 on purpose only when desired replicas > 0."),
+                stat("StatefulSets below desired", f'count(kube_statefulset_replicas{{{ns}}} > kube_statefulset_status_replicas_ready{{{ns}}}) or vector(0)', "short", (("green", None), ("red", 1))),
+                stat("Restarts (1h)", f'sum(increase(kube_pod_container_status_restarts_total{{{ns}}}[1h])) or vector(0)', "short", (("green", None), ("yellow", 3), ("red", 10))),
+                stat("PVCs not bound", f'sum(kube_persistentvolumeclaim_status_phase{{{ns},phase!="Bound"}}) or vector(0)', "short", (("green", None), ("red", 1))),
+            ]),
+            (9, [
+                table("Deployments below desired replicas",
+                      f'kube_deployment_spec_replicas{{{ns}}} - kube_deployment_status_replicas_available{{{ns}}} > 0',
+                      description="Empty means every deployment has all its replicas."),
+                table("Pods not running", f'kube_pod_status_phase{{{ns},phase=~"Failed|Unknown|Pending"}} == 1'),
+            ]),
+            (8, [
+                timeseries("Pods by phase", [(f'sum by (phase) (kube_pod_status_phase{{{ns}}})', "{{phase}}")], "short", stack=True),
+                timeseries("Container restarts (top 10 pods, 1h)", [(f'topk(10, sum by (namespace,pod) (increase(kube_pod_container_status_restarts_total{{{ns}}}[1h])))', "{{namespace}}/{{pod}}")], "short"),
+            ]),
+            (8, [
+                bargauge("Pods by namespace", 'sort_desc(count by (namespace) (kube_pod_info{namespace=~"$ns"}))', "short", legend="{{namespace}}"),
+                bargauge("Requested memory by namespace", f'sort_desc(sum by (namespace) (kube_pod_container_resource_requests{{{ns},resource="memory"}}))', "bytes", legend="{{namespace}}"),
+            ]),
+        ],
+        variables=[query_variable("ns", "Namespace", 'label_values(kube_pod_info, namespace)')])
+
+
+def host_node():
+    fs = 'fstype!~"tmpfs|overlay|squashfs|ramfs",mountpoint!~"/host/root/(snap|boot).*"'
+    return dashboard(
+        "host-node", "Darueira Host - Node Health",
+        "CPU, memory, load, disk and filesystems of the host that runs the whole cluster, from node-exporter. "
+        "The shared HDD is the known bottleneck (docs/runbooks/host-disk-io-contention.md).",
+        ["host", "node", "capacity"], [
+            (4, [
+                stat("CPU busy", '100 * (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])))', "percent", (("green", None), ("yellow", 60), ("red", 85)), decimals=1),
+                stat("Memory used", '100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)', "percent", (("green", None), ("yellow", 75), ("red", 90)), decimals=1),
+                stat("Load 1m / cores", 'node_load1 / scalar(count(count by (cpu) (node_cpu_seconds_total{mode="idle"})))', "none", (("green", None), ("yellow", 0.7), ("red", 1)), decimals=2),
+                stat("Disk busy (max device)", '100 * max(rate(node_disk_io_time_seconds_total[5m]))', "percent", (("green", None), ("yellow", 60), ("red", 90)), decimals=0,
+                     description="Time the busiest device had IO in flight. Near 100% = the shared HDD is saturated."),
+                stat("Swap used", '100 * (1 - node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes) or vector(0)', "percent", (("green", None), ("yellow", 10), ("red", 50)), decimals=0),
+                stat("Uptime", 'time() - node_boot_time_seconds', "s"),
+            ]),
+            (8, [
+                timeseries("CPU by mode", [('sum by (mode) (rate(node_cpu_seconds_total{mode!="idle"}[5m])) / scalar(count(count by (cpu) (node_cpu_seconds_total{mode="idle"})))', "{{mode}}")], "percentunit", stack=True),
+                timeseries("Memory", [('node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes', "used"), ('node_memory_Cached_bytes', "page cache"), ('node_memory_MemAvailable_bytes', "available")], "bytes"),
+            ]),
+            (8, [
+                timeseries("Disk throughput", [('sum by (device) (rate(node_disk_read_bytes_total[5m]))', "read {{device}}"), ('sum by (device) (rate(node_disk_written_bytes_total[5m]))', "write {{device}}")], "Bps"),
+                timeseries("Disk busy and IO wait", [('100 * rate(node_disk_io_time_seconds_total[5m])', "busy {{device}}"), ('100 * avg(rate(node_cpu_seconds_total{mode="iowait"}[5m]))', "CPU iowait")], "percent", minimum=0),
+            ]),
+            (8, [
+                bargauge("Filesystem used (%)", f'100 * (1 - node_filesystem_avail_bytes{{{fs}}} / node_filesystem_size_bytes{{{fs}}})', "percent", (("green", None), ("yellow", 75), ("red", 90)), legend="{{mountpoint}}", maximum=100),
+                timeseries("Load average", [('node_load1', "1m"), ('node_load5', "5m"), ('node_load15', "15m")], "none"),
+            ]),
+        ])
+
+
+def postgresql():
+    pg = 'instance_name=~"$pg"'
+    return dashboard(
+        "postgresql", "Darueira Data - PostgreSQL",
+        "central-postgres and the tenant-postgres of every tenant, from postgres-exporter (role drr_monitor, pg_monitor).",
+        ["postgresql", "data"], [
+            (4, [
+                stat("Instances up", f'sum(pg_up{{{pg}}})'),
+                stat("Connections", f'sum(pg_stat_activity_count{{{pg}}})'),
+                stat("Commits/s", f'sum(rate(pg_stat_database_xact_commit{{{pg}}}[5m]))', "ops", decimals=1),
+                stat("Rollbacks/s", f'sum(rate(pg_stat_database_xact_rollback{{{pg}}}[5m]))', "ops", (("green", None), ("yellow", 1)), decimals=2),
+                stat("Cache hit ratio", f'100 * sum(rate(pg_stat_database_blks_hit{{{pg}}}[5m])) / (sum(rate(pg_stat_database_blks_hit{{{pg}}}[5m])) + sum(rate(pg_stat_database_blks_read{{{pg}}}[5m])))',
+                     "percent", (("red", None), ("yellow", 90), ("green", 97)), decimals=1),
+                stat("Deadlocks (1h)", f'sum(increase(pg_stat_database_deadlocks{{{pg}}}[1h])) or vector(0)', "short", (("green", None), ("red", 1))),
+            ]),
+            (8, [
+                timeseries("Connections by instance", [(f'sum by (instance_name) (pg_stat_activity_count{{{pg}}})', "{{instance_name}}")], "short"),
+                timeseries("Transactions/s", [(f'sum by (instance_name) (rate(pg_stat_database_xact_commit{{{pg}}}[5m]))', "commit {{instance_name}}"),
+                                              (f'sum by (instance_name) (rate(pg_stat_database_xact_rollback{{{pg}}}[5m]))', "rollback {{instance_name}}")], "ops"),
+            ]),
+            (8, [
+                bargauge("Database size", f'sort_desc(pg_database_size_bytes{{{pg},datname!~"template.*"}})', "bytes", legend="{{instance_name}} / {{datname}}"),
+                timeseries("Rows returned/fetched per second", [(f'sum by (instance_name) (rate(pg_stat_database_tup_returned{{{pg}}}[5m]))', "returned {{instance_name}}"),
+                                                                (f'sum by (instance_name) (rate(pg_stat_database_tup_fetched{{{pg}}}[5m]))', "fetched {{instance_name}}")], "ops"),
+            ]),
+            (8, [
+                timeseries("Temp files bytes/s", [(f'sum by (instance_name) (rate(pg_stat_database_temp_bytes{{{pg}}}[5m]))', "{{instance_name}}")], "Bps",
+                           description="Queries spilling to disk: sort/hash that does not fit in work_mem."),
+                timeseries("Longest transaction (s)", [(f'max by (instance_name) (pg_stat_activity_max_tx_duration{{{pg}}})', "{{instance_name}}")], "s"),
+            ]),
+        ],
+        variables=[query_variable("pg", "Instance", 'label_values(pg_up, instance_name)')])
+
+
 GENERATED = {
     "platform-overview.json": platform_overview,
     "tenant-resources.json": tenant_resources,
     "containers-health.json": containers_health,
     "keycloak-jvm.json": keycloak_jvm,
     "observability-stack.json": observability_stack,
+    "kubernetes-state.json": kubernetes_state,
+    "host-node.json": host_node,
+    "postgresql.json": postgresql,
 }
 
 if __name__ == "__main__":

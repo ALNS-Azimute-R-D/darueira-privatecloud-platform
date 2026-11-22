@@ -27,7 +27,7 @@ DASH_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "platf
 def substitute(expr):
     """Replaces Grafana variables with a value Prometheus understands."""
     expr = expr.replace("$__rate_interval", "5m").replace("$__interval", "1m").replace("${__interval}", "1m")
-    return re.sub(r"\$\{?(ns|namespace|tenant)\}?", ".*", expr)
+    return re.sub(r"\$\{?(ns|namespace|tenant|pg)\}?", ".*", expr)
 
 
 def evaluate(expr):

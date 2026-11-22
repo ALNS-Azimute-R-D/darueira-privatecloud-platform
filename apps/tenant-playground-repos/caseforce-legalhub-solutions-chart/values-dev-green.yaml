@@ -1,0 +1,10 @@
+# Rewritten by Tekton (task-gitops-helm-promote) after each successful build. Each `# promote:` marker names the image
+# whose build rewrites the `tag:` line right below it. Do not remove the markers.
+legalhubMgmt:
+  image:
+    # promote: legaltech-caseforce-solutions
+    tag: "2026.0831.144951"
+fakeAgency:
+  image:
+    # promote: fake-legal-partners-agencies-app
+    tag: "latest"

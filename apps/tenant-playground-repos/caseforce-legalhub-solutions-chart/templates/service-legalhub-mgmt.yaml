@@ -1,0 +1,16 @@
+{{- $s := .Values.legalhubMgmt }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $s.name }}
+  labels:
+    {{- include "caseforce.labels" (dict "root" . "name" $s.name "component" "legalhub-mgmt-api") | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "caseforce.selector" (dict "root" . "name" $s.name) | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ $s.containerPort }}
+      targetPort: {{ $s.containerPort }}
+      protocol: TCP

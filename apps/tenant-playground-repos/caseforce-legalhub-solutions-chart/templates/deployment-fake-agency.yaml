@@ -1,0 +1,67 @@
+{{- $s := .Values.fakeAgency }}
+{{- $api := .Values.legalhubMgmt }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $s.name }}
+  labels:
+    {{- include "caseforce.labels" (dict "root" . "name" $s.name "component" "partner-agency-simulator") | nindent 4 }}
+spec:
+  replicas: {{ $s.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "caseforce.selector" (dict "root" . "name" $s.name) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "caseforce.labels" (dict "root" . "name" $s.name "component" "partner-agency-simulator") | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.runAsUser }}
+        runAsGroup: {{ .Values.runAsUser }}
+        fsGroup: {{ .Values.runAsUser }}
+        seccompProfile:
+          type: RuntimeDefault
+      imagePullSecrets:
+        - name: nexus-registry-secret
+      containers:
+        - name: fake-agency
+          image: "{{ $s.image.repository }}:{{ $s.image.tag }}"
+          imagePullPolicy: {{ $s.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - containerPort: {{ $s.containerPort }}
+              name: http
+          env:
+            - name: SERVER_PORT
+              value: {{ $s.containerPort | quote }}
+            - name: CASEFORCE_API_BASE_URL
+              value: "http://{{ $api.name }}.{{ .Release.Namespace }}.svc.cluster.local:{{ $api.containerPort }}"
+            - name: CASEFORCE_WEBHOOK_CALLBACK_HOST
+              value: "http://{{ $s.name }}.{{ .Release.Namespace }}.svc.cluster.local:{{ $s.containerPort }}"
+            - name: CASEFORCE_AUTH_ENABLED
+              value: "true"
+            - name: CASEFORCE_AUTH_LOGIN_ENDPOINT
+              value: /login
+            - name: CASEFORCE_AUTH_USERNAME
+              value: {{ $s.authUsername | quote }}
+            - name: CASEFORCE_AUTH_PASSWORD
+              valueFrom: { secretKeyRef: { name: caseforce-credentials, key: fake-agency-password } }
+          resources:
+            {{- toYaml $s.resources | nindent 12 }}
+          livenessProbe:
+            {{- toYaml $s.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml $s.readinessProbe | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

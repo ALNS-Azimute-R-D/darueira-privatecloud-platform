@@ -1,0 +1,55 @@
+# Defaults. The image tags live in values-dev-green.yaml, where the Tekton task `task-gitops-helm-promote` rewrites them
+# (the `# promote: <image>` markers tell it which tag belongs to which image). Credentials come from Secrets, never from Git:
+#   tenant-mysql-credentials (platform, key: username/password/database) and caseforce-credentials (keys: jwt-secret,
+#   mq-username, mq-password, fake-agency-password; created outside Git, see backlog item 41).
+tenant: swfabrik-europe
+nodeSelector:
+  kubernetes.io/hostname: nbalns-mifcom-lnx-01
+runAsUser: 10001
+
+legalhubMgmt:
+  name: caseforce-legalhub-mgmt
+  replicaCount: 1
+  image:
+    repository: nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-europe/legaltech-caseforce-solutions
+    pullPolicy: IfNotPresent
+  containerPort: 8080
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: 1000m, memory: 768Mi }
+  livenessProbe:
+    tcpSocket: { port: 8080 }
+    initialDelaySeconds: 45
+    periodSeconds: 10
+  readinessProbe:
+    tcpSocket: { port: 8080 }
+    initialDelaySeconds: 30
+    periodSeconds: 5
+  mysql:
+    host: tenant-mysql.drr-tnt-swfabrik-europe-dev.svc.cluster.local
+    port: "3306"
+  rabbitmq:
+    host: message-broker-rabbitmq.drr-corpshared-plat.svc.cluster.local
+    port: "5672"
+    enabled: "true"
+  logLevel: INFO
+
+fakeAgency:
+  name: fake-legal-partners-agencies-app
+  replicaCount: 1
+  image:
+    repository: nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/swfabrik-europe/fake-legal-partners-agencies-app
+    pullPolicy: IfNotPresent
+  containerPort: 8085
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 512Mi }
+  livenessProbe:
+    httpGet: { path: /swagger-ui.html, port: 8085 }
+    initialDelaySeconds: 25
+    periodSeconds: 10
+  readinessProbe:
+    httpGet: { path: /swagger-ui.html, port: 8085 }
+    initialDelaySeconds: 15
+    periodSeconds: 5
+  authUsername: fake-agency-client@legalhero.de

@@ -1,0 +1,17 @@
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  datasource:
+    url: jdbc:h2:mem:fake_agency_test_db;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+caseforce:
+  api:
+    base-url: ${CASEFORCE_API_BASE_URL:http://localhost:8080}
+    webhook-callback-host: ${CASEFORCE_WEBHOOK_CALLBACK_HOST:http://localhost:8085}

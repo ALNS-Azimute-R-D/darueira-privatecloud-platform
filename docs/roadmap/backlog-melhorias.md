@@ -701,12 +701,26 @@ infra corporativa central hoje.
 - Ficou criado no Forgejo: usuário `cicd-manager` e times `argocd-readers` (mantidos a pedido do André; sem token nem Secret).
 - Backup dos manifestos vivos do caseforce (contém credenciais em texto puro, não versionar): scratchpad da sessão de 2026-11-22.
 
-### 41. Recuperar o `caseforce` no Forgejo (código-fonte vindo do GitHub pessoal) `[dono: a definir — status: aberto]`
-- Situação: o código-fonte original está em `apps/tenant-playground-repos/caseforce-legalhub-parent` (untracked). Os pods
-  `caseforce-legalhub-mgmt` e `fake-legal-partners-agencies-app` rodam sem GitOps nem CI (item 40).
-- A fazer: refactor dos pacotes `*.legalhero.*` para `*.legalhub.*`; espelhar com link simbólico em
-  `workspace/platf-bizz-apps/swfabrik-europe` como nos demais projetos; hospedar no repo respectivo do Forgejo; recriar o chart e
-  o Application. Os pods têm ~400 restarts por `UnknownHostException` do `tenant-mysql` na partida (DNS intermitente); investigar à parte.
+### 41. Recuperar o `caseforce` no Forgejo (código-fonte vindo do GitHub pessoal) `[dono: Claude — status: feito e validado no cluster]`
+- Feito (2026-11-22): código em `apps/tenant-playground-repos/caseforce-legalhub-solutions` (link simbólico em `workspace/platf-bizz-apps/swfabrik-europe`),
+  chart em `...-solutions-chart`. No Forgejo os repos são `swfabrik-europe/legaltech-caseforce-solutions` e `...-chart`; o script
+  `publish_food_market_to_forgejo.py` ganhou `REPO_NAMES` (pasta -> repo) e ignora `build/` e `.kotlin/`.
+- Refactor `de.legalhero` -> `de.legalhub`: 108 arquivos, 4 pastas movidas. Ficaram de fora, de propósito, os e-mails `@legalhero.de` e os seeds
+  das migrations V2/V6/V8 (mudar o SQL quebraria o checksum do Flyway no `tenant-mysql` e o login do fake agency). Resta só o texto
+  `"LegalHero Engineering"` no `OpenApiConfig`. Compilam os 2 serviços; testes do fake passam; os testes Spock do backend não rodaram (TestContainers).
+- Dockerfiles novos (multi-stage, `USER 10001`, builder em `WORKDIR /src`, ver item 37): backend com `gradle:8.4.0-jdk17` + `buildLayers`; fake com Maven.
+  Testados com `docker build` + smoke local.
+- Chart: 2 Deployments + 2 Services, selectors idênticos aos do cluster (imutáveis). Credenciais saíram do texto puro: MySQL vem de
+  `tenant-mysql-credentials`; JWT, RabbitMQ e senha do fake vêm do Secret `caseforce-credentials` (criado a mão no cluster com os valores que já estavam
+  no Deployment, **fora do Git**; o RabbitMQ ainda usa o usuário `drr_admin`, o ideal é um usuário próprio). `values-dev-green.yaml` usa marcadores
+  `# promote: <imagem>` para o Tekton promover cada tag separadamente.
+- Tekton: `caseforce-events` + `caseforce-pipeline-template` (2 PipelineRuns por push: backend `runtime=gradle`, fake `runtime=maven`); o gatilho genérico passou a excluir o repo.
+- Validado: webhook (hook 12) -> 2 PipelineRuns Succeeded (2m51s / 4m12s) -> promote -> ArgoCD `Synced/Healthy` -> pods novos sem restarts, Swagger 200 pelo gateway.
+- Incidente durante a troca: o chart novo apontava as imagens antigas para o host `nexus-oss...:8082`, onde elas não existem (só no cache do nó como
+  `127.0.0.1:32082`); com `Recreate` o backend ficou fora do ar por ~5 min até eu voltar o host. Resolvido; depois do primeiro build do CI o host padrão voltou.
+- Pendente / observações: `docker-compose.yml`, `AGY.md` e o payload de onboarding vieram do case study e foram publicados no Forgejo (decidir se ficam);
+  os PipelineRuns manuais antigos em `pipelineruns-swfabrik-europe.yaml` citam um pipeline `polyglot-ci-cd-pipeline` e imagens com nomes antigos;
+  o `bootstrap_tenant_cicd_gitops.py` procura `workspace/.../<repo>` e a pasta agora se chama outra coisa (não verifiquei se ele simplesmente pula o caseforce); o caminho atual de publicação é `make publish-playground`. Os ~400 restarts antigos (`UnknownHostException` do MySQL na partida) não se repetiram nos primeiros minutos (0 restarts), mas a causa original não foi investigada.
 
 ---
 

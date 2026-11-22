@@ -1,0 +1,47 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: fake-legal-partner-agency
+  datasource:
+    url: jdbc:h2:file:./data/fake_agency_db;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+        trace: false
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    date-format: yyyy-MM-dd
+
+caseforce:
+  api:
+    base-url: ${CASEFORCE_API_BASE_URL:http://localhost:8080}
+    webhook-callback-host: ${CASEFORCE_WEBHOOK_CALLBACK_HOST:http://localhost:8085}
+    auth:
+      enabled: ${CASEFORCE_AUTH_ENABLED:true}
+      username: ${CASEFORCE_AUTH_USERNAME:fake-agency-client@legalhero.de}
+      password: ${CASEFORCE_AUTH_PASSWORD:FakeAgencyPass2026!}
+      login-endpoint: ${CASEFORCE_AUTH_LOGIN_ENDPOINT:/login}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    tags-sorter: alpha
+    operations-sorter: alpha
+    display-request-duration: true

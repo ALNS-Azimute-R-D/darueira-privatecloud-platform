@@ -1,0 +1,1079 @@
+{
+  "agencies": [
+    {
+      "name": "Berlin Commercial Advocates",
+      "alias": "berlin-advocates",
+      "email": "contact@berlin-advocates.de",
+      "status": "ACTIVE",
+      "webhooks": [
+        {
+          "targetUrl": "http://localhost:8081/api/agencies/berlin-advocates/webhooks/caseforce",
+          "secret": "whsec_berlin_secret_2026",
+          "eventTypes": [
+            "LEGAL_CASE_CREATED",
+            "LEGAL_CASE_UPDATED",
+            "ACTION_CREATED",
+            "ACTION_UPDATED"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "caseNumber": "BER-2026-001",
+          "legalField": "Corporate Governance",
+          "status": "OPEN",
+          "summary": "Annual executive board compliance audit and governance review",
+          "lawyer": {
+            "email": "markus.weber@berlin-advocates.de",
+            "firstname": "Markus",
+            "lastname": "Weber",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE",
+              "LAWYER"
+            ]
+          },
+          "assignee": {
+            "email": "anna.schmidt@berlin-advocates.de",
+            "firstname": "Anna",
+            "lastname": "Schmidt",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE"
+            ]
+          },
+          "actions": [
+            {
+              "name": "Draft Board Resolution",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "markus.weber@berlin-advocates.de",
+                "firstname": "Markus",
+                "lastname": "Weber"
+              },
+              "dueDate": "2026-09-15",
+              "notes": "Prepare formal board resolution regarding internal compliance policy"
+            },
+            {
+              "name": "Compliance Risk Assessment",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "markus.weber@berlin-advocates.de",
+                "firstname": "Markus",
+                "lastname": "Weber"
+              },
+              "dueDate": "2026-09-20",
+              "notes": "Identify potential conflict of interest vulnerabilities in board decisions"
+            },
+            {
+              "name": "File Commercial Register Update",
+              "isTask": false,
+              "status": "OPEN",
+              "assignee": {
+                "email": "markus.weber@berlin-advocates.de",
+                "firstname": "Markus",
+                "lastname": "Weber"
+              },
+              "dueDate": "2026-09-30",
+              "notes": "Submit notarized minutes to Charlottenburg registry"
+            }
+          ]
+        },
+        {
+          "caseNumber": "BER-2026-002",
+          "legalField": "Tech & Intellectual Property",
+          "status": "OPEN",
+          "summary": "AI training dataset copyright dispute and infringement claim",
+          "lawyer": {
+            "email": "elena.wagner@berlin-advocates.de",
+            "firstname": "Elena",
+            "lastname": "Wagner",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE",
+              "LAWYER"
+            ]
+          },
+          "assignee": {
+            "email": "jonas.becker@berlin-advocates.de",
+            "firstname": "Jonas",
+            "lastname": "Becker",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE"
+            ]
+          },
+          "actions": [
+            {
+              "name": "Review Copyright Registry Evidence",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "elena.wagner@berlin-advocates.de",
+                "firstname": "Elena",
+                "lastname": "Wagner"
+              },
+              "dueDate": "2026-09-10",
+              "notes": "Compare dataset hash with registered repository timestamps"
+            },
+            {
+              "name": "Draft Cease and Desist Notice",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "elena.wagner@berlin-advocates.de",
+                "firstname": "Elena",
+                "lastname": "Wagner"
+              },
+              "dueDate": "2026-09-18",
+              "notes": "Demand immediate removal of scraped materials from model weights"
+            },
+            {
+              "name": "Prepare Injunction Motion",
+              "isTask": false,
+              "status": "OPEN",
+              "assignee": {
+                "email": "elena.wagner@berlin-advocates.de",
+                "firstname": "Elena",
+                "lastname": "Wagner"
+              },
+              "dueDate": "2026-09-25",
+              "notes": "Finalize draft for Berlin Regional Court (Landgericht Berlin)"
+            }
+          ]
+        },
+        {
+          "caseNumber": "BER-2026-003",
+          "legalField": "Venture Capital & Financing",
+          "status": "OPEN",
+          "summary": "Series B €25M financing round advisory and closing",
+          "lawyer": {
+            "email": "stefan.hoffmann@berlin-advocates.de",
+            "firstname": "Stefan",
+            "lastname": "Hoffmann",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE",
+              "LAWYER"
+            ]
+          },
+          "assignee": {
+            "email": "laura.meyer@berlin-advocates.de",
+            "firstname": "Laura",
+            "lastname": "Meyer",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE"
+            ]
+          },
+          "actions": [
+            {
+              "name": "Term Sheet & Valuation Review",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "stefan.hoffmann@berlin-advocates.de",
+                "firstname": "Stefan",
+                "lastname": "Hoffmann"
+              },
+              "dueDate": "2026-09-12",
+              "notes": "Analyze liquidation preference clauses and anti-dilution provisions"
+            },
+            {
+              "name": "Cap Table Dilution Simulation",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "stefan.hoffmann@berlin-advocates.de",
+                "firstname": "Stefan",
+                "lastname": "Hoffmann"
+              },
+              "dueDate": "2026-09-16",
+              "notes": "Verify ESOP pool expansion impact on founding partners"
+            },
+            {
+              "name": "Shareholder Investment Agreement",
+              "isTask": false,
+              "status": "OPEN",
+              "assignee": {
+                "email": "stefan.hoffmann@berlin-advocates.de",
+                "firstname": "Stefan",
+                "lastname": "Hoffmann"
+              },
+              "dueDate": "2026-09-28",
+              "notes": "Coordinate notary signing date with lead investor legal team"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Munich IP & Tech Law",
+      "alias": "munich-ip-law",
+      "email": "contact@munich-ip.de",
+      "status": "ACTIVE",
+      "webhooks": [
+        {
+          "targetUrl": "http://localhost:8081/api/agencies/munich-ip-law/webhooks/caseforce",
+          "secret": "whsec_munich_secret_2026",
+          "eventTypes": [
+            "LEGAL_CASE_CREATED",
+            "LEGAL_CASE_UPDATED",
+            "ACTION_CREATED",
+            "ACTION_UPDATED"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "caseNumber": "MUC-2026-101",
+          "legalField": "European Patent Law",
+          "status": "OPEN",
+          "summary": "Unitary Patent validation and opposition before the UPC",
+          "lawyer": {
+            "email": "florian.schulz@munich-ip.de",
+            "firstname": "Florian",
+            "lastname": "Schulz",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE",
+              "LAWYER"
+            ]
+          },
+          "assignee": {
+            "email": "julia.fischer@munich-ip.de",
+            "firstname": "Julia",
+            "lastname": "Fischer",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE"
+            ]
+          },
+          "actions": [
+            {
+              "name": "Prior Art Search & Analysis",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "florian.schulz@munich-ip.de",
+                "firstname": "Florian",
+                "lastname": "Schulz"
+              },
+              "dueDate": "2026-09-14",
+              "notes": "Inspect EPO patent database for anticipatory prior publications"
+            },
+            {
+              "name": "UPC Central Division Brief",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "florian.schulz@munich-ip.de",
+                "firstname": "Florian",
+                "lastname": "Schulz"
+              },
+              "dueDate": "2026-09-22",
+              "notes": "Draft statement of revocation for Munich Central Division"
+            },
+            {
+              "name": "Client Expert Witness Briefing",
+              "isTask": false,
+              "status": "OPEN",
+              "assignee": {
+                "email": "florian.schulz@munich-ip.de",
+                "firstname": "Florian",
+                "lastname": "Schulz"
+              },
+              "dueDate": "2026-09-29",
+              "notes": "Align technical arguments with lead electrical engineer"
+            }
+          ]
+        },
+        {
+          "caseNumber": "MUC-2026-102",
+          "legalField": "Cybersecurity & GDPR",
+          "status": "OPEN",
+          "summary": "Cross-border data transfer impact assessment and cloud SaaS audit",
+          "lawyer": {
+            "email": "maximilian.braun@munich-ip.de",
+            "firstname": "Maximilian",
+            "lastname": "Braun",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE",
+              "LAWYER"
+            ]
+          },
+          "assignee": {
+            "email": "sophie.koch@munich-ip.de",
+            "firstname": "Sophie",
+            "lastname": "Koch",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE"
+            ]
+          },
+          "actions": [
+            {
+              "name": "Standard Contractual Clauses Audit",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "maximilian.braun@munich-ip.de",
+                "firstname": "Maximilian",
+                "lastname": "Braun"
+              },
+              "dueDate": "2026-09-11",
+              "notes": "Inspect SCC modules for US sub-processors"
+            },
+            {
+              "name": "Technical & Organisational Measures Review",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "maximilian.braun@munich-ip.de",
+                "firstname": "Maximilian",
+                "lastname": "Braun"
+              },
+              "dueDate": "2026-09-17",
+              "notes": "Assess AES-256 encryption at rest and key management policies"
+            },
+            {
+              "name": "Deliver GDPR Compliance Certificate",
+              "isTask": false,
+              "status": "OPEN",
+              "assignee": {
+                "email": "maximilian.braun@munich-ip.de",
+                "firstname": "Maximilian",
+                "lastname": "Braun"
+              },
+              "dueDate": "2026-09-27",
+              "notes": "Issue formal legal opinion for Bavarian Data Protection Authority (BayLDA)"
+            }
+          ]
+        },
+        {
+          "caseNumber": "MUC-2026-103",
+          "legalField": "Trademark & Brand Protection",
+          "status": "OPEN",
+          "summary": "International trademark registration and EUIPO opposition",
+          "lawyer": {
+            "email": "sabine.richter@munich-ip.de",
+            "firstname": "Sabine",
+            "lastname": "Richter",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE",
+              "LAWYER"
+            ]
+          },
+          "assignee": {
+            "email": "tim.schneider@munich-ip.de",
+            "firstname": "Tim",
+            "lastname": "Schneider",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE"
+            ]
+          },
+          "actions": [
+            {
+              "name": "Likelihood of Confusion Study",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "sabine.richter@munich-ip.de",
+                "firstname": "Sabine",
+                "lastname": "Richter"
+              },
+              "dueDate": "2026-09-13",
+              "notes": "Analyze Nice classes 9, 38, and 42 for phonetic and visual similarity"
+            },
+            {
+              "name": "EUIPO Opposition Notice",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "sabine.richter@munich-ip.de",
+                "firstname": "Sabine",
+                "lastname": "Richter"
+              },
+              "dueDate": "2026-09-19",
+              "notes": "Submit notice of opposition with proof of earlier trademark use"
+            },
+            {
+              "name": "Delimitation Agreement Proposal",
+              "isTask": false,
+              "status": "OPEN",
+              "assignee": {
+                "email": "sabine.richter@munich-ip.de",
+                "firstname": "Sabine",
+                "lastname": "Richter"
+              },
+              "dueDate": "2026-09-26",
+              "notes": "Draft co-existence and market delimitation terms"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Frankfurt Banking & Finance Legal",
+      "alias": "frankfurt-finance-legal",
+      "email": "contact@frankfurt-finance.de",
+      "status": "ACTIVE",
+      "webhooks": [
+        {
+          "targetUrl": "http://localhost:8081/api/agencies/frankfurt-finance-legal/webhooks/caseforce",
+          "secret": "whsec_frankfurt_secret_2026",
+          "eventTypes": [
+            "LEGAL_CASE_CREATED",
+            "LEGAL_CASE_UPDATED",
+            "ACTION_CREATED",
+            "ACTION_UPDATED"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "caseNumber": "FRA-2026-201",
+          "legalField": "Syndicated Lending",
+          "status": "OPEN",
+          "summary": "€120M syndicated cross-border term loan facility",
+          "lawyer": {
+            "email": "christian.wolf@frankfurt-finance.de",
+            "firstname": "Christian",
+            "lastname": "Wolf",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE",
+              "LAWYER"
+            ]
+          },
+          "assignee": {
+            "email": "melanie.neumann@frankfurt-finance.de",
+            "firstname": "Melanie",
+            "lastname": "Neumann",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE"
+            ]
+          },
+          "actions": [
+            {
+              "name": "LMA Facility Agreement Review",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "christian.wolf@frankfurt-finance.de",
+                "firstname": "Christian",
+                "lastname": "Wolf"
+              },
+              "dueDate": "2026-09-15",
+              "notes": "Verify financial covenants and default interest thresholds"
+            },
+            {
+              "name": "Global Security Package Drafting",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "christian.wolf@frankfurt-finance.de",
+                "firstname": "Christian",
+                "lastname": "Wolf"
+              },
+              "dueDate": "2026-09-21",
+              "notes": "Structure share pledges and assignment of receivables"
+            },
+            {
+              "name": "Conditions Precedent Verification",
+              "isTask": false,
+              "status": "OPEN",
+              "assignee": {
+                "email": "christian.wolf@frankfurt-finance.de",
+                "firstname": "Christian",
+                "lastname": "Wolf"
+              },
+              "dueDate": "2026-09-30",
+              "notes": "Issue formal CP satisfaction certificate to facility agent"
+            }
+          ]
+        },
+        {
+          "caseNumber": "FRA-2026-202",
+          "legalField": "Financial Regulatory (BaFin)",
+          "status": "OPEN",
+          "summary": "FinTech payment institution license application under ZAG / PSD3",
+          "lawyer": {
+            "email": "alexander.zimmermann@frankfurt-finance.de",
+            "firstname": "Alexander",
+            "lastname": "Zimmermann",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE",
+              "LAWYER"
+            ]
+          },
+          "assignee": {
+            "email": "sandra.krueger@frankfurt-finance.de",
+            "firstname": "Sandra",
+            "lastname": "Krueger",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE"
+            ]
+          },
+          "actions": [
+            {
+              "name": "AML & KYC Program Structuring",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "alexander.zimmermann@frankfurt-finance.de",
+                "firstname": "Alexander",
+                "lastname": "Zimmermann"
+              },
+              "dueDate": "2026-09-12",
+              "notes": "Design transaction monitoring and ultimate beneficial owner (UBO) procedures"
+            },
+            {
+              "name": "Internal Governance Dossier",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "alexander.zimmermann@frankfurt-finance.de",
+                "firstname": "Alexander",
+                "lastname": "Zimmermann"
+              },
+              "dueDate": "2026-09-18",
+              "notes": "Draft risk management handbook conforming to MaRisk standards"
+            },
+            {
+              "name": "BaFin Submission Finalization",
+              "isTask": false,
+              "status": "OPEN",
+              "assignee": {
+                "email": "alexander.zimmermann@frankfurt-finance.de",
+                "firstname": "Alexander",
+                "lastname": "Zimmermann"
+              },
+              "dueDate": "2026-09-28",
+              "notes": "Upload digital application package to BaFin MVP Portal"
+            }
+          ]
+        },
+        {
+          "caseNumber": "FRA-2026-203",
+          "legalField": "Sustainable Finance & ESG",
+          "status": "OPEN",
+          "summary": "Green Bond €500M public offering and prospectus approval",
+          "lawyer": {
+            "email": "hannah.hartmann@frankfurt-finance.de",
+            "firstname": "Hannah",
+            "lastname": "Hartmann",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE",
+              "LAWYER"
+            ]
+          },
+          "assignee": {
+            "email": "philipp.lange@frankfurt-finance.de",
+            "firstname": "Philipp",
+            "lastname": "Lange",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE"
+            ]
+          },
+          "actions": [
+            {
+              "name": "EU Green Bond Standard (EuGB) Check",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "hannah.hartmann@frankfurt-finance.de",
+                "firstname": "Hannah",
+                "lastname": "Hartmann"
+              },
+              "dueDate": "2026-09-16",
+              "notes": "Validate alignment of use of proceeds with EU Taxonomy Regulation"
+            },
+            {
+              "name": "Prospectus Regulation Compliance",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "hannah.hartmann@frankfurt-finance.de",
+                "firstname": "Hannah",
+                "lastname": "Hartmann"
+              },
+              "dueDate": "2026-09-23",
+              "notes": "Verify risk factors and green bond framework appendix"
+            },
+            {
+              "name": "Issue Legal Opinion & Listing Approval",
+              "isTask": false,
+              "status": "OPEN",
+              "assignee": {
+                "email": "hannah.hartmann@frankfurt-finance.de",
+                "firstname": "Hannah",
+                "lastname": "Hartmann"
+              },
+              "dueDate": "2026-09-29",
+              "notes": "Provide closing legal opinion for Frankfurt Stock Exchange listing"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Hamburg Maritime & Logistics Law",
+      "alias": "hamburg-maritime-law",
+      "email": "contact@hamburg-maritime.de",
+      "status": "ACTIVE",
+      "webhooks": [
+        {
+          "targetUrl": "http://localhost:8081/api/agencies/hamburg-maritime-law/webhooks/caseforce",
+          "secret": "whsec_hamburg_secret_2026",
+          "eventTypes": [
+            "LEGAL_CASE_CREATED",
+            "LEGAL_CASE_UPDATED",
+            "ACTION_CREATED",
+            "ACTION_UPDATED"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "caseNumber": "HAM-2026-301",
+          "legalField": "Maritime Arbitration",
+          "status": "OPEN",
+          "summary": "Container cargo loss and salvage claims arbitration before GMAA",
+          "lawyer": {
+            "email": "torsten.krause@hamburg-maritime.de",
+            "firstname": "Torsten",
+            "lastname": "Krause",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE",
+              "LAWYER"
+            ]
+          },
+          "assignee": {
+            "email": "nadine.werner@hamburg-maritime.de",
+            "firstname": "Nadine",
+            "lastname": "Werner",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE"
+            ]
+          },
+          "actions": [
+            {
+              "name": "Examine Marine Surveyor Report",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "torsten.krause@hamburg-maritime.de",
+                "firstname": "Torsten",
+                "lastname": "Krause"
+              },
+              "dueDate": "2026-09-14",
+              "notes": "Evaluate lashing certificate and weather routing telematics"
+            },
+            {
+              "name": "General Average Assessment",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "torsten.krause@hamburg-maritime.de",
+                "firstname": "Torsten",
+                "lastname": "Krause"
+              },
+              "dueDate": "2026-09-20",
+              "notes": "Liaise with average adjuster under York Antwerp Rules 2016"
+            },
+            {
+              "name": "Submit GMAA Defense Memorial",
+              "isTask": false,
+              "status": "OPEN",
+              "assignee": {
+                "email": "torsten.krause@hamburg-maritime.de",
+                "firstname": "Torsten",
+                "lastname": "Krause"
+              },
+              "dueDate": "2026-09-28",
+              "notes": "File formal statement of defence to tribunal panel"
+            }
+          ]
+        },
+        {
+          "caseNumber": "HAM-2026-302",
+          "legalField": "Shipping Contracts & Charters",
+          "status": "OPEN",
+          "summary": "Time Charterparty off-hire dispute and bunker fuel quality claim",
+          "lawyer": {
+            "email": "birgit.schwarz@hamburg-maritime.de",
+            "firstname": "Birgit",
+            "lastname": "Schwarz",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE",
+              "LAWYER"
+            ]
+          },
+          "assignee": {
+            "email": "felix.peters@hamburg-maritime.de",
+            "firstname": "Felix",
+            "lastname": "Peters",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE"
+            ]
+          },
+          "actions": [
+            {
+              "name": "Bunker Fuel Lab Analysis",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "birgit.schwarz@hamburg-maritime.de",
+                "firstname": "Birgit",
+                "lastname": "Schwarz"
+              },
+              "dueDate": "2026-09-11",
+              "notes": "Review ISO 8217 compliance test results from certified laboratory"
+            },
+            {
+              "name": "Demurrage Calculation & Claim Notice",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "birgit.schwarz@hamburg-maritime.de",
+                "firstname": "Birgit",
+                "lastname": "Schwarz"
+              },
+              "dueDate": "2026-09-17",
+              "notes": "Issue formal reservation of rights under NYPE charterparty clause 15"
+            },
+            {
+              "name": "Pre-arbitration Settlement Session",
+              "isTask": false,
+              "status": "OPEN",
+              "assignee": {
+                "email": "birgit.schwarz@hamburg-maritime.de",
+                "firstname": "Birgit",
+                "lastname": "Schwarz"
+              },
+              "dueDate": "2026-09-27",
+              "notes": "Conduct commercial mediation conference with vessel disponent owners"
+            }
+          ]
+        },
+        {
+          "caseNumber": "HAM-2026-303",
+          "legalField": "Port Infrastructure & JV",
+          "status": "OPEN",
+          "summary": "Hamburg Port container terminal decarbonisation joint venture",
+          "lawyer": {
+            "email": "jan.koehler@hamburg-maritime.de",
+            "firstname": "Jan",
+            "lastname": "Koehler",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE",
+              "LAWYER"
+            ]
+          },
+          "assignee": {
+            "email": "lisa.voigt@hamburg-maritime.de",
+            "firstname": "Lisa",
+            "lastname": "Voigt",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE"
+            ]
+          },
+          "actions": [
+            {
+              "name": "Port Concession Terms Review",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "jan.koehler@hamburg-maritime.de",
+                "firstname": "Jan",
+                "lastname": "Koehler"
+              },
+              "dueDate": "2026-09-15",
+              "notes": "Align hydrogen fueling infrastructure rights with HPA concession lease"
+            },
+            {
+              "name": "Environmental & Antitrust Clearance",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "jan.koehler@hamburg-maritime.de",
+                "firstname": "Jan",
+                "lastname": "Koehler"
+              },
+              "dueDate": "2026-09-21",
+              "notes": "Prepare merger control notification for Federal Cartel Office (Bundeskartellamt)"
+            },
+            {
+              "name": "JV Agreement Notarisation",
+              "isTask": false,
+              "status": "OPEN",
+              "assignee": {
+                "email": "jan.koehler@hamburg-maritime.de",
+                "firstname": "Jan",
+                "lastname": "Koehler"
+              },
+              "dueDate": "2026-09-30",
+              "notes": "Complete notarisation with municipal partner representatives"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cologne Employment & Labor Legal",
+      "alias": "cologne-labor-legal",
+      "email": "contact@cologne-labor.de",
+      "status": "ACTIVE",
+      "webhooks": [
+        {
+          "targetUrl": "http://localhost:8081/api/agencies/cologne-labor-legal/webhooks/caseforce",
+          "secret": "whsec_cologne_secret_2026",
+          "eventTypes": [
+            "LEGAL_CASE_CREATED",
+            "LEGAL_CASE_UPDATED",
+            "ACTION_CREATED",
+            "ACTION_UPDATED"
+          ]
+        }
+      ],
+      "cases": [
+        {
+          "caseNumber": "CGN-2026-401",
+          "legalField": "Works Constitution Law",
+          "status": "OPEN",
+          "summary": "Restructuring and reconciliation of interests with Works Council (Betriebsrat)",
+          "lawyer": {
+            "email": "katja.becker@cologne-labor.de",
+            "firstname": "Katja",
+            "lastname": "Becker",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE",
+              "LAWYER"
+            ]
+          },
+          "assignee": {
+            "email": "dennis.frank@cologne-labor.de",
+            "firstname": "Dennis",
+            "lastname": "Frank",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE"
+            ]
+          },
+          "actions": [
+            {
+              "name": "Draft Social Plan (Sozialplan)",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "katja.becker@cologne-labor.de",
+                "firstname": "Katja",
+                "lastname": "Becker"
+              },
+              "dueDate": "2026-09-12",
+              "notes": "Calculate severance point matrix based on tenure, age, and maintenance duties"
+            },
+            {
+              "name": "Reconciliation of Interests Briefing",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "katja.becker@cologne-labor.de",
+                "firstname": "Katja",
+                "lastname": "Becker"
+              },
+              "dueDate": "2026-09-18",
+              "notes": "Prepare management responses for Works Council negotiation round 1"
+            },
+            {
+              "name": "Conciliation Board Protocol",
+              "isTask": false,
+              "status": "OPEN",
+              "assignee": {
+                "email": "katja.becker@cologne-labor.de",
+                "firstname": "Katja",
+                "lastname": "Becker"
+              },
+              "dueDate": "2026-09-29",
+              "notes": "Finalize mutually binding agreement protocol (Einigungsstelle)"
+            }
+          ]
+        },
+        {
+          "caseNumber": "CGN-2026-402",
+          "legalField": "Executive Employment & Severance",
+          "status": "OPEN",
+          "summary": "C-Suite executive service agreement termination and non-compete settlement",
+          "lawyer": {
+            "email": "martin.huber@cologne-labor.de",
+            "firstname": "Martin",
+            "lastname": "Huber",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE",
+              "LAWYER"
+            ]
+          },
+          "assignee": {
+            "email": "jessica.roth@cologne-labor.de",
+            "firstname": "Jessica",
+            "lastname": "Roth",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE"
+            ]
+          },
+          "actions": [
+            {
+              "name": "Post-Contractual Non-Compete Review",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "martin.huber@cologne-labor.de",
+                "firstname": "Martin",
+                "lastname": "Huber"
+              },
+              "dueDate": "2026-09-14",
+              "notes": "Assess validity under § 74 HGB and statutory compensation minimums"
+            },
+            {
+              "name": "Draft Termination & Settlement Deed",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "martin.huber@cologne-labor.de",
+                "firstname": "Martin",
+                "lastname": "Huber"
+              },
+              "dueDate": "2026-09-20",
+              "notes": "Incorporate garden leave terms, bonus pro-rata, and D&O runoff cover"
+            },
+            {
+              "name": "Execute Mutual Release Agreement",
+              "isTask": false,
+              "status": "OPEN",
+              "assignee": {
+                "email": "martin.huber@cologne-labor.de",
+                "firstname": "Martin",
+                "lastname": "Huber"
+              },
+              "dueDate": "2026-09-28",
+              "notes": "Coordinate signing and return of company assets"
+            }
+          ]
+        },
+        {
+          "caseNumber": "CGN-2026-403",
+          "legalField": "Collective Bargaining & Tariff Compliance",
+          "status": "OPEN",
+          "summary": "Tariff wage classification audit under metal & electrical industry agreement",
+          "lawyer": {
+            "email": "sabine.vogel@cologne-labor.de",
+            "firstname": "Sabine",
+            "lastname": "Vogel",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE",
+              "LAWYER"
+            ]
+          },
+          "assignee": {
+            "email": "kevin.maier@cologne-labor.de",
+            "firstname": "Kevin",
+            "lastname": "Maier",
+            "password": "Password123!",
+            "enabled": true,
+            "roles": [
+              "CASEFORCE"
+            ]
+          },
+          "actions": [
+            {
+              "name": "ERA Pay Scale Classification Audit",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "sabine.vogel@cologne-labor.de",
+                "firstname": "Sabine",
+                "lastname": "Vogel"
+              },
+              "dueDate": "2026-09-16",
+              "notes": "Evaluate 450 job descriptions against ERA tariff group descriptions"
+            },
+            {
+              "name": "Working Time Accounts Compliance Check",
+              "isTask": true,
+              "status": "OPEN",
+              "assignee": {
+                "email": "sabine.vogel@cologne-labor.de",
+                "firstname": "Sabine",
+                "lastname": "Vogel"
+              },
+              "dueDate": "2026-09-22",
+              "notes": "Audit § 3 ArbZG maximum daily hours and mandatory rest periods"
+            },
+            {
+              "name": "Present Audit Report to Management",
+              "isTask": false,
+              "status": "OPEN",
+              "assignee": {
+                "email": "sabine.vogel@cologne-labor.de",
+                "firstname": "Sabine",
+                "lastname": "Vogel"
+              },
+              "dueDate": "2026-09-30",
+              "notes": "Deliver executive risk assessment and remediation roadmap"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

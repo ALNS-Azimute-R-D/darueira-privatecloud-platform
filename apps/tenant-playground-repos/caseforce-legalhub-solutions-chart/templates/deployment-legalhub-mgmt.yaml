@@ -1,0 +1,80 @@
+{{- $s := .Values.legalhubMgmt }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $s.name }}
+  labels:
+    {{- include "caseforce.labels" (dict "root" . "name" $s.name "component" "legalhub-mgmt-api") | nindent 4 }}
+spec:
+  replicas: {{ $s.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "caseforce.selector" (dict "root" . "name" $s.name) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "caseforce.labels" (dict "root" . "name" $s.name "component" "legalhub-mgmt-api") | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.runAsUser }}
+        runAsGroup: {{ .Values.runAsUser }}
+        fsGroup: {{ .Values.runAsUser }}
+        seccompProfile:
+          type: RuntimeDefault
+      imagePullSecrets:
+        - name: nexus-registry-secret
+      containers:
+        - name: legalhub-mgmt
+          image: "{{ $s.image.repository }}:{{ $s.image.tag }}"
+          imagePullPolicy: {{ $s.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - containerPort: {{ $s.containerPort }}
+              name: http
+          env:
+            - name: MICRONAUT_SERVER_PORT
+              value: {{ $s.containerPort | quote }}
+            - name: LOG_LEVEL
+              value: {{ $s.logLevel | quote }}
+            - name: MYSQL_HOST
+              value: {{ $s.mysql.host | quote }}
+            - name: MYSQL_PORT
+              value: {{ $s.mysql.port | quote }}
+            - name: MYSQL_DATABASE
+              valueFrom: { secretKeyRef: { name: tenant-mysql-credentials, key: database } }
+            - name: MYSQL_USER
+              valueFrom: { secretKeyRef: { name: tenant-mysql-credentials, key: username } }
+            - name: MYSQL_PASSWORD
+              valueFrom: { secretKeyRef: { name: tenant-mysql-credentials, key: password } }
+            - name: RABBITMQ_ENABLED
+              value: {{ $s.rabbitmq.enabled | quote }}
+            - name: RABBITMQ_HOST
+              value: {{ $s.rabbitmq.host | quote }}
+            - name: RABBITMQ_PORT
+              value: {{ $s.rabbitmq.port | quote }}
+            - name: RABBITMQ_USER
+              valueFrom: { secretKeyRef: { name: caseforce-credentials, key: mq-username } }
+            - name: RABBITMQ_PASSWORD
+              valueFrom: { secretKeyRef: { name: caseforce-credentials, key: mq-password } }
+            - name: JWT_SECRET
+              valueFrom: { secretKeyRef: { name: caseforce-credentials, key: jwt-secret } }
+          resources:
+            {{- toYaml $s.resources | nindent 12 }}
+          livenessProbe:
+            {{- toYaml $s.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml $s.readinessProbe | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

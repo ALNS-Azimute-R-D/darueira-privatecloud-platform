@@ -1,0 +1,35 @@
+.gradle/
+build/
+*.class
+
+# Keep gradle wrapper jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Kotlin / Micronaut
+bin/
+out/
+
+# Java / Maven
+target/
+**/target/
+
+# Node Modules
+node_modules/
+**/node_modules/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# OS & Logs
+.DS_Store
+out/
+*.log
+
+# Database Files
+data/
+**/data/
+*.mv.db
+*.trace.db

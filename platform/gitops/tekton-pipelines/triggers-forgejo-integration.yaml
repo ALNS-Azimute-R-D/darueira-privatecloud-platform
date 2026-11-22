@@ -92,7 +92,7 @@ spec:
             name: "cel"
           params:
             - name: "filter"
-              value: "body.ref == 'refs/heads/master' && !body.repository.name.endsWith('-chart') && body.repository.name != 'infra-k8s' && body.repository.name != 'bookanything-platform'"
+              value: "body.ref == 'refs/heads/master' && !body.repository.name.endsWith('-chart') && body.repository.name != 'infra-k8s' && body.repository.name != 'bookanything-platform' && body.repository.name != 'legaltech-caseforce-solutions'"
       bindings:
         - ref: forgejo-push-binding
       template:
@@ -117,6 +117,19 @@ spec:
           value: $(extensions.image_variant)
       template:
         ref: bookanything-pipeline-template
+    # legaltech-caseforce-solutions is one repo with two services (backend + fake agency), each with its own
+    # Dockerfile, so it gets its own template instead of the generic root build.
+    - name: caseforce-events
+      interceptors:
+        - ref:
+            name: "cel"
+          params:
+            - name: "filter"
+              value: "body.ref == 'refs/heads/master' && body.repository.name == 'legaltech-caseforce-solutions'"
+      bindings:
+        - ref: forgejo-push-binding
+      template:
+        ref: caseforce-pipeline-template
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerTemplate
@@ -273,3 +286,114 @@ spec:
             persistentVolumeClaim:
               claimName: tekton-workspace
             subPath: $(uid)-fe
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: caseforce-pipeline-template
+  namespace: drr-corpshared-mgmt
+  labels:
+    app.kubernetes.io/component: ci-triggers
+    darueira.io/tier: enterprise-shared
+spec:
+  params:
+    - name: git-url
+      description: "Repository clone URL"
+    - name: git-revision
+      description: "Commit SHA or branch"
+    - name: repository-name
+      description: "Name of the Git repository (legaltech-caseforce-solutions; its chart is <name>-chart)"
+    - name: owner-name
+      description: "Owner organization or user of the Git repository"
+      default: "swfabrik-europe"
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:
+        generateName: "forgejo-ci-caseforce-legalhub-mgmt-"
+        namespace: drr-corpshared-mgmt
+        labels:
+          darueira.io/tier: enterprise-shared
+          darueira.io/triggered-by: forgejo-webhook
+          darueira.io/tenant: $(tt.params.owner-name)
+          darueira.io/service: caseforce-legalhub-mgmt
+      spec:
+        pipelineRef:
+          name: standard-ci-cd-pipeline
+        podTemplate:
+          nodeSelector:
+            kubernetes.io/hostname: nbalns-mifcom-lnx-01
+        params:
+          - name: git-url
+            value: $(tt.params.git-url)
+          - name: git-revision
+            value: $(tt.params.git-revision)
+          - name: runtime
+            value: "gradle"
+          - name: source-subpath
+            value: "caseforce-legalhub-mgmt"
+          - name: image-name
+            value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/$(tt.params.owner-name)/legaltech-caseforce-solutions"
+          - name: image-tag
+            value: "auto"
+          - name: dockerfile-path
+            value: "Dockerfile"
+          - name: tenant-name
+            value: $(tt.params.owner-name)
+          - name: app-name
+            value: $(tt.params.repository-name)
+          - name: target-env
+            value: "dev-green"
+          # The ArgoCD Application is named after the suite, not after <owner>-<repository>.
+          - name: argocd-app-name
+            value: "swfabrik-europe-legaltech-caseforce"
+        workspaces:
+          - name: pipeline-workspace
+            persistentVolumeClaim:
+              claimName: tekton-workspace
+            subPath: $(uid)
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:
+        generateName: "forgejo-ci-caseforce-fake-agency-"
+        namespace: drr-corpshared-mgmt
+        labels:
+          darueira.io/tier: enterprise-shared
+          darueira.io/triggered-by: forgejo-webhook
+          darueira.io/tenant: $(tt.params.owner-name)
+          darueira.io/service: fake-legal-partners-agencies-app
+      spec:
+        pipelineRef:
+          name: standard-ci-cd-pipeline
+        podTemplate:
+          nodeSelector:
+            kubernetes.io/hostname: nbalns-mifcom-lnx-01
+        params:
+          - name: git-url
+            value: $(tt.params.git-url)
+          - name: git-revision
+            value: $(tt.params.git-revision)
+          - name: runtime
+            value: "maven"
+          - name: source-subpath
+            value: "fake-helpers-apps/fake-legal-partners-agencies-app"
+          - name: image-name
+            value: "nexus-oss.drr-corpshared-plat.svc.cluster.local:8082/$(tt.params.owner-name)/fake-legal-partners-agencies-app"
+          - name: image-tag
+            value: "auto"
+          - name: dockerfile-path
+            value: "Dockerfile"
+          - name: tenant-name
+            value: $(tt.params.owner-name)
+          - name: app-name
+            value: $(tt.params.repository-name)
+          - name: target-env
+            value: "dev-green"
+          # The ArgoCD Application is named after the suite, not after <owner>-<repository>.
+          - name: argocd-app-name
+            value: "swfabrik-europe-legaltech-caseforce"
+        workspaces:
+          - name: pipeline-workspace
+            persistentVolumeClaim:
+              claimName: tekton-workspace
+            subPath: $(uid)-fake

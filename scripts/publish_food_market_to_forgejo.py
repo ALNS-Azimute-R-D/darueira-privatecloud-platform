@@ -39,8 +39,13 @@ PROJECTS = [
     "app-food-market-00-mfe", "app-food-market-01-react", "app-food-market-02-angular",
     # chart only: their code lives in its own GitHub repository (scout23DF) and in Forgejo, not under apps/
     "bookanything-platform", "alns-voize-ehr-integrator",
+    # one repo with two services (backend + fake agency); the Forgejo name differs from the folder, see REPO_NAMES
+    "caseforce-legalhub-solutions",
 ]
-SKIP_DIRS = {"node_modules", "target", "dist", "bin", "obj", ".git", ".idea", "__pycache__", ".gradle"}
+# Folder under apps/tenant-playground-repos -> Forgejo repo name, only where they differ. The chart folder is
+# `<folder>-chart` and its repo `<repo name>-chart`.
+REPO_NAMES = {"caseforce-legalhub-solutions": "legaltech-caseforce-solutions"}
+SKIP_DIRS = {"node_modules", "target", "dist", "bin", "obj", ".git", ".idea", "__pycache__", ".gradle", ".kotlin", "build"}
 SKIP_SUFFIXES = (".iml",)
 RUNTIME_STATE = "values-dev-green.yaml"
 
@@ -126,15 +131,16 @@ def main():
     hooks = "--hooks" in sys.argv
     wanted = [a for a in sys.argv[1:] if not a.startswith("--")] or PROJECTS
     for project in wanted:
-        print(f"--> {project}")
-        for repo, folder in ((f"{project}-chart", os.path.join(ROOT, f"{project}-chart")), (project, os.path.join(ROOT, project))):
+        name = REPO_NAMES.get(project, project)
+        print(f"--> {project}" + (f" (Forgejo repo {name})" if name != project else ""))
+        for repo, folder in ((f"{name}-chart", os.path.join(ROOT, f"{project}-chart")), (name, os.path.join(ROOT, project))):
             if not os.path.isdir(folder):
                 print(f"    [-] {repo}: not under apps/tenant-playground-repos, left alone")
                 continue
             ensure_repo(repo)
             sync_repo(repo, folder)
         if hooks and os.path.isdir(os.path.join(ROOT, project)):
-            ensure_hook(project)
+            ensure_hook(name)
 
 
 if __name__ == "__main__":

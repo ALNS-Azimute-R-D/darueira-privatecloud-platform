@@ -1,0 +1,22 @@
+services:
+  mysql:
+    image: mysql:8.0.38
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: caseforce
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  rabbitmq:
+    image: rabbitmq:3.8-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+
+volumes:
+  mysql-data:

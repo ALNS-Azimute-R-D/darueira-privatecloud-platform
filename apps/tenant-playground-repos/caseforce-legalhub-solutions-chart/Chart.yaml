@@ -1,0 +1,6 @@
+apiVersion: v2
+name: legaltech-caseforce-solutions
+description: "Helm chart of the LegalTech CaseForce suite (tenant swfabrik-europe): LegalHub backend and the fake partner agency simulator"
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

@@ -81,12 +81,11 @@ def main():
         log_error(f"Failed checking Tenant Namespace: {e}")
 
     # Step 2: Validate Baseline Services in Tenant Namespace
-    log_info("Step 2: Checking Baseline Tenant Services (PostgreSQL, MinIO, OpenBao, MongoDB, Keycloak)...")
+    log_info("Step 2: Checking Baseline Tenant Services (PostgreSQL, MinIO, OpenBao, Keycloak)...")
     baseline_resources = [
         ("statefulset", "tenant-postgres"),
         ("deployment", "tenant-minio"),
         ("deployment", "tenant-openbao"),
-        ("statefulset", "tenant-mongodb"),
         ("deployment", "tenant-keycloak"),
     ]
     for kind, name in baseline_resources:

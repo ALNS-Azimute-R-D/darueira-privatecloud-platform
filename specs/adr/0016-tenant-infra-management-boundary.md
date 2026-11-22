@@ -6,7 +6,7 @@ Accepted
 ## Context
 In the Darueira Private Cloud Platform, tenant isolation and deployment mechanisms were initially split across two different paradigms:
 1. **Central Platform Services** (`drr-corpshared-*`): Managed declaratively in the platform repository (`platform/kustomize/base/corpshared-*`) and orchestrated via Makefile targets and platform automation.
-2. **Tenant Common Infrastructure** (`tenant-keycloak`, `tenant-postgres`, `tenant-minio`, `tenant-mongodb`, `tenant-openbao`, `tenant-mysql`): Initially deployed through tenant-owned Git repositories (`<tenant>/infra-k8s.git`) synchronized by ArgoCD Applications (`swfabrik-*-tenant-infra`) configured with `selfHeal: true`.
+2. **Tenant Common Infrastructure** (`tenant-keycloak`, `tenant-postgres`, `tenant-minio`, `tenant-mongodb`, `tenant-openbao`, `tenant-mysql`; the last two data stores were later removed, ADR-0018 and ADR-0019): Initially deployed through tenant-owned Git repositories (`<tenant>/infra-k8s.git`) synchronized by ArgoCD Applications (`swfabrik-*-tenant-infra`) configured with `selfHeal: true`.
 
 During operational maintenance, upgrades (e.g., Keycloak 26.8.1, production mode transition `kc.sh start`), and probe tuning, this dual model presented critical operational and architectural friction:
 - **N-Repo Sprawl & Divergence**: Maintaining separate `infra-k8s.git` repositories for every tenant led to duplicated manifests and prevented synchronized rollouts of infrastructure bugfixes across tenants.
@@ -23,7 +23,7 @@ The Platform Architect (André Nascimento) clarified the intended architectural 
   - Managed via tenant project repositories in Forgejo, built and packaged via Tekton CI, and continuously reconciled by ArgoCD Applications in `platform/gitops/argocd-apps/`.
 - **Platform Control Plane Scope (PaaS)**:
   - Encompasses all common platform infrastructure across both corporate namespaces (`drr-corpshared-*`) and tenant namespaces (`drr-tnt-<tenant>-<env>`).
-  - Tenant baseline services (`tenant-postgres`, `tenant-mongodb`, `tenant-minio`, `tenant-openbao`, `tenant-keycloak`, `tenant-mysql`) are governed directly in the platform repository under `platform/kustomize/overlays/tenants/<tenant>/` inheriting from `platform/kustomize/base/tnt-tenant-base/`.
+  - Tenant baseline services (`tenant-postgres`, `tenant-minio`, `tenant-openbao`, `tenant-keycloak`; `tenant-mongodb` and `tenant-mysql` were removed by ADR-0019 and ADR-0018) are governed directly in the platform repository under `platform/kustomize/overlays/tenants/<tenant>/` inheriting from `platform/kustomize/base/tnt-tenant-base/`.
 
 ### 2. Deployment Tooling & Standard Commands
 - Tenant common infrastructure is managed and deployed via dedicated Makefile targets:

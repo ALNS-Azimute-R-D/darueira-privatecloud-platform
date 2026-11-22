@@ -64,7 +64,7 @@ Inspired by enterprise platform architectures (such as Tesla Cloud Platform - TC
 * **Secrets Management:** OpenBao / HashiCorp Vault (PKI, dynamic secrets, transit encryption)
 
 #### 3.1.2. Data & Messaging Services
-* **Databases:** PostgreSQL 17 (Relational), MongoDB 7 (Document). PostgreSQL is the only relational engine of a tenant (ADR-0018; `tenant-mysql` was decommissioned)
+* **Databases:** PostgreSQL 17. PostgreSQL is the only data store of a tenant: relational data in tables, documents and variable structures in `JSONB` columns, other shapes through extensions (ADR-0018, ADR-0019; `tenant-mysql` and `tenant-mongodb` were decommissioned)
 * **Object Storage:** MinIO (Central and per-Tenant)
 * **Event Streaming & Async Messaging:**
     * Kafka API via Redpanda `v24.1.8` with Kafbat UI (ADR-0008)
@@ -129,8 +129,8 @@ v
 |  * Dedicated Tenant IAM: Keycloak (Instance per Tenant/Env: drr_tnt_keycloak_db)  |
 |  * Dedicated Secrets: OpenBao Tenant (Per-Env instance & SPIFFE X.509 SVID)       |
 |  * Dedicated Tenant S3 Storage: MinIO (Dedicated per Tenant/Env)                  |
-|  * Dedicated Data Stores: PostgreSQL (one database per application, ADR-0018),   |
-|    MongoDB                                                                        |
+|  * Dedicated Data Store: PostgreSQL (one database per application, ADR-0018/19;  |
+|    JSONB for non-relational data)                                                 |
 |  * Message Brokers: RabbitMQ (Topic / VHost isolation) & Kafka API (Redpanda)     |
 |  * Workload Identity: SPIRE Agent (Injecting SVIDs into application pods)         |
 +-----------------------------------------------------------------------------------+
@@ -138,7 +138,7 @@ v
 ### 4.0 Tenant Infrastructure & Storage Isolation Rules (ADR-0013)
 1. **Namespace Standard**: `drr-tnt-<Tenant Name>-<Environment>` (e.g. `drr-tnt-swfabrik-europe-dev`). Section 7 and legacy namespaces (`drr-tnt-acme-storefront-dev`, `drr-tnt-swfabrik-europe-marketplaces-dev`) still use the older `drr-tnt-<tenant>-<project>-<env>` form; ADR-0013 is authoritative; the legacy namespaces still exist in the cluster and have not been migrated.
 2. **Project Environment Sharing**: A Tenant has default `dev` (and on-demand `stg`, `prd`). All Projects under a Tenant share the same Environments of that Tenant. Never create an Environment per Project.
-3. **Dedicated Baseline Services per Environment**: Each `drr-tnt-<tenant>-<env>` hosts its own `tenant-openbao`, `tenant-minio`, `tenant-postgres`, `tenant-mongodb`, and `tenant-keycloak`.
+3. **Dedicated Baseline Services per Environment**: Each `drr-tnt-<tenant>-<env>` hosts its own `tenant-openbao`, `tenant-minio`, `tenant-postgres`, and `tenant-keycloak`.
 4. **Storage Isolation**: Tenant workloads NEVER persist data in `drr-corpshared-*` services. All persistence targets the tenant's dedicated services.
 5. **Database & Schema Convention**: Every `tenant-postgres` contains `drr_tnt_keycloak_db` and `drr_tnt_bizapps_db`. Each project uses a sequential schema `schm01`, `schm02`, etc., in `drr_tnt_bizapps_db`.
 
@@ -172,7 +172,6 @@ v
 | **Tenant Application IAM** | Keycloak Tenant Instance | Tenant Environment | Dedicated per-tenant Keycloak managing business application users |
 | **Tenant Object Storage** | Tenant MinIO / Buckets | Tenant Environment | S3 API + Tenant IAM Policies |
 | **Tenant Relational DB** | PostgreSQL 17 | Tenant Environment | Plain StatefulSet (`tenant-postgres`); CloudNative-PG Operator is the target and is not installed |
-| **Tenant NoSQL DB** | MongoDB 7 | Tenant Environment | Plain StatefulSet (`tenant-mongodb`); MongoDB Community Operator is the target and is not installed |
 | **Streaming Broker** | Redpanda (Kafka API) + Kafbat UI | Enterprise Shared | ADR-0008; Strimzi Operator is not used |
 | **Messaging Broker** | RabbitMQ 4 | Enterprise Shared | Management console behind APISIX |
 | **APM & Tracing** | OpenTelemetry Collector + Jaeger | Enterprise Shared | OTel Collector with Tenant Tag Injection; SigNoz is not deployed |
@@ -381,7 +380,7 @@ Sections 1-10 describe the **target architecture**. This section records what is
 | Shared services: Postgres, MinIO, Redpanda, RabbitMQ, Stalwart, Temporal, NiFi, jsreport, Clavex | **Live** | Manifests in `corpshared-plat/` |
 | Observability: OTel Collector, Prometheus, Grafana, Jaeger, OpenSearch, Fluent Bit | **Live** | Manifests in `corpshared-obs/` |
 | Platform CRDs (`tenants`, `projects`, `environments` in `darueira.io`) and `darueira-operator` | **Live, mostly unused** | One `Tenant` (`swfabrik-europe`); 0 `Project`/`Environment` (2026-09-23: the only `Project`/`Environment` pair — `marketplaces`/`swfabrik-europe-dev` — was decommissioned, see `docs/runbooks/cilium-cni-migration.md`). Neither real tenant namespace (`drr-tnt-swfabrik-europe-dev`, `drr-tnt-swfabrik-latam-dev`) is actually provisioned through this CRD system — both were created directly via ArgoCD `*-tenant-infra` Applications, not by `darueira-operator`. The operator also does not implement finalizer-based cleanup on `Environment`/`Project` deletion despite holding the RBAC for it — deleting the CR does not remove the namespace it created. |
-| Tenant baseline (Keycloak, MinIO, OpenBao, Postgres, MongoDB) | **Live** | Managed via platform control plane overlays: `make deploy-tenant-infra TENANT=...` (ADR-0016). `tenant-mysql` was decommissioned on 2026-11-22 (ADR-0018). |
+| Tenant baseline (Keycloak, MinIO, OpenBao, Postgres) | **Live** | Managed via platform control plane overlays: `make deploy-tenant-infra TENANT=...` (ADR-0016). `tenant-mysql` and `tenant-mongodb` were decommissioned on 2026-11-22 (ADR-0018, ADR-0019). |
 | Edge routing (APISIX) | **Live, NodePort** | `apisix-gateway` NodePorts `30080`/`30443`; routes generated by `scripts/bootstrap_apisix_routes.py` |
 | MetalLB LoadBalancer | **Not enabled** | Addon is disabled; no `IPAddressPool` exists |
 | Cilium CNI | **Live, fully enforced (2026-09-23)** | Calico fully removed, Cilium `1.15.2` + Hubble Relay/UI running (`docs/runbooks/cilium-cni-migration.md`, Fases 0-4, all complete). **Default-deny is live and enforced on all 6 namespaces that have a policy**: `corpshared-{plat,mgmt,obs,secr-internal}` plus both real tenant namespaces (`drr-tnt-swfabrik-{latam,europe}-dev`). Two real bugs were found and fixed live during rollout: (1) the `corpshared-obs` policy was missing a `toEntities: [cluster, world]` DNS egress fallback; (2) all 5 policies had a namespace-scoping bug where plain `matchLabels` in a namespaced `CiliumNetworkPolicy` silently never matched anything outside the policy's own namespace, breaking every cross-namespace rule (fixed by declaring `k8s:io.kubernetes.pod.namespace` explicitly per target namespace). `L3-L7 policies, WireGuard, kube-proxy replacement` remain **not running** (target-only) |
@@ -399,4 +398,4 @@ Sections 1-10 describe the **target architecture**. This section records what is
 3. **Sidecar coverage is inconsistent.** Decide between the Envoy + OPA pattern of ADR-0003 and the OPA-only `authzen-pdp-sidecar` pattern seen in `food-market-01/02`, then record the decision in an ADR.
 4. ~~**`tenant-mysql` needs a manifest in `tnt-tenant-base/`** and a mention in ADR-0013, since it is not part of the documented tenant baseline.~~ **Resolved 2026-10-15 (ADR-0016 / Item 34)**: `tenant-mysql.yaml` added to `platform/kustomize/base/tnt-tenant-base/` and tenant overlays, and tenant common infrastructure migrated out of tenant GitOps to platform control plane overlays.
 5. ~~**Namespace naming.** Legacy `drr-tnt-<tenant>-<project>-<env>` namespaces coexist with the ADR-0013 form.~~ **Resolved as a side effect 2026-09-23**: the only namespace using the legacy 3-segment form (`drr-tnt-swfabrik-europe-marketplaces-dev`) was decommissioned during the Cilium tenant rollout cleanup (see `docs/runbooks/cilium-cni-migration.md`). Both remaining tenant namespaces use the 2-segment `drr-tnt-<tenant>-<env>` form.
-6. **Plaintext development credentials** are listed in `README.md` for local convenience, and were also found hardcoded directly in K8s manifests (verified 2026-09-22): `central-postgres` (`corpshared-plat`) and `tenant-postgres` (both tenants) set `POSTGRES_PASSWORD` as a literal env value instead of a `secretKeyRef`, unlike `tenant-mongodb`, which correctly sources its credentials from `tenant-mongo-credentials`. Neither the README values nor the manifest values must be reused outside this laptop lab; the Postgres StatefulSets should be migrated to `secretKeyRef` to match the Mongo pattern.
+6. **Plaintext development credentials** are listed in `README.md` for local convenience, and were also found hardcoded directly in K8s manifests (verified 2026-09-22): `central-postgres` (`corpshared-plat`) and `tenant-postgres` (both tenants) set `POSTGRES_PASSWORD` as a literal env value instead of a `secretKeyRef`, unlike the application databases (`caseforce-db`, `food-market-db`), whose credentials come from Secrets. Neither the README values nor the manifest values must be reused outside this laptop lab; the Postgres StatefulSets should be migrated to `secretKeyRef`. (`tenant-mongodb`, the former example of the correct pattern, was removed by ADR-0019.)

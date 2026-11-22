@@ -10,7 +10,6 @@ resources:
   - opa-policy-configmap.yaml
   - tenant-minio.yaml
   - tenant-postgres.yaml
-  - tenant-mongodb.yaml
   - tenant-keycloak.yaml
   - tenant-openbao.yaml
   - acme-storefront-app.yaml

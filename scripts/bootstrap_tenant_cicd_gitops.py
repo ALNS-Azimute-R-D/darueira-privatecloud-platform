@@ -56,7 +56,7 @@ PROJECTS = [
     ("food-market-06-service-chart", "GitOps Helm Chart for Food Market 06 Service (.NET)"),
     ("legaltech-caseforce-solutions", "LegalTech CaseForce Solutions Suite (Micronaut LegalHub & Spring Boot Fake Agency)"),
     ("legaltech-caseforce-solutions-chart", "GitOps Helm Chart for LegalTech CaseForce Solutions"),
-    ("infra-k8s", "Tenant Infrastructure Kubernetes Manifests (PostgreSQL, MinIO, OpenBao, MongoDB, Keycloak)")
+    ("infra-k8s", "Tenant Infrastructure Kubernetes Manifests (PostgreSQL, MinIO, OpenBao, Keycloak)")
 ]
 
 

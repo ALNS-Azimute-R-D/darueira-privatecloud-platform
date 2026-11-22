@@ -37,11 +37,9 @@ STORAGE_MAPPINGS=(
 
   # 5. Tenant Isolated Workloads (ACME Corp & SWFabrik Europe)
   "${STORAGE_ROOT}/tenants/tnt-acme/tenant-postgres:70:70:700"
-  "${STORAGE_ROOT}/tenants/tnt-acme/tenant-mongodb:999:999:775"
   "${STORAGE_ROOT}/tenants/tnt-acme/tenant-minio:10001:10001:775"
   "${STORAGE_ROOT}/tenants/tnt-acme/tenant-openbao:10001:10001:775"
   "${STORAGE_ROOT}/tenants/swfabrik-europe/tenant-postgres:1001:1001:700"
-  "${STORAGE_ROOT}/tenants/swfabrik-europe/tenant-mongodb:999:999:775"
   "${STORAGE_ROOT}/tenants/swfabrik-europe/tenant-minio:10001:10001:775"
 )
 

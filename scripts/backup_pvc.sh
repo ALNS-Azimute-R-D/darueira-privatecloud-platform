@@ -98,7 +98,7 @@ discover_targets() {
          then ($rs[0].items[] | select(.metadata.name == $o.name and .metadata.namespace == $p.metadata.namespace) | .metadata.ownerReferences[0] | "Deployment|" + .name)
          else ($o.kind // "none") + "|" + ($o.name // "") end) as $w
     | "\($p.metadata.namespace)|\($c)|\($rel)|\($w)"' > "$tmp"
-  # volumes without a running pod (e.g. MongoDB scaled to 0) are copied as-is
+  # volumes without a running pod (e.g. a StatefulSet scaled to 0) are copied as-is
   jq -r --arg root "$DATA_ROOT/" --argjson nexus "$INCLUDE_NEXUS" --argjson obs "$INCLUDE_OBS" '
     .items[] | select(.spec.storageClassName == "darueira-host-storage" and .spec.claimRef != null)
     | (.spec.hostPath.path | ltrimstr($root)) as $rel

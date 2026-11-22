@@ -182,7 +182,7 @@ então 1Gi deixa ~350 MiB de folga (com um país por vez o pico é ~310 MiB). De
 - O Spring AOT sobrescreve o `reachability-metadata.json` de `<group>/<artifact>`; os hints manuais
   ficam em `native-overrides/` ou no `NativeRuntimeHints`.
 
-### 23. Probe do tenant-mongodb pesada
+### 23. Probe do tenant-mongodb pesada (obsoleto: `tenant-mongodb` removido, ADR-0019, item 43)
 A probe abre um `mongosh` inteiro a cada verificação (275% de CPU observado em 25/09; 39 e 31
 restarts). Trocar por uma probe TCP ou por um comando mais leve.
 
@@ -741,8 +741,21 @@ infra corporativa central hoje.
   backend ficou fora do ar por ~15 min até o build novo sair. (2) o build do backend no Kaniko falhava ao tirar o snapshot (`lstat /root/.kotlin/daemon/*.run`, corrida do daemon do Kotlin);
   o Dockerfile agora compila em processo (`kotlin.compiler.execution.strategy=in-process`) e remove `/root/.kotlin`. Outros Dockerfiles Gradle que o Tekton construir podem ter o mesmo problema.
   (3) um push anterior (retirada de arquivos do repo) reconstruiu e reimplantou as imagens sem eu ter percebido: a entrega do webhook é assíncrona.
-- Desvio que NÃO é desta mudança: o `tenant-mongodb` está com `replicas: 0` no cluster e `1` no overlay (alguém o escalou para zero). `make deploy-tenant-infra` o religaria; por isso nada foi aplicado pelo overlay,
-  só `kubectl delete` por nome.
+- O desvio do `tenant-mongodb` (`replicas: 0` no cluster, `1` no overlay) levou à decisão do item 43: o MongoDB foi removido. Nada foi aplicado pelo overlay, só `kubectl delete` por nome.
+
+### 43. `tenant-mongodb` removido: PostgreSQL é o único armazenamento dos tenants `[dono: Claude — status: feito e validado no cluster]`
+- Decisão: ADR-0019 (amplia o ADR-0018). Dado não relacional vai em colunas `JSONB` (índices GIN, colunas geradas, `CHECK` para validar), ou em extensões do Postgres
+  quando for preciso (`pg_trgm`, `hstore`, `ltree`, `PostGIS`, `pgvector`, particionamento); arquivos e blobs vão para o `tenant-minio`.
+- Verificado antes de remover: nenhum workload no cluster (Deployment, StatefulSet, CronJob, Job) nem código em `apps/` ou `workspace/` usava o MongoDB; os dois StatefulSets estavam
+  com 0 réplicas e os diretórios de dados no host estavam **vazios** (criados em 08/11, dia da falha do HD, e nunca repovoados). Nada foi perdido.
+- Removido do cluster nos dois tenants (europe e latam): StatefulSet, Service, PVC, Secret `tenant-mongo-credentials` e os 2 PVs. Removido do repo: `tenant-mongodb.yaml` da base,
+  os `02-tenant-mongodb.yaml` dos overlays e do exemplo `apps/examples/tenant-xpto`, o Secret dos overlays, os PVs de `storage-pvs.yaml`, as pastas de `setup_host_storage.sh`, o
+  `port-forward-db` do Makefile (parte do Mongo), a checagem de `validate_mission_15.py` e a entidade `tenant-acme-mongodb` dos 3 catálogos do Backstage. Specs, ADR-0011/0013/0016/0018, README, AGY.md e CLAUDE.md atualizados.
+- `kubectl diff -k` dos dois overlays agora dá vazio: o desvio de `replicas` sumiu e o `make deploy-tenant-infra` voltou a ser um no-op seguro. Não foi aplicado nada pelo overlay, só `kubectl delete` por nome.
+- Origem do `replicas: 0`: não foi descoberta. O `managedFields` só mostra o ArgoCD (28/09) e o `kubectl apply` do cutover (15/10), e o `last-applied` dizia `replicas: 1`, então foi uma alteração fora de `apply` depois de 15/10.
+  Nenhum evento restou. O André disse que não foi ele; pode ter sido outro agente ou uma sessão anterior.
+- Pendente: os títulos de um painel do OpenSearch (`scripts/generate_opensearch_saved_objects.py`, linhas 447 e 534, e o `.ndjson` gerado) ainda citam MongoDB; precisa regenerar e reimportar.
+  Os runbooks e discussões antigos (`docs/runbooks`, `docs/discussions`) foram mantidos como registro histórico. Os diretórios vazios do host (`.../tenant-mongodb`) ficam para o André remover (root).
 ---
 
 ## 🟠 Média prioridade

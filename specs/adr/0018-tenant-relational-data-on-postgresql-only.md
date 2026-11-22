@@ -17,7 +17,7 @@ application (`drr_tnt_bizapps_db`, `drr_tnt_keycloak_db`, `DBBookAnythingPlatfor
 
 ### 1. One relational engine per tenant: PostgreSQL
 Tenant workloads that need a relational store use `tenant-postgres`. MySQL is no longer part of the tenant
-baseline. `tenant-keycloak`, `tenant-minio`, `tenant-mongodb`, `tenant-openbao` and `tenant-postgres` remain.
+baseline. `tenant-keycloak`, `tenant-minio`, `tenant-openbao` and `tenant-postgres` remain (`tenant-mongodb` was removed later by ADR-0019).
 
 ### 2. CaseForce moves to PostgreSQL
 - A dedicated database `drr_tnt_caseforce_db`, owned by the least-privilege role `caseforce_app`

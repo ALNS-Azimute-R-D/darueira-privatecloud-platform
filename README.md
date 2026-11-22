@@ -69,7 +69,7 @@ An enterprise-grade, on-premise **Private Cloud and Internal Developer Platform 
 |  * Edge & Ingress: Apache APISIX DataPlane                                        |
 |  * In-Pod Enforcement: Envoy Proxy PEP + OPA PDP Sidecars (ext_authz :9191)       |
 |  * Dynamic Secrets: OpenBao Tenant Mounts via SPIFFE SVID                          |
-|  * Tenant Storage: MinIO Dedicated Buckets + PostgreSQL / MongoDB                 |
+|  * Tenant Storage: MinIO Dedicated Buckets + PostgreSQL (JSONB for documents)      |
 |  * Tenant IAM: dedicated Keycloak per tenant environment                          |
 |  * Event Streaming & Messaging: shared Redpanda (Kafka API) + RabbitMQ            |
 |  * Workload Identity: SPIRE Agent Pod Attestation                                 |
@@ -107,7 +107,7 @@ darueira-privatecloud-platform/
 │           │                        # OpenFGA, APISIX, Redpanda, RabbitMQ, Temporal, NiFi, jsreport, Clavex
 │           ├── corpshared-obs/      # OTel Collector, Prometheus, Grafana, Jaeger, Fluent Bit, OpenSearch
 │           ├── corpshared-secr-internal/ # OpenBao Master, cert-manager, SPIRE Server
-│           └── tnt-tenant-base/     # Tenant baseline (Keycloak, MinIO, OpenBao, Postgres, MongoDB,
+│           └── tnt-tenant-base/     # Tenant baseline (Keycloak, MinIO, OpenBao, Postgres,
 │                                    # Envoy PEP, OPA PDP patch, Quotas)
 ├── scripts/                         # bootstrap_*.py / validate_*.py automation (IAM, APISIX, SPIRE, CI/CD...)
 ├── workspace/                       # Tenant application and Helm chart repos (swfabrik-europe, swfabrik-latam)
@@ -236,7 +236,7 @@ make proxy
 
 ### 7.3 Isolated Tenant Admin Consoles (Example: Tenant `acme`)
 
-Every tenant environment receives dedicated, isolated instances of OpenBao, Keycloak, MinIO, PostgreSQL and MongoDB (PostgreSQL is the only relational engine, ADR-0018). APISIX exposes the Vault, Keycloak and MinIO consoles; the example below uses tenant `acme`, and the `swfabrik-europe` tenant follows the same pattern with `*.swfabrik-europe.127.0.0.1.nip.io` hosts:
+Every tenant environment receives dedicated, isolated instances of OpenBao, Keycloak, MinIO and PostgreSQL (PostgreSQL is the only database, ADR-0018 and ADR-0019). APISIX exposes the Vault, Keycloak and MinIO consoles; the example below uses tenant `acme`, and the `swfabrik-europe` tenant follows the same pattern with `*.swfabrik-europe.127.0.0.1.nip.io` hosts:
 
 | Tenant Service | Clean HTTPS URL (Port 443) | Clean HTTP URL (Port 80) | Default Credentials |
 |---|---|---|---|

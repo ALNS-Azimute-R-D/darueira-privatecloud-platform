@@ -24,7 +24,7 @@ domain separation, and the security guardrails.
 ## Repository conventions
 
 - This platform repo is **not GitOps**: commit directly to `master`; André pushes to GitHub.
-- Tenant common infrastructure (`tenant-postgres`, `tenant-keycloak`, `tenant-minio`, `tenant-mongodb`, `tenant-openbao`) is **PaaS**, managed directly from this repo under `platform/kustomize/overlays/tenants/<tenant>` via `make diff-tenant-infra TENANT=<tenant>` and `make deploy-tenant-infra TENANT=<tenant>` (ADR-0016). It is **not** managed by ArgoCD; tenant `infra-k8s.git` repos in Forgejo are archived read-only. PostgreSQL is the only relational engine of a tenant: `tenant-mysql` was decommissioned (ADR-0018).
+- Tenant common infrastructure (`tenant-postgres`, `tenant-keycloak`, `tenant-minio`, `tenant-openbao`) is **PaaS**, managed directly from this repo under `platform/kustomize/overlays/tenants/<tenant>` via `make diff-tenant-infra TENANT=<tenant>` and `make deploy-tenant-infra TENANT=<tenant>` (ADR-0016). It is **not** managed by ArgoCD; tenant `infra-k8s.git` repos in Forgejo are archived read-only. PostgreSQL is the only relational engine of a tenant: `tenant-mysql` and `tenant-mongodb` were decommissioned (ADR-0018, ADR-0019): store non-relational data in `JSONB` columns or Postgres extensions.
 - Tenant business apps (`workspace/platf-bizz-apps/...`) are **full GitOps** via the internal
   Forgejo: feature branch → PR → merge to `master` → Tekton builds and promotes the image tag in
   the chart repo → ArgoCD syncs.

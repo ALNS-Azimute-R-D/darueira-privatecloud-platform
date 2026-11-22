@@ -454,23 +454,6 @@ spec:
   system: tenant-acme
 ---
 apiVersion: backstage.io/v1alpha1
-kind: Resource
-metadata:
-  name: tenant-acme-mongodb
-  title: ACME Tenant MongoDB 7
-  description: Dedicated document database instance hosting tenant_doc_db collections.
-  tags:
-  - tenant
-  - database
-  - mongodb
-  - nosql
-  - acme
-spec:
-  type: database
-  owner: group:acme-tenant-team
-  system: tenant-acme
----
-apiVersion: backstage.io/v1alpha1
 kind: Group
 metadata:
   name: platform-core-team

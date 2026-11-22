@@ -28,7 +28,7 @@ Each `drr-tnt-<tenant>-<env>` namespace possesses its own dedicated, isolated in
 - **OpenBao (`tenant-openbao`)**: Dedicated tenant secrets management, KV store, and transit encryption.
 - **MinIO (`tenant-minio`)**: Dedicated tenant S3-compatible object storage.
 - **PostgreSQL (`tenant-postgres`)**: Dedicated relational database server.
-- **MongoDB (`tenant-mongodb`)**: Dedicated document database server.
+- *(MongoDB (`tenant-mongodb`) was removed by ADR-0019: documents go to `JSONB` columns of `tenant-postgres`.)*
 - **Keycloak (`tenant-keycloak`)**: Dedicated tenant identity provider and user realm.
 
 ### 3. Data Storage & Schema Isolation Conventions

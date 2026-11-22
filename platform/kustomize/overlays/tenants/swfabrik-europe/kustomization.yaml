@@ -10,7 +10,6 @@ kind: Kustomization
 resources:
   - 00-namespace-and-configs.yaml
   - 01-tenant-postgres.yaml
-  - 02-tenant-mongodb.yaml
   - 03-tenant-minio.yaml
   - 04-tenant-openbao.yaml
   - 05-tenant-keycloak.yaml

@@ -22,3 +22,4 @@ This directory contains Architecture Decision Records (ADRs) following the MADR 
 - [ADR-0016: Architectural Boundary for Tenant Infrastructure Management — Platform Control Plane vs. Tenant GitOps](file:///home/andre.nascimento/DevEnvALNS/projects/03-PoCs-And-Researches/ALNS-Azimute-R-D/darueira-privatecloud-platform/specs/adr/0016-tenant-infra-management-boundary.md)
 - [ADR-0018: Tenant Relational Data on PostgreSQL Only — Decommission `tenant-mysql`](0018-tenant-relational-data-on-postgresql-only.md)
 - [ADR-0019: PostgreSQL as the Only Tenant Data Store — Decommission `tenant-mongodb`](0019-postgresql-as-the-only-tenant-data-store-decommission-tenant-mongodb.md)
+- [ADR-0020: Observability Stack Upgrade, Metric Exporters and 3-Day Log Retention](0020-observability-stack-upgrade-exporters-and-log-retention.md)

@@ -143,7 +143,7 @@ spec:
       serviceAccountName: fluent-bit
       containers:
         - name: fluent-bit
-          image: fluent/fluent-bit:3.1.4
+          image: fluent/fluent-bit:5.2.0
           imagePullPolicy: IfNotPresent
           env:
             - name: NODE_NAME

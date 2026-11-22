@@ -291,9 +291,6 @@ data:
       4g==
       -----END CERTIFICATE-----
   repositories: |
-    - url: http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/darueira-corp/platform-core.git
-      name: darueira-corp-platform-core
-      type: git
     - url: http://forgejo-git.drr-corpshared-plat.svc.cluster.local:3000/acme/storefront-app.git
       name: acme-storefront-repo
       type: git

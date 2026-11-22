@@ -687,6 +687,27 @@ infra corporativa central hoje.
   no 05, religar o consumidor no evento `close`/`error` da conexão, com backoff. Idealmente a readiness falha enquanto não há
   consumidor, para o Kubernetes reiniciar o pod sozinho. Teste: reiniciar o broker e exigir 1 consumidor por fila em até 1 min.
 
+
+### 40. ArgoCD: 7 Applications em `Unknown` apontando para repos que não existem no Forgejo `[dono: Claude — status: feito]`
+- Achado (2026-11-21/22): `ComparisonError: authentication required` desde 14/11 nos 4 `corpshared-*`, no `swfabrik-europe-legaltech-caseforce`
+  e nos 2 do latam. Não era credencial: o Forgejo responde 401 no protocolo git para repo inexistente. `darueira-corp/platform-core`,
+  `swfabrik-europe/legaltech-caseforce-solutions-chart` e a org `swfabrik-latam` se perderam no crash do HD.
+- Os 4 `corpshared-*` só gerenciavam o ConfigMap placeholder `tier-profile` (ADR-0016: a infra corporativa é PaaS, via Kustomize/`kubectl`).
+- Feito: removido `apps-corpshared.yaml`, o Application do caseforce em `apps-swfabrik-europe.yaml`, `seed_gitops_manifests_in_forgejo()` e a
+  senha admin fixa de `bootstrap_argocd_gitops.py`, e a entrada `platform-core` do `argocd-cm` (no repo). No cluster: 5 Applications
+  deletados com `--cascade=orphan`; workloads do caseforce e os `tier-profile` seguem intactos.
+- Não aplicado: `argocd-server.yaml` (o `argocd-cm` vivo ainda lista `platform-core`, `acme`, `globex` e `github-upstream`; inofensivo).
+- Ainda `Unknown`: `swfabrik-latam-app-identity-studio` e `swfabrik-latam-checkout-service`, até a reconstrução (ver memória do rebuild latam).
+- Ficou criado no Forgejo: usuário `cicd-manager` e times `argocd-readers` (mantidos a pedido do André; sem token nem Secret).
+- Backup dos manifestos vivos do caseforce (contém credenciais em texto puro, não versionar): scratchpad da sessão de 2026-11-22.
+
+### 41. Recuperar o `caseforce` no Forgejo (código-fonte vindo do GitHub pessoal) `[dono: a definir — status: aberto]`
+- Situação: o código-fonte original está em `apps/tenant-playground-repos/caseforce-legalhub-parent` (untracked). Os pods
+  `caseforce-legalhub-mgmt` e `fake-legal-partners-agencies-app` rodam sem GitOps nem CI (item 40).
+- A fazer: refactor dos pacotes `*.legalhero.*` para `*.legalhub.*`; espelhar com link simbólico em
+  `workspace/platf-bizz-apps/swfabrik-europe` como nos demais projetos; hospedar no repo respectivo do Forgejo; recriar o chart e
+  o Application. Os pods têm ~400 restarts por `UnknownHostException` do `tenant-mysql` na partida (DNS intermitente); investigar à parte.
+
 ---
 
 ## 🟠 Média prioridade

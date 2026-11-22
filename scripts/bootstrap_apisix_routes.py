@@ -15,8 +15,24 @@ import urllib.error
 import ssl
 import time
 
+def _secret(key, env_name=None):
+    """A credential is never a literal in this file (backlog item 51): environment first, otherwise the Secret
+    `apisix-secrets` of drr-corpshared-plat (created by scripts/provision_apisix_secrets.py)."""
+    import base64 as _b64
+    import subprocess as _sp
+    if env_name and os.environ.get(env_name):
+        return os.environ[env_name]
+    r = _sp.run(["kubectl", "-n", "drr-corpshared-plat", "get", "secret", "apisix-secrets", "-o", f"jsonpath={{.data.{key}}}"],
+                capture_output=True, text=True)
+    if r.returncode != 0 or not r.stdout:
+        raise SystemExit(f"credential '{key}' not found: set {env_name or 'it in the environment'} or run scripts/provision_apisix_secrets.py")
+    return _b64.b64decode(r.stdout).decode()
+
+
+OIDC_CLIENT_SECRET = _secret("oidc-client-secret", "OIDC_CLIENT_SECRET")
+
 ADMIN_URL = os.environ.get("APISIX_ADMIN_URL", "http://apisix-gateway.drr-corpshared-plat.svc.cluster.local:9180/apisix/admin")
-ADMIN_KEY = os.environ.get("APISIX_ADMIN_KEY", "edd1c9f034335f136f87ad84b625c8f1")
+ADMIN_KEY = _secret("admin-key", "APISIX_ADMIN_KEY")
 
 # SSL Certificate definition
 SSL_PAYLOAD = {
@@ -372,7 +388,7 @@ ROUTES = [
             "prometheus": {},
             "openid-connect": {
                 "client_id": "darueira-platform-generic-oidc",
-                "client_secret": "darueira-oidc-secret-key-2026",
+                "client_secret": OIDC_CLIENT_SECRET,
                 "discovery": "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs/.well-known/openid-configuration",
                 "redirect_uri": "https://opensearch.darueira-corpshared.127.0.0.1.nip.io/callback",
                 "scope": "openid profile email",
@@ -382,7 +398,7 @@ ROUTES = [
                 "logout_path": "/logout",
                 "post_logout_redirect_uri": "https://opensearch.darueira-corpshared.127.0.0.1.nip.io/",
                 "session": {
-                    "secret": "darueira-opensearch-session-secret-2026"
+                    "secret": _secret("session-opensearch")
                 }
             }
         }
@@ -427,7 +443,7 @@ ROUTES = [
             "prometheus": {},
             "openid-connect": {
                 "client_id": "darueira-platform-generic-oidc",
-                "client_secret": "darueira-oidc-secret-key-2026",
+                "client_secret": OIDC_CLIENT_SECRET,
                 "discovery": "https://keycloak.darueira-corpshared.127.0.0.1.nip.io/realms/darueira-platform-svcs/.well-known/openid-configuration",
                 "redirect_uri": "https://jaeger.darueira-corpshared.127.0.0.1.nip.io/callback",
                 "scope": "openid profile email",
@@ -437,7 +453,7 @@ ROUTES = [
                 "logout_path": "/logout",
                 "post_logout_redirect_uri": "https://jaeger.darueira-corpshared.127.0.0.1.nip.io/",
                 "session": {
-                    "secret": "darueira-jaeger-session-secret-2026"
+                    "secret": _secret("session-jaeger")
                 }
             }
         }

@@ -21,8 +21,21 @@ import sys
 import time
 import urllib.request
 
+def _admin_key():
+    """No literal credential in this file (backlog item 51): environment, else the Secret apisix-secrets."""
+    import base64
+    import subprocess
+    if os.environ.get("APISIX_ADMIN_KEY"):
+        return os.environ["APISIX_ADMIN_KEY"]
+    r = subprocess.run(["kubectl", "-n", "drr-corpshared-plat", "get", "secret", "apisix-secrets", "-o", "jsonpath={.data.admin-key}"],
+                       capture_output=True, text=True)
+    if r.returncode != 0 or not r.stdout:
+        raise SystemExit("APISIX admin key not found: set APISIX_ADMIN_KEY or run scripts/provision_apisix_secrets.py")
+    return base64.b64decode(r.stdout).decode()
+
+
 ADMIN_URL = os.environ.get("APISIX_ADMIN_URL", "http://127.0.0.1:9180/apisix/admin")
-ADMIN_KEY = os.environ.get("APISIX_ADMIN_KEY", "edd1c9f034335f136f87ad84b625c8f1")
+ADMIN_KEY = _admin_key()
 # May be a multi-word command, e.g. "microk8s kubectl" (Makefile fallback).
 KUBECTL = shlex.split(os.environ.get("KUBECTL", "kubectl"))
 GATEWAY_NS = "drr-corpshared-plat"

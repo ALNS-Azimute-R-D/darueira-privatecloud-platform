@@ -26,7 +26,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: grafana
-          image: grafana/grafana:11.1.0
+          image: grafana/grafana:13.3.1
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
@@ -40,7 +40,12 @@ spec:
             - name: GF_SECURITY_ADMIN_USER
               value: "admin"
             - name: GF_SECURITY_ADMIN_PASSWORD
-              value: "Darueira@2026!"
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-credentials
+                  key: admin-password
+            - name: GF_PLUGINS_PREINSTALL_SYNC
+              value: "grafana-opensearch-datasource"
             - name: GF_SERVER_ROOT_URL
               value: "https://grafana.darueira-corpshared.127.0.0.1.nip.io/"
             - name: GF_USERS_ALLOW_SIGN_UP
@@ -58,7 +63,10 @@ spec:
             - name: GF_AUTH_GENERIC_OAUTH_CLIENT_ID
               value: "darueira-platform-generic-oidc"
             - name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
-              value: "darueira-oidc-secret-key-2026"
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-credentials
+                  key: oauth-client-secret
             - name: GF_AUTH_GENERIC_OAUTH_SCOPES
               value: "openid profile email"
             - name: GF_AUTH_GENERIC_OAUTH_AUTH_URL
@@ -158,12 +166,18 @@ data:
         url: http://jaeger.drr-corpshared-obs.svc.cluster.local:16686
         editable: true
       - name: OpenSearch
-        type: opensearch
+        uid: opensearch-logs
+        type: grafana-opensearch-datasource
         access: proxy
         url: http://opensearch.drr-corpshared-obs.svc.cluster.local:9200
         jsonData:
-          version: "2.15.0"
-          database: "[logs-]YYYY.MM.DD"
+          flavor: opensearch
+          version: "3.10.0"
+          database: "darueira-k8s-logs-*"
+          timeField: "@timestamp"
+          logMessageField: "log"
+          logLevelField: "stream"
+          pplEnabled: false
         editable: true
 ---
 apiVersion: v1

@@ -31,6 +31,9 @@ configMapGenerator:
       - dashboards/grafana/containers-health.json
       - dashboards/grafana/keycloak-jvm.json
       - dashboards/grafana/observability-stack.json
+      - dashboards/grafana/kubernetes-state.json
+      - dashboards/grafana/host-node.json
+      - dashboards/grafana/postgresql.json
     options:
       labels:
         app.kubernetes.io/name: grafana

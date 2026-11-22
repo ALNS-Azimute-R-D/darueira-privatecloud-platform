@@ -43,7 +43,12 @@ Every new workload has resource requests/limits and a Cilium NetworkPolicy.
 Prometheus metrics on a dedicated port (`9102`, not the API port, because its APISIX route publishes every path of `8080`) and the
 job is back, pointing at `:9102` (backlog item 46).
 
-### 5. Log retention: 3 days
+### 5. Alerting
+Prometheus evaluates rules from the ConfigMap `prometheus-rules` and sends alerts to Alertmanager (v0.35.0), which delivers them by webhook.
+The webhook URL is the Secret `alertmanager-webhook`, set with `scripts/set_alertmanager_webhook.sh`; until a real destination is chosen it is an
+in-cluster receiver that logs the alerts. Rules are unit-tested with `promtool` (`make test-prometheus-rules`). Backlog item 48.
+
+### 6. Log retention: 3 days
 The ISM policy `darueira-k8s-logs-retention` deletes `darueira-k8s-logs-*` indices older than 3 days (was 2 in Git, 0 installed).
 `scripts/bootstrap_observability.py` is the installer and is idempotent.
 

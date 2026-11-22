@@ -98,8 +98,12 @@ data:
       scrape_interval: 15s
       evaluation_interval: 15s
 
-    # Alerting rules (ConfigMap prometheus-rules). There is no Alertmanager yet: alerts are visible in the Prometheus UI
-    # (/alerts) and as the ALERTS series, which Grafana can chart.
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets: ["alertmanager.drr-corpshared-obs.svc.cluster.local:9093"]
+
+    # Alerting rules (ConfigMap prometheus-rules); notifications go through Alertmanager (webhook, backlog item 48).
     rule_files:
       - /etc/prometheus-rules/*.yml
 
@@ -151,6 +155,10 @@ data:
             labels: {instance_name: tenant-postgres-europe, tier: tenant-workload}
           - targets: ["postgres-exporter-latam.drr-corpshared-obs.svc.cluster.local:9187"]
             labels: {instance_name: tenant-postgres-latam, tier: tenant-workload}
+
+      - job_name: "alertmanager"
+        static_configs:
+          - targets: ["alertmanager.drr-corpshared-obs.svc.cluster.local:9093"]
 
       - job_name: "otel-collector"
         static_configs:

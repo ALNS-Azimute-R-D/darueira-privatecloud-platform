@@ -1,0 +1,35 @@
+# Generic alerting rules of the platform (backlog item 48).
+groups:
+  - name: platform
+    rules:
+      # Any scrape target that stays down. Targets with their own alert (drr-iam-authz-svc) are excluded to avoid a duplicate.
+      - alert: TargetDown
+        expr: up{job!="drr-iam-authz-svc"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "Scrape target {{ $labels.job }} ({{ $labels.instance }}) is down"
+          description: "Prometheus has not been able to scrape {{ $labels.job }} for 5 minutes. Metrics, dashboards and alerts that depend on it are blind."
+
+      # Without a connected Alertmanager every alert is silent.
+      - alert: AlertmanagerNotConnected
+        expr: prometheus_notifications_alertmanagers_discovered < 1
+        for: 5m
+        labels:
+          severity: critical
+          service: prometheus
+        annotations:
+          summary: "Prometheus has no Alertmanager to send alerts to"
+          description: "Alerts are evaluated but not delivered. Check the alertmanager Deployment/Service and the network policy of drr-corpshared-obs."
+
+      - alert: AlertmanagerNotificationsFailing
+        expr: sum(rate(alertmanager_notifications_failed_total[10m])) > 0
+        for: 10m
+        labels:
+          severity: warning
+          service: alertmanager
+        annotations:
+          summary: "Alertmanager fails to deliver notifications"
+          description: "Notifications to the webhook fail. Check the URL in the Secret alertmanager-webhook (scripts/set_alertmanager_webhook.sh) and the receiver."

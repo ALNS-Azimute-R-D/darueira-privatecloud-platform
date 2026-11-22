@@ -14,6 +14,7 @@ resources:
   - opensearch-dashboards.yaml
   - fluent-bit.yaml
   - exporters.yaml
+  - alertmanager.yaml
 
 generatorOptions:
   disableNameSuffixHash: true
@@ -22,9 +23,24 @@ configMapGenerator:
   - name: opensearch-dashboards-saved-objects
     files:
       - opensearch-saved-objects.ndjson=dashboards/opensearch-saved-objects.ndjson
+  - name: alertmanager-config
+    files:
+      - alertmanager/alertmanager.yml
+    options:
+      labels:
+        app.kubernetes.io/name: alertmanager
+        darueira.io/tier: enterprise-shared
+  - name: alert-webhook-sink
+    files:
+      - alertmanager/alert-webhook-sink.py
+    options:
+      labels:
+        app.kubernetes.io/name: alert-webhook-sink
+        darueira.io/tier: enterprise-shared
   - name: prometheus-rules
     files:
       - alerts/iam-authz.rules.yml
+      - alerts/platform.rules.yml
     options:
       labels:
         app.kubernetes.io/name: prometheus

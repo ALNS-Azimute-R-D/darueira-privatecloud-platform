@@ -1,0 +1,149 @@
+# Alertmanager and its default webhook receiver (ADR-0020, backlog item 48).
+# The webhook URL lives in the Secret alertmanager-webhook (key `url`), created/changed by scripts/set_alertmanager_webhook.sh.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: drr-corpshared-obs
+  labels:
+    app.kubernetes.io/name: alertmanager
+    darueira.io/tier: enterprise-shared
+    darueira.io/subsystem: observability
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: alertmanager
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: alertmanager
+        darueira.io/tier: enterprise-shared
+        darueira.io/subsystem: observability
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: alertmanager
+          image: prom/alertmanager:v0.35.0
+          args:
+            - --config.file=/etc/alertmanager/alertmanager.yml
+            - --storage.path=/alertmanager
+            - --web.external-url=http://alertmanager.drr-corpshared-obs.svc.cluster.local:9093
+          ports:
+            - containerPort: 9093
+              name: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          readinessProbe:
+            httpGet: {path: /-/ready, port: 9093}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /-/healthy, port: 9093}
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests: {cpu: 20m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 96Mi}
+          volumeMounts:
+            - {name: config, mountPath: /etc/alertmanager/alertmanager.yml, subPath: alertmanager.yml}
+            - {name: webhook, mountPath: /etc/alertmanager/webhook, readOnly: true}
+            - {name: data, mountPath: /alertmanager}
+      volumes:
+        - name: config
+          configMap:
+            name: alertmanager-config
+        - name: webhook
+          secret:
+            secretName: alertmanager-webhook
+        # Silences and the notification log live here: they are lost when the pod restarts (lab trade-off).
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: drr-corpshared-obs
+  labels:
+    app.kubernetes.io/name: alertmanager
+spec:
+  selector:
+    app.kubernetes.io/name: alertmanager
+  ports:
+    - {name: http, port: 9093, targetPort: 9093}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alert-webhook-sink
+  namespace: drr-corpshared-obs
+  labels:
+    app.kubernetes.io/name: alert-webhook-sink
+    darueira.io/tier: enterprise-shared
+    darueira.io/subsystem: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: alert-webhook-sink
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: alert-webhook-sink
+        darueira.io/tier: enterprise-shared
+        darueira.io/subsystem: observability
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: sink
+          image: python:3.13-alpine
+          args: ["python", "-u", "/app/alert-webhook-sink.py"]
+          ports:
+            - containerPort: 8080
+              name: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          readinessProbe:
+            httpGet: {path: /healthz, port: 8080}
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 48Mi}
+          volumeMounts:
+            - {name: app, mountPath: /app, readOnly: true}
+      volumes:
+        - name: app
+          configMap:
+            name: alert-webhook-sink
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alert-webhook-sink
+  namespace: drr-corpshared-obs
+  labels:
+    app.kubernetes.io/name: alert-webhook-sink
+spec:
+  selector:
+    app.kubernetes.io/name: alert-webhook-sink
+  ports:
+    - {name: http, port: 8080, targetPort: 8080}

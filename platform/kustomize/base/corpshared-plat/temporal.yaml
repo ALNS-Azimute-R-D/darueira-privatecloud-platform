@@ -201,7 +201,8 @@ spec:
           type: RuntimeDefault
       containers:
         - name: temporal-ui
-          image: temporalio/ui:2.30.0
+          # 2.58 ships its own config/docker.yaml (rendered from the environment): do not mount anything over /home/ui-server/config.
+          image: temporalio/ui:2.58.1
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -249,8 +250,6 @@ spec:
               cpu: 1000m
               memory: 1024Mi
           volumeMounts:
-            - name: ui-config
-              mountPath: /home/ui-server/config
             - name: darueira-ca
               mountPath: /etc/ssl/certs/darueira-ca.crt
               subPath: ca.crt
@@ -280,8 +279,6 @@ spec:
             timeoutSeconds: 3
             failureThreshold: 3
       volumes:
-        - name: ui-config
-          emptyDir: {}
         - name: darueira-ca
           secret:
             secretName: darueira-wildcard-tls

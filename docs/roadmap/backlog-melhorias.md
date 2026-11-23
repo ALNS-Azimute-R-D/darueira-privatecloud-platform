@@ -956,3 +956,11 @@ Tudo da sessão está commitado e com push (itens 44 a 52). Próximos passos, em
 7. **Host (root):** revisar `sudo ss -ltnp` (5473, 7070, 14004, 5938, 25000, 19001).
 8. **Antigos:** item 29 (Temporal), 39 (consumers food-market), rebuild do latam, 40 a 43 (limpeza dos diretórios `tenant-mysql`/`tenant-mongodb` já feita por André).
 9. **Ideias:** regras de alerta para OOM/Postgres/disco/OpenFGA (`:2112`); ResourceQuota nos tenants; subir o Jaeger quando o plugin do Grafana usar `/api/v3`.
+
+### 53. Temporal UI em branco no Chrome: UI 2.30.0 -> 2.58.1 `[dono: Claude — status: feito; falta o teste manual do workflow]`
+- **Sintoma:** a UI do Temporal não carregava (página em branco). Servidor, workers e gateway estavam saudáveis (HTML 200, `/auth/sso` redirecionando ao Keycloak).
+- **Causa:** a UI `temporalio/ui:2.30.0` serve uma CSP `script-src 'strict-dynamic' 'sha256-…'` junto com `modulepreload`; o Chrome atual (158) bloqueia o carregamento dos scripts ("violates the following Content Security Policy directive") e o app nunca inicia. Reproduzido com `google-chrome --headless=new --enable-logging=stderr --dump-dom` (o hash da CSP conferia com o script inline, então não era proxy alterando a página). Nenhuma mudança de ontem causou isso.
+- **Correção:** UI atualizada para `2.58.1` (última). A imagem nova traz o próprio `config/docker.yaml`; o `emptyDir` montado em `/home/ui-server/config` o escondia e o pod novo entrava em CrashLoop (`no config files found within config`), então o volume `ui-config` foi removido do manifest e do Deployment. Validado no mesmo Chrome headless: tela "Login / Continue to SSO", sem erros de CSP, todos os scripts 200. Servidor continua em `temporalio/auto-setup:1.24.2` (não alterado).
+- **Verificado:** namespaces `temporal-system` e `corporate-core`; pollers de `GEOLOCATION_INGESTION_TASK_QUEUE` e `GEOLOCATION_ARTIFACTS_TASK_QUEUE` (do `bookanything-monolith-backend-01`) ativos.
+- **Não verificado:** login via SSO e navegação autenticada (precisa de sessão de usuário); compatibilidade da UI 2.58 com o servidor 1.24.2 após o login (se algum recurso novo falhar, considerar subir o servidor, que exige migração do schema).
+- **Pegadinha:** se a UI do Temporal parar de carregar de novo, rode o Chrome headless acima para ver o erro de console em vez de adivinhar.

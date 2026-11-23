@@ -834,6 +834,27 @@ excedam os retries.
 retentada só na etapa `RenderAndStoreReport` (5 tentativas configuradas) e passou na 2ª; agora as tentativas
 aparecem na UI do Temporal.
 
+**Atualização (23/11, import de BRA + PRT + CHN, 83 itens) `[dono: Claude — status: aberto, falha de vez ocorreu]`:**
+- **Primeira falha definitiva:** o item `id=110` (Aveiro, `PT-01`, `geo-artifacts-110`) esgotou as 5 tentativas de
+  `RenderAndStoreReport` (`JSReport detail rendering failed with HTTP 500: Navigating frame was detached`). Mapas, bandeira e texto de IA
+  tinham passado; ficou sem o PDF de detalhe. O import `geo-import-cd8c375e-…` fechou `COMPLETED` com 82 de 83 artefatos (PRT nível 1:
+  19 de 20, `failedIds:[110]`), e o PDF resumo do job registra essa falha.
+- **Taxa:** no log do pod `jsreport`, 8 renderizações com erro em 113 (cerca de 7%) nos imports de hoje (11:10 e 11:18 a 11:21 UTC): 1 no
+  import de ITA (nível 0 e 1) e 7 no de BRA+PRT+CHN. Todas as outras passaram numa retentativa.
+- **Hipótese (não testada):** concorrência no pool do Chrome (`chrome-pool`). Os imports disparam dezenas de workflows de artefatos ao
+  mesmo tempo. Recursos não são o limite: o pod usa ~605 Mi de 2 Gi e 7m de CPU em repouso (limites 2 CPU / 2 Gi). O pod tem 64 restarts em
+  9 dias (último às 08:32 de 23/11, antes dos testes). O Chrome é o `Chrome/151` embutido na imagem; a página é um `file://` com SVG dos mapas embutido.
+- **Reprocesso:** `tctl workflow start --tq GEOLOCATION_ARTIFACTS_TASK_QUEUE --wt GeoLocationArtifactsWorkflow --wid geo-artifacts-110 --input 110 --memo_key geoLocationId --memo 110`
+  (mesmo que o `GeoLocationArtifactsLauncher` com `force`). Rodando sozinho passou na 1ª tentativa; PDF de 907.630 bytes no bucket
+  `bookanything-documents` (`documents/geolocations/110/`) e na cópia corporativa `darueira-reports/geolocations/geolocation-detail-report-PT-01.pdf`.
+  O PDF resumo do job `cd8c375e` **não** foi regenerado (continua mostrando 1 falha).
+- **Próximos passos (precisam de ADR/spec antes de mexer):** (1) reduzir a concorrência na origem: limitar `MaxConcurrentActivityExecutionSize` do
+  worker de `GEOLOCATION_ARTIFACTS_TASK_QUEUE` (código do `bookanything-monolith-backend-01`) e/ou o número de workers do
+  `chrome-pool` do jsreport (`extensions.chrome-pdf`); (2) medir antes e depois com um import grande (ex.: BRA+PRT+CHN) contando
+  `Rendering request … finished with error` no log do jsreport; (3) se persistir, mais tentativas com backoff maior na etapa `REPORT`
+  (hoje 5 tentativas, intervalo inicial 2 s, máximo 60 s) ou regeneração agendada dos itens sem PDF; (4) considerar um alerta ou relatório
+  dos itens com `failedIds` ao fim do import. Não verifiquei se a página Companion tem a opção de reprocessar um item; o reprocesso foi feito pelo `tctl`.
+
 ### 9. Debug do cilium-cni ligado
 `05-cilium-cni.conf` tem `enable-debug: true` e escreve `/run/cilium/cilium-cni.log`, já com 55 MB
 em tmpfs (RAM), só limpo no reboot. Desligar o debug ou rotacionar o log.
@@ -957,10 +978,11 @@ Tudo da sessão está commitado e com push (itens 44 a 52). Próximos passos, em
 8. **Antigos:** item 29 (Temporal), 39 (consumers food-market), rebuild do latam, 40 a 43 (limpeza dos diretórios `tenant-mysql`/`tenant-mongodb` já feita por André).
 9. **Ideias:** regras de alerta para OOM/Postgres/disco/OpenFGA (`:2112`); ResourceQuota nos tenants; subir o Jaeger quando o plugin do Grafana usar `/api/v3`.
 
-### 53. Temporal UI em branco no Chrome: UI 2.30.0 -> 2.58.1 `[dono: Claude — status: feito; falta o teste manual do workflow]`
+### 53. Temporal UI em branco no Chrome: UI 2.30.0 -> 2.58.1 `[dono: Claude — status: feito; workflows de GeoLocation testados em 23/11, ver nota no fim do item]`
 - **Sintoma:** a UI do Temporal não carregava (página em branco). Servidor, workers e gateway estavam saudáveis (HTML 200, `/auth/sso` redirecionando ao Keycloak).
 - **Causa:** a UI `temporalio/ui:2.30.0` serve uma CSP `script-src 'strict-dynamic' 'sha256-…'` junto com `modulepreload`; o Chrome atual (158) bloqueia o carregamento dos scripts ("violates the following Content Security Policy directive") e o app nunca inicia. Reproduzido com `google-chrome --headless=new --enable-logging=stderr --dump-dom` (o hash da CSP conferia com o script inline, então não era proxy alterando a página). Nenhuma mudança de ontem causou isso.
 - **Correção:** UI atualizada para `2.58.1` (última). A imagem nova traz o próprio `config/docker.yaml`; o `emptyDir` montado em `/home/ui-server/config` o escondia e o pod novo entrava em CrashLoop (`no config files found within config`), então o volume `ui-config` foi removido do manifest e do Deployment. Validado no mesmo Chrome headless: tela "Login / Continue to SSO", sem erros de CSP, todos os scripts 200. Servidor continua em `temporalio/auto-setup:1.24.2` (não alterado).
 - **Verificado:** namespaces `temporal-system` e `corporate-core`; pollers de `GEOLOCATION_INGESTION_TASK_QUEUE` e `GEOLOCATION_ARTIFACTS_TASK_QUEUE` (do `bookanything-monolith-backend-01`) ativos.
 - **Não verificado:** login via SSO e navegação autenticada (precisa de sessão de usuário); compatibilidade da UI 2.58 com o servidor 1.24.2 após o login (se algum recurso novo falhar, considerar subir o servidor, que exige migração do schema).
 - **Pegadinha:** se a UI do Temporal parar de carregar de novo, rode o Chrome headless acima para ver o erro de console em vez de adivinhar.
+- **Teste dos workflows (23/11, acompanhado pelo `tctl` no `corporate-core`):** (1) `geo-import-e3c03a4a-…` (ITA nível 0): ok em 12 s, PDF resumo, PDF de detalhe, GeoJSON e XML no MinIO central, registro `COUNTRY` `ITA` (`id=59`) com geometria; (2) `geo-import-aa0fe5d7-…` (ITA níveis 0 e 1, GEOPANDAS): 21 criados, 21 de 21 artefatos ok; (3) `geo-import-cd8c375e-…` (BRA+PRT+CHN, via Companion): 83 criados, 82 de 83 artefatos; a falha foi o `jsreport` (ver item 8, atualização de 23/11), reprocessada com sucesso. NiFi, filas, pollers e MinIO funcionaram. Ainda não verificado: login SSO na UI do Temporal.

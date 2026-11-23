@@ -69,6 +69,10 @@ cluster-stop: ## Stop MicroK8s daemon to save local laptop resources
 backup-pvc: ## Cold backup of all static PVs (stops workloads briefly). Options: BACKUP_DIR=..., ONLY=text, FLAGS="--include-nexus --include-obs --dry-run"
 	@scripts/backup_pvc.sh backup $(if $(ONLY),--only $(ONLY)) $(FLAGS)
 
+.PHONY: backup-state
+backup-state: ## Backup of what is not in a PV (k8s objects incl. Secrets, pg_dump of the 3 PostgreSQL, node-only images). No downtime. Run BEFORE backup-pvc
+	@scripts/backup_cluster_state.sh $(FLAGS)
+
 .PHONY: backup-list
 backup-list: ## List the PV backups found in BACKUP_DIR (default ~/Backups/darueira-platform)
 	@scripts/backup_pvc.sh list
